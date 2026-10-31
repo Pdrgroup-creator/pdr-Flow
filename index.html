@@ -23,34 +23,23 @@
       font-family: 'Anton', sans-serif;
       font-size: 2.25rem;
       font-weight: 900;
-      letter-spacing: -0.02em;
+      letter-spacing: -0.04em; /* Pevne stiahnuté, aby PDR bolo pokope */
     }
 
-    .logo-pdr-p { color: #f97316; }
-    .logo-pdr-dr { color: #f97316; }
-    .logo-pdr-rest { color: #d1d5db; }
+    .logo-pdr-brand { color: #f97316; } /* Celé PDR v oranžovej */
+    .logo-pdr-rest { color: #d1d5db; margin-left: 0.15em; } /* FlowBoard */
 
-    .pdr-tool-icon {
+    /* Realistické malé PDR kladivko na konci loga */
+    .pdr-hammer-icon {
       display: inline-block;
-      width: 28px;
-      height: 9px;
-      background: #f97316;
-      border-radius: 2px;
+      width: 14px;
+      height: 14px;
+      margin-left: 6px;
       position: relative;
-      top: -3px;
-      margin-left: 2px;
-      transform: rotate(-15deg);
-    }
-    .pdr-tool-icon::after {
-      content: '';
-      position: absolute;
-      right: -5px;
-      top: 50%;
-      transform: translateY(-50%);
-      width: 8px;
-      height: 5px;
-      background: #9ca3af;
-      border-radius: 1px;
+      top: 2px;
+      background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23f97316"><path d="M21.5 4.5c-.8-.8-2-.8-2.8 0l-3.2 3.2-1.4-1.4 3.2-3.2c1.6-1.6 4.2-1.6 5.8 0s1.6 4.2 0 5.8l-3.1 3.1-1.4-1.4 3.1-3.1c.8-.8.8-2 0-2.8zM3 13.5l7.5-7.5 2 2L5 15.5 3 13.5zm1.5 5.5l2-2 1.5 1.5-2 2-1.5-1.5z"/></svg>');
+      background-repeat: no-repeat;
+      background-size: contain;
     }
 
     .login-container {
@@ -502,12 +491,12 @@
       if (!currentUser) {
         return (
           <div className="max-w-md w-full p-4">
+            {/* Opravené logo: PDR spojené + PDR kladivko */}
             <div className="text-center mb-5">
-                <div className="logo-pdr flex items-center justify-center gap-1.5">
-                    <span className="logo-pdr-p">P</span>
-                    <span className="logo-pdr-dr">DR</span>
+                <div className="logo-pdr flex items-center justify-center">
+                    <span className="logo-pdr-brand">PDR</span>
                     <span className="logo-pdr-rest">FlowBoard</span>
-                    <span className="pdr-tool-icon"></span>
+                    <span className="pdr-hammer-icon" title="PDR Hammer"></span>
                 </div>
                 <div className="text-[10px] text-amber-500 font-bold uppercase tracking-[0.2em] mt-0.5">HAIL HAPPENS</div>
             </div>
@@ -647,11 +636,10 @@
 
           <header className="flex justify-between items-center mb-4 border-b border-gray-700 pb-3">
             <div>
-              <div className="logo-pdr flex items-center gap-1" style={{ fontSize: '1.4rem' }}>
-                <span className="logo-pdr-p">P</span>
-                <span className="logo-pdr-dr">DR</span>
+              <div className="logo-pdr flex items-center" style={{ fontSize: '1.4rem' }}>
+                <span className="logo-pdr-brand">PDR</span>
                 <span className="logo-pdr-rest">FlowBoard</span>
-                <span className="pdr-tool-icon" style={{ width: '18px', height: '6px', top: '-1px' }}></span>
+                <span className="pdr-hammer-icon" style={{ width: '10px', height: '10px', marginLeft: '4px' }}></span>
               </div>
               <p className="text-[10px] text-gray-400">
                 {currentUser.accountType === 'company' ? `Company (${currentUser.role})` : 'Solo Tech'} | {currentUser.email}
