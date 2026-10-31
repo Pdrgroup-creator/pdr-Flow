@@ -14,7 +14,7 @@
   <div id="root"></div>
 
   <script type="text/babel">
-    const { useState, useEffect, useMemo } = React;
+    const { useState, useEffect, useMemo, useRef } = React;
 
     const TRANSLATIONS = {
       SK: {
@@ -22,8 +22,8 @@
         subtitle: "SaaS Inspektor & Cenníky",
         tabOrders: "Zákazky",
         tabClients: "Zákazníci",
-        scanBtn: "Spustiť skenovanie vozidla",
-        scanProcess: "Proces: 1. VIN ➔ 2. ŠPZ ➔ 3. Fotka auta zozadu",
+        scanBtn: "Odfotiť vozidlo / Techničák",
+        scanProcess: "Krok skenovania: 1. VIN ➔ 2. ŠPZ ➔ 3. Fotka zozadu",
         clientLabel: "Zákazník (Firma)",
         projectLabel: "Zákazka / Park / Miesto",
         ecv: "ŠPZ / EČV",
@@ -45,8 +45,8 @@
         subtitle: "SaaS Inspektor & Preislisten",
         tabOrders: "Aufträge",
         tabClients: "Kunden",
-        scanBtn: "Fahrzeug-Scan starten",
-        scanProcess: "Ablauf: 1. FIN ➔ 2. Kennzeichen ➔ 3. Heckfoto",
+        scanBtn: "Fahrzeug / Schein fotografieren",
+        scanProcess: "Schritt: 1. FIN ➔ 2. Kennzeichen ➔ 3. Heckfoto",
         clientLabel: "Kunde (Firma)",
         projectLabel: "Auftrag / Park / Standort",
         ecv: "Kennzeichen",
@@ -68,8 +68,8 @@
         subtitle: "SaaS Inspector & Pricing",
         tabOrders: "Orders",
         tabClients: "Clients",
-        scanBtn: "Start Vehicle Scan",
-        scanProcess: "Process: 1. VIN ➔ 2. License Plate ➔ 3. Rear Photo",
+        scanBtn: "Take Photo / Scan",
+        scanProcess: "Step: 1. VIN ➔ 2. License Plate ➔ 3. Rear Photo",
         clientLabel: "Client (Company)",
         projectLabel: "Job / Location / Project",
         ecv: "License Plate",
@@ -92,6 +92,9 @@
       const [lang, setLang] = useState("SK");
       const [activeTab, setActiveTab] = useState("orders");
       const t = TRANSLATIONS[lang];
+
+      // Odkaz na skrytý prístup ku kamere
+      const cameraInputRef = useRef(null);
 
       // Klientske karty a ich zákazky (projekty s cenníkmi)
       const [clientsData, setClientsData] = useState([
@@ -136,18 +139,16 @@
         }
       ]);
 
-      // Výbery vo formulári
       const [selectedClientId, setSelectedClientId] = useState(1);
       const [selectedProjectId, setSelectedProjectId] = useState(101);
       const [defaultProjectId, setDefaultProjectId] = useState(101);
 
-      // Správa zákazníkov form
       const [showNewClientForm, setShowNewClientForm] = useState(false);
       const [newClientData, setNewClientData] = useState({ name: "", ico: "", phone: "", email: "" });
 
-      // Form stav zákazky
       const [ecv, setEcv] = useState("");
       const [vin, setVin] = useState("");
+      const [capturedPhotos, setCapturedPhotos] = useState([]);
       const [selectedCategoryPrice, setSelectedCategoryPrice] = useState(null);
       const [isUnknownPrice, setIsUnknownPrice] = useState(true);
       const [customPrice, setCustomPrice] = useState("");
@@ -168,6 +169,28 @@
         }
       }, [selectedProjectId, currentProject]);
 
+      // Spustenie fotoaparátu v telefóne
+      const triggerCamera = () => {
+        if (cameraInputRef.current) {
+          cameraInputRef.current.click();
+        }
+      };
+
+      // Spracovanie odfotenného obrázka z mobilu
+      const handlePhotoCapture = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+          const photoUrl = URL.createObjectURL(file);
+          setCapturedPhotos(prev => [...prev, photoUrl]);
+
+          // Simulácia AI prečítania VIN/ŠPZ pri prvej fotke
+          if (!vin && !ecv) {
+            setVin("WVWZZZ3CZWE123456");
+            setEcv("BL-899AB");
+          }
+        }
+      };
+
       const handleAddClient = (e) => {
         e.preventDefault();
         if (!newClientData.name) return;
@@ -186,6 +209,16 @@
 
       return (
         <div className="max-w-md mx-auto p-4 pb-24">
+          {/* Skrytý HTML vstup pre spustenie fotoaparátu */}
+          <input 
+            type="file" 
+            accept="image/*" 
+            capture="environment" 
+            ref={cameraInputRef} 
+            onChange={handlePhotoCapture} 
+            className="hidden" 
+          />
+
           <header className="flex justify-between items-center mb-4 border-b border-gray-700 pb-3">
             <div>
               <h1 className="text-xl font-bold text-amber-500">{t.title}</h1>
@@ -222,12 +255,29 @@
 
           {activeTab === "orders" ? (
             <form className="bg-gray-800 p-4 rounded-xl border border-gray-700 space-y-4">
-              <div className="bg-amber-500/10 border border-amber-500/30 p-3 rounded-lg text-center space-y-1">
-                <button type="button" className="w-full bg-amber-500 text-black font-bold py-2 rounded text-sm flex justify-center items-center gap-2">
-                  <i className="fa-solid fa-camera"></i>
+              {/* SKENER & FOTOAPARÁT */}
+              <div className="bg-amber-500/10 border border-amber-500/30 p-3 rounded-lg text-center space-y-2">
+                <button 
+                  type="button" 
+                  onClick={triggerCamera}
+                  className="w-full bg-amber-500 hover:bg-amber-400 text-black font-bold py-3 rounded-lg text-sm flex justify-center items-center gap-2 shadow-lg transition-all"
+                >
+                  <i className="fa-solid fa-camera text-lg"></i>
                   <span>{t.scanBtn}</span>
                 </button>
                 <p className="text-[10px] text-gray-400">{t.scanProcess}</p>
+
+                {/* Zobrazenie odfotených náhľadov */}
+                {capturedPhotos.length > 0 && (
+                  <div className="flex gap-2 overflow-x-auto pt-2 border-t border-amber-500/20">
+                    {capturedPhotos.map((img, i) => (
+                      <div key={i} className="relative w-16 h-16 rounded-lg overflow-hidden border border-amber-500 shrink-0">
+                        <img src={img} className="w-full h-full object-cover" />
+                        <span className="absolute bottom-0 right-0 bg-black/70 text-[9px] text-amber-400 px-1 font-bold">#{i+1}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div>
