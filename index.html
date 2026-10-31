@@ -31,8 +31,7 @@
     const { useState, useEffect, useMemo, useRef } = React;
 
     const SUPABASE_URL = "https://hzmipgjpjhibxmkdadvf.supabase.co";
-    // Tvoj anon kľúč začínajúci na eyJ...
-    const SUPABASE_KEY = "VLOZ_SEM_SVOJ_ANON_PUBLIC_KLUC_ZACINAJUCI_NA_eyJ";
+    const SUPABASE_KEY = "sb_publishable_5lQPiP19Qy2xwDq6eUXDmQ_MB5IYkHQ";
     const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
     const COLOR_DATA = {
@@ -52,7 +51,6 @@
         step3Label: "3. Hárok kalkulácie",
         clientLabel: "Klient (Firma)",
         projectLabel: "Projekt / Miesto / Servis",
-        addProjectQuick: "+ Nové miesto",
         calcNumberLabel: "Číslo kalkulácie (Klient)",
         calcNumberSub: "Priebežné poradie klienta alebo zákazkový kód",
         ecv: "ŠPZ / EČV",
@@ -65,8 +63,12 @@
         pricePendingCheckbox: "Cena neznáma",
         riPriceLabel: "R&I Cena (Demontáž / Montáž €)",
         saveVehicle: "Uložiť vozidlo",
-        addClientBtn: "+ Nový klient",
+        addClientBtn: "+ Pridať klienta",
+        scanBusinessCardBtn: "Skenovať vizitku",
+        addProjectQuick: "+ Pridať miesto",
         noVehicles: "Zatiaľ nie sú evidované žiadne vozidlá.",
+        noClients: "Zatiaľ nie sú vytvorení žiadni klienti. Pridajte prvého klienta.",
+        noProjectsForClient: "Tento klient zatiaľ nemá priradené žiadne servisné miesto.",
         loginTitle: "Prihlásenie",
         registerTitle: "Registrácia",
         emailPlaceholder: "E-mailová adresa",
@@ -101,7 +103,6 @@
         step3Label: "3. Calc Sheet",
         clientLabel: "Client (Company)",
         projectLabel: "Project / Location",
-        addProjectQuick: "+ New location",
         calcNumberLabel: "Calculation No. (Client)",
         calcNumberSub: "Sequential client no. or custom code",
         ecv: "License Plate",
@@ -114,8 +115,12 @@
         pricePendingCheckbox: "Price unknown",
         riPriceLabel: "R&I Price (€)",
         saveVehicle: "Save Vehicle",
-        addClientBtn: "+ New Client",
+        addClientBtn: "+ Add Client",
+        scanBusinessCardBtn: "Scan Business Card",
+        addProjectQuick: "+ Add Location",
         noVehicles: "No vehicles recorded yet.",
+        noClients: "No clients registered yet. Add your first client.",
+        noProjectsForClient: "No locations assigned to this client yet.",
         loginTitle: "Sign In",
         registerTitle: "Register",
         emailPlaceholder: "Email address",
@@ -150,7 +155,6 @@
         step3Label: "3. Kalkulationsblatt",
         clientLabel: "Kunde (Firma)",
         projectLabel: "Projekt / Standort",
-        addProjectQuick: "+ Neuer Standort",
         calcNumberLabel: "Kalkulations-Nr. (Kunde)",
         calcNumberSub: "Laufende Nummer oder freier Code",
         ecv: "Kennzeichen",
@@ -163,8 +167,12 @@
         pricePendingCheckbox: "Preis unbekannt",
         riPriceLabel: "R&I Demontage (€)",
         saveVehicle: "Fahrzeug speichern",
-        addClientBtn: "+ Neuer Kunde",
+        addClientBtn: "+ Kunde hinzufügen",
+        scanBusinessCardBtn: "Visitenkarte scannen",
+        addProjectQuick: "+ Standort hinzufügen",
         noVehicles: "Keine Fahrzeuge erfasst.",
+        noClients: "Noch keine Kunden erfasst.",
+        noProjectsForClient: "Dieser Kunde hat noch keinen Standort.",
         loginTitle: "Anmeldung",
         registerTitle: "Registrierung",
         emailPlaceholder: "E-Mail-Adresse",
@@ -219,16 +227,18 @@
       const [selectedClientId, setSelectedClientId] = useState("");
       const [selectedProjectId, setSelectedProjectId] = useState("");
 
-      const [isAddingProject, setIsAddingProject] = useState(false);
-      const [newProjectName, setNewProjectName] = useState("");
-      const [isAddingClient, setIsAddingClient] = useState(false);
+      const [showNewClientForm, setShowNewClientForm] = useState(false);
       const [newClientName, setNewClientName] = useState("");
       const [newClientPrefix, setNewClientPrefix] = useState("");
       const [newClientAutoNum, setNewClientAutoNum] = useState(true);
 
+      const [addingProjectClientId, setAddingProjectClientId] = useState(null);
+      const [newProjectName, setNewProjectName] = useState("");
+
       const [searchTerm, setSearchTerm] = useState("");
 
       const cameraInputRef = useRef(null);
+      const cardCameraInputRef = useRef(null);
       const [scanStep, setScanStep] = useState(0);
       const [vinPhoto, setVinPhoto] = useState(null);
       const [rearPhoto, setRearPhoto] = useState(null);
@@ -293,17 +303,18 @@
       const loadData = async () => {
         try {
           const { data: cData } = await supabase.from("clients").select("*").order("name");
-          if (cData) setClients(cData);
+          if (cData) {
+            setClients(cData);
+            if (cData.length > 0 && !selectedClientId) {
+              setSelectedClientId(cData[0].id);
+            }
+          }
 
           const { data: pData } = await supabase.from("projects").select("*").order("name");
           if (pData) setProjects(pData);
 
           const { data: vData } = await supabase.from("vehicles").select("*").order("created_at", { ascending: false });
           if (vData) setVehicles(vData);
-
-          if (cData && cData.length > 0 && !selectedClientId) {
-            setSelectedClientId(cData[0].id);
-          }
         } catch (e) {
           console.error("Data load err:", e);
         }
@@ -327,14 +338,12 @@
         }
       }, [availableProjects]);
 
-      // Automatické predvyplnenie čísla kalkulácie podľa vybraného klienta
       useEffect(() => {
         if (!selectedClientId) return;
         const currentClient = clients.find(c => c.id === selectedClientId);
         const currentYear = new Date().getFullYear();
 
         if (currentClient && currentClient.auto_numbering && currentClient.calc_prefix) {
-          // Zistíme koľko vozidiel už má daný klient v tomto roku
           const clientProjectIds = projects.filter(p => p.client_id === selectedClientId).map(p => p.id);
           const clientVehiclesThisYear = vehicles.filter(v => 
             clientProjectIds.includes(v.project_id) && 
@@ -344,7 +353,6 @@
           const nextSeq = String(clientVehiclesThisYear.length + 1).padStart(3, '0');
           setClientCalcNo(`${currentClient.calc_prefix}/${currentYear}/${nextSeq}`);
         } else {
-          // Klient bez automatického radu - ponecháme voľné na manuálne zadanie
           setClientCalcNo("");
         }
       }, [selectedClientId, clients, projects, vehicles]);
@@ -430,17 +438,18 @@
           setSelectedClientId(data[0].id);
           setNewClientName("");
           setNewClientPrefix("");
-          setIsAddingClient(false);
+          setShowNewClientForm(false);
+        } else if (error) {
+          alert("Chyba: " + error.message);
         }
       };
 
-      const handleCreateProject = async (e) => {
-        e.preventDefault();
-        if (!newProjectName.trim() || !selectedClientId) return;
+      const handleCreateProject = async (clientId) => {
+        if (!newProjectName.trim()) return;
 
         const { data, error } = await supabase.from("projects").insert([
           { 
-            client_id: selectedClientId, 
+            client_id: clientId, 
             name: newProjectName.trim(), 
             created_by: currentUser.id 
           }
@@ -448,10 +457,26 @@
 
         if (!error && data) {
           setProjects([...projects, data[0]]);
-          setSelectedProjectId(data[0].id);
+          if (clientId === selectedClientId) {
+            setSelectedProjectId(data[0].id);
+          }
           setNewProjectName("");
-          setIsAddingProject(false);
+          setAddingProjectClientId(null);
+        } else if (error) {
+          alert("Chyba: " + error.message);
         }
+      };
+
+      const handleBusinessCardCapture = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        setShowNewClientForm(true);
+        setTimeout(() => {
+          setNewClientName("Autohaus Denk GmbH");
+          setNewClientPrefix("DNK");
+          setNewClientAutoNum(true);
+        }, 600);
       };
 
       const startScanning = () => {
@@ -489,11 +514,10 @@
       const handleSaveVehicle = async (e) => {
         e.preventDefault();
         if (!selectedProjectId) {
-          alert("Vyberte alebo vytvorte najprv Projekt / Miesto.");
+          alert("Vyberte najprv platného Klienta a Projekt/Miesto.");
           return;
         }
 
-        // Tvorba interného evidenčného čísla technika na pozadí (napr. HLA/2026/114)
         const currentYear = new Date().getFullYear();
         const techPrefix = (currentUser.email.split('@')[0].split('.')[1] || currentUser.email.substring(0, 3)).toUpperCase().substring(0, 4);
         const internalSeq = String(vehicles.length + 1).padStart(3, '0');
@@ -535,7 +559,6 @@
         }
       };
 
-      // Filtrovanie vozidiel pre vyhľadávanie v reportoch
       const filteredVehicles = useMemo(() => {
         if (!searchTerm.trim()) return vehicles;
         const term = searchTerm.toLowerCase();
@@ -708,6 +731,14 @@
             onChange={handlePhotoCapture} 
             className="hidden" 
           />
+          <input 
+            type="file" 
+            accept="image/*" 
+            capture="environment" 
+            ref={cardCameraInputRef} 
+            onChange={handleBusinessCardCapture} 
+            className="hidden" 
+          />
 
           {showSettingsModal && (
             <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50">
@@ -793,101 +824,37 @@
           {activeTab === "vehicles" ? (
             <form onSubmit={handleSaveVehicle} className="bg-gray-800 p-4 rounded-xl border border-gray-700 space-y-4">
               
-              {/* 1. SEKCIA: Klient & Projekt/Miesto */}
               <div className="space-y-3 bg-gray-900/40 p-3 rounded-lg border border-gray-700/80">
                 <div>
-                  <div className="flex justify-between items-center mb-1">
-                    <label className="text-xs font-bold text-gray-300">{t.clientLabel}</label>
-                    <button 
-                      type="button" 
-                      onClick={() => setIsAddingClient(!isAddingClient)} 
-                      className="text-[10px] text-amber-400 font-bold hover:underline"
-                    >
-                      {t.addClientBtn}
-                    </button>
-                  </div>
-                  {isAddingClient ? (
-                    <div className="space-y-2 bg-gray-950 p-2.5 rounded-lg border border-gray-700">
-                      <input 
-                        type="text" 
-                        value={newClientName} 
-                        onChange={e => setNewClientName(e.target.value)} 
-                        placeholder="Názov klienta (napr. Denk)" 
-                        className="w-full bg-gray-900 border border-gray-600 rounded p-1.5 text-xs text-white"
-                      />
-                      <div className="grid grid-cols-2 gap-2 pt-1">
-                        <div>
-                          <label className="block text-[9px] text-gray-400 mb-0.5">Predpona kalkulácie</label>
-                          <input 
-                            type="text" 
-                            value={newClientPrefix} 
-                            onChange={e => setNewClientPrefix(e.target.value)} 
-                            placeholder="Napr. HLA" 
-                            className="w-full bg-gray-900 border border-gray-600 rounded p-1 text-xs text-amber-400 font-mono uppercase"
-                          />
-                        </div>
-                        <div className="flex items-center pt-3">
-                          <label className="text-[10px] text-gray-300 flex items-center gap-1.5 cursor-pointer">
-                            <input 
-                              type="checkbox" 
-                              checked={newClientAutoNum} 
-                              onChange={e => setNewClientAutoNum(e.target.checked)} 
-                            />
-                            <span>Auto číslovanie</span>
-                          </label>
-                        </div>
-                      </div>
-                      <button type="button" onClick={handleCreateClient} className="w-full bg-amber-500 text-black font-bold py-1.5 text-xs rounded mt-1">Uložiť klienta</button>
-                    </div>
-                  ) : (
-                    <select 
-                      value={selectedClientId} 
-                      onChange={e => setSelectedClientId(e.target.value)} 
-                      className="w-full bg-gray-900 border border-gray-600 rounded p-2 text-sm text-white font-semibold"
-                    >
-                      {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                    </select>
-                  )}
+                  <label className="block text-xs font-bold text-gray-300 mb-1">{t.clientLabel}</label>
+                  <select 
+                    value={selectedClientId} 
+                    onChange={e => setSelectedClientId(e.target.value)} 
+                    className="w-full bg-gray-900 border border-gray-600 rounded p-2 text-sm text-white font-semibold"
+                  >
+                    {clients.length === 0 ? (
+                      <option value="">(Žiadny klient - vytvorte ho v záložke Miesta)</option>
+                    ) : (
+                      clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)
+                    )}
+                  </select>
                 </div>
 
                 <div>
-                  <div className="flex justify-between items-center mb-1">
-                    <label className="text-xs font-bold text-gray-300">{t.projectLabel}</label>
-                    <button 
-                      type="button" 
-                      onClick={() => setIsAddingProject(!isAddingProject)} 
-                      className="text-[10px] text-amber-400 font-bold hover:underline"
-                    >
-                      {t.addProjectQuick}
-                    </button>
-                  </div>
-                  {isAddingProject ? (
-                    <div className="flex gap-2">
-                      <input 
-                        type="text" 
-                        value={newProjectName} 
-                        onChange={e => setNewProjectName(e.target.value)} 
-                        placeholder="Napr. Servis Bosch" 
-                        className="flex-1 bg-gray-900 border border-gray-600 rounded p-2 text-xs text-white"
-                      />
-                      <button type="button" onClick={handleCreateProject} className="bg-amber-500 text-black font-bold px-3 py-1 text-xs rounded">OK</button>
-                    </div>
-                  ) : (
-                    <select 
-                      value={selectedProjectId} 
-                      onChange={e => setSelectedProjectId(e.target.value)} 
-                      className="w-full bg-gray-900 border border-gray-600 rounded p-2 text-sm text-amber-400 font-bold"
-                    >
-                      {availableProjects.length === 0 ? (
-                        <option value="">(Žiadne miesto - kliknite + Nové miesto)</option>
-                      ) : (
-                        availableProjects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)
-                      )}
-                    </select>
-                  )}
+                  <label className="block text-xs font-bold text-gray-300 mb-1">{t.projectLabel}</label>
+                  <select 
+                    value={selectedProjectId} 
+                    onChange={e => setSelectedProjectId(e.target.value)} 
+                    className="w-full bg-gray-900 border border-gray-600 rounded p-2 text-sm text-amber-400 font-bold"
+                  >
+                    {availableProjects.length === 0 ? (
+                      <option value="">(Žiadne miesto - pridajte ho v záložke Miesta)</option>
+                    ) : (
+                      availableProjects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)
+                    )}
+                  </select>
                 </div>
 
-                {/* Číslo kalkulácie - umiestnené pod klientom a miestom, nad detailami auta */}
                 <div>
                   <div className="flex justify-between items-center mb-1">
                     <label className="text-xs text-amber-400 font-bold">{t.calcNumberLabel}</label>
@@ -903,7 +870,6 @@
                 </div>
               </div>
 
-              {/* 2. SEKCIA: Skenovanie (VIN / Auto / Hárok) */}
               <div className="bg-amber-500/10 border border-amber-500/30 p-3 rounded-lg text-center space-y-3">
                 <button 
                   type="button" 
@@ -976,7 +942,6 @@
                 </div>
               </div>
 
-              {/* 3. SEKCIA: Detaily o aute */}
               <div className="space-y-3">
                 <div className="grid grid-cols-2 gap-2">
                   <div>
@@ -1030,9 +995,7 @@
                 </div>
               </div>
 
-              {/* 4. SEKCIA: Financie - PDR cena a priamo pod ňou R&I */}
               <div className="space-y-3 pt-1 border-t border-gray-700">
-                {/* PDR Cena */}
                 <div className="bg-gray-900/60 p-3 rounded-lg border border-gray-700 space-y-2">
                   <div className="flex justify-between items-center">
                     <label className="text-xs font-bold text-gray-300">{t.priceLabel}</label>
@@ -1056,7 +1019,6 @@
                   )}
                 </div>
 
-                {/* R&I Demontáž / Montáž - presne pod cenou za opravu */}
                 <div className="bg-gray-900/60 p-3 rounded-lg border border-gray-700 space-y-1">
                   <label className="text-xs font-bold text-gray-300 flex items-center gap-1.5">
                     <i className="fa-solid fa-wrench text-amber-500 text-xs"></i>
@@ -1078,33 +1040,153 @@
             </form>
           ) : activeTab === "projects" ? (
             <div className="space-y-4">
-              <div className="bg-gray-800 p-4 rounded-xl border border-gray-700 space-y-3">
-                <h3 className="text-xs font-bold text-amber-400 uppercase tracking-wider">Klienti a ich miesta</h3>
-                {clients.map(c => (
-                  <div key={c.id} className="border-b border-gray-700 pb-3">
-                    <div className="flex justify-between items-center">
-                      <p className="font-bold text-white text-sm">{c.name}</p>
-                      {c.calc_prefix && (
-                        <span className="text-[10px] bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded font-mono font-bold">
-                          Kód: {c.calc_prefix}
-                        </span>
-                      )}
+              
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowNewClientForm(!showNewClientForm)}
+                  className="flex-1 bg-amber-500 hover:bg-amber-400 text-black font-extrabold py-2.5 px-3 rounded-xl text-xs flex items-center justify-center gap-2 shadow"
+                >
+                  <i className="fa-solid fa-plus"></i>
+                  <span>{t.addClientBtn}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { if(cardCameraInputRef.current) cardCameraInputRef.current.click(); }}
+                  className="bg-gray-800 hover:bg-gray-700 border border-amber-500/40 text-amber-400 font-bold py-2.5 px-3 rounded-xl text-xs flex items-center justify-center gap-2"
+                  title={t.scanBusinessCardBtn}
+                >
+                  <i className="fa-solid fa-id-card text-sm"></i>
+                  <span>{t.scanBusinessCardBtn}</span>
+                </button>
+              </div>
+
+              {showNewClientForm && (
+                <form onSubmit={handleCreateClient} className="bg-gray-800 p-4 rounded-xl border border-amber-500/50 space-y-3">
+                  <div className="flex justify-between items-center border-b border-gray-700 pb-2">
+                    <h4 className="text-xs font-bold text-amber-400 uppercase">Nový Klient</h4>
+                    <button type="button" onClick={() => setShowNewClientForm(false)} className="text-gray-400 hover:text-white">
+                      <i className="fa-solid fa-xmark"></i>
+                    </button>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] text-gray-400 mb-1">Názov firmy / klienta</label>
+                    <input 
+                      type="text" 
+                      value={newClientName} 
+                      onChange={e => setNewClientName(e.target.value)} 
+                      placeholder="Napr. Denk alebo Autoservis Novák" 
+                      className="w-full bg-gray-900 border border-gray-600 rounded p-2 text-xs text-white"
+                      required
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-[10px] text-gray-400 mb-1">Predpona kalkulácie</label>
+                      <input 
+                        type="text" 
+                        value={newClientPrefix} 
+                        onChange={e => setNewClientPrefix(e.target.value)} 
+                        placeholder="Napr. HLA" 
+                        className="w-full bg-gray-900 border border-gray-600 rounded p-2 text-xs text-amber-400 font-mono uppercase"
+                      />
                     </div>
-                    <div className="pl-3 mt-1.5 space-y-1">
-                      {projects.filter(p => p.client_id === c.id).map(p => (
-                        <div key={p.id} className="text-xs text-gray-400 flex items-center gap-2">
-                          <i className="fa-solid fa-location-dot text-amber-500 text-[10px]"></i>
-                          <span>{p.name}</span>
-                        </div>
-                      ))}
+                    <div className="flex items-center pt-3">
+                      <label className="text-[10px] text-gray-300 flex items-center gap-1.5 cursor-pointer">
+                        <input 
+                          type="checkbox" 
+                          checked={newClientAutoNum} 
+                          onChange={e => setNewClientAutoNum(e.target.checked)} 
+                        />
+                        <span>Auto číslovanie</span>
+                      </label>
                     </div>
                   </div>
-                ))}
+                  <button type="submit" className="w-full bg-amber-500 text-black font-extrabold py-2 rounded text-xs shadow">
+                    Uložiť nového klienta
+                  </button>
+                </form>
+              )}
+
+              <div className="space-y-3">
+                {clients.length === 0 ? (
+                  <div className="bg-gray-800 p-6 rounded-xl border border-gray-700 text-center text-gray-400 text-xs">
+                    {t.noClients}
+                  </div>
+                ) : (
+                  clients.map(c => {
+                    const clientProjects = projects.filter(p => p.client_id === c.id);
+                    const isAddingToThisClient = addingProjectClientId === c.id;
+
+                    return (
+                      <div key={c.id} className="bg-gray-800 p-4 rounded-xl border border-gray-700 space-y-3">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <h4 className="font-extrabold text-white text-sm">{c.name}</h4>
+                            <div className="flex items-center gap-2 mt-0.5">
+                              {c.calc_prefix ? (
+                                <span className="text-[9px] bg-amber-500/20 text-amber-300 px-1.5 py-0.5 rounded font-mono font-bold">
+                                  Kód: {c.calc_prefix}
+                                </span>
+                              ) : (
+                                <span className="text-[9px] text-gray-400">Manuálne číslovanie</span>
+                              )}
+                            </div>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setAddingProjectClientId(isAddingToThisClient ? null : c.id);
+                              setNewProjectName("");
+                            }}
+                            className="text-[11px] bg-gray-900 hover:bg-gray-700 border border-gray-600 text-amber-400 font-bold px-2 py-1 rounded"
+                          >
+                            <i className="fa-solid fa-plus mr-1"></i>Miesto
+                          </button>
+                        </div>
+
+                        {isAddingToThisClient && (
+                          <div className="flex gap-2 bg-gray-950 p-2 rounded-lg border border-gray-700">
+                            <input 
+                              type="text" 
+                              value={newProjectName} 
+                              onChange={e => setNewProjectName(e.target.value)} 
+                              placeholder="Názov miesta (napr. Servis Bosch / Hala 2)" 
+                              className="flex-1 bg-gray-900 border border-gray-600 rounded px-2 py-1 text-xs text-white"
+                            />
+                            <button 
+                              type="button" 
+                              onClick={() => handleCreateProject(c.id)} 
+                              className="bg-amber-500 text-black font-bold px-3 py-1 text-xs rounded"
+                            >
+                              OK
+                            </button>
+                          </div>
+                        )}
+
+                        <div className="space-y-1 pt-1 border-t border-gray-700/60">
+                          {clientProjects.length === 0 ? (
+                            <p className="text-[10px] text-gray-400 italic">{t.noProjectsForClient}</p>
+                          ) : (
+                            clientProjects.map(p => (
+                              <div key={p.id} className="text-xs text-gray-300 flex items-center justify-between py-1 px-2 rounded bg-gray-900/40">
+                                <div className="flex items-center gap-2">
+                                  <i className="fa-solid fa-location-dot text-amber-500 text-[10px]"></i>
+                                  <span className="font-medium">{p.name}</span>
+                                </div>
+                              </div>
+                            ))
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
               </div>
             </div>
           ) : (
             <div className="space-y-3">
-              {/* Vyhľadávacie pole pre rýchle nájdenie auta */}
               <div className="relative">
                 <i className="fa-solid fa-magnifying-glass absolute left-3 top-3 text-xs text-gray-400"></i>
                 <input 
