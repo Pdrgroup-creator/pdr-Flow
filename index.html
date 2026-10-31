@@ -4,12 +4,13 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>PDR FlowBoard Pro</title>
-  <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
-  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <!-- Stabilný Supabase JS klient s podporou nových kľúčov -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.48.1/dist/umd/supabase.min.js"></script>
   <style>
     body {
       background-color: #111827;
@@ -35,7 +36,7 @@
     const { useState, useEffect, useMemo, useRef } = React;
 
     const SUPABASE_URL = "https://hzmipgpjhibxmkdadvf.supabase.co";
-    const SUPABASE_KEY = "sb_publishable_5lQPiP19Qy2xwDq6eUXDmQ_MB5IYkHQ";
+    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh6bWlwZ2pwamhpYnhta2RhZHZmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTM0NjMyOTcsImV4cCI6MjEwOTAzOTI5N30.RFquqmHdxD9-zuZYGVd-R94T5vBjUGBpVF9vttltK14";
     const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
     const COLOR_DATA = {
@@ -69,8 +70,12 @@
         loginTitle: "Prihlásenie",
         registerTitle: "Registrácia",
         emailPlaceholder: "E-mailová adresa",
-        passwordPlaceholder: "Heslo",
+        passwordPlaceholder: "Heslo (min. 6 znakov)",
+        confirmPasswordPlaceholder: "Zopakujte heslo",
+        passwordMismatch: "Heslá sa nezhodujú!",
+        passwordTooShort: "Heslo musí mať aspoň 6 znakov.",
         loginBtn: "Prihlásiť sa",
+        googleLoginBtn: "Pokračovať cez Google",
         registerBtn: "Zaregistrovať sa",
         accountType: "Typ účtu",
         soloTech: "Nezávislý technik (Solo)",
@@ -106,8 +111,12 @@
         loginTitle: "Sign In",
         registerTitle: "Register",
         emailPlaceholder: "Email address",
-        passwordPlaceholder: "Password",
+        passwordPlaceholder: "Password (min. 6 chars)",
+        confirmPasswordPlaceholder: "Confirm password",
+        passwordMismatch: "Passwords do not match!",
+        passwordTooShort: "Password must have at least 6 characters.",
         loginBtn: "Sign In",
+        googleLoginBtn: "Continue with Google",
         registerBtn: "Register",
         accountType: "Account Type",
         soloTech: "Independent Tech (Solo)",
@@ -143,8 +152,12 @@
         loginTitle: "Anmeldung",
         registerTitle: "Registrierung",
         emailPlaceholder: "E-Mail-Adresse",
-        passwordPlaceholder: "Passwort",
+        passwordPlaceholder: "Passwort (mind. 6 Zeichen)",
+        confirmPasswordPlaceholder: "Passwort wiederholen",
+        passwordMismatch: "Passwörter stimmen nicht überein!",
+        passwordTooShort: "Passwort muss mindestens 6 Zeichen lang sein.",
         loginBtn: "Anmelden",
+        googleLoginBtn: "Mit Google fortfahren",
         registerBtn: "Registrieren",
         accountType: "Kontotyp",
         soloTech: "Solo-Techniker",
@@ -171,6 +184,7 @@
       const [isRegistering, setIsRegistering] = useState(false);
       const [authEmail, setAuthEmail] = useState("");
       const [authPassword, setAuthPassword] = useState("");
+      const [authConfirmPassword, setAuthConfirmPassword] = useState("");
       const [authAccountType, setAuthAccountType] = useState("solo");
       const [authRole, setAuthRole] = useState("manager");
 
@@ -210,19 +224,30 @@
             return;
           }
 
-          const { data: profile } = await supabase
-            .from("profiles")
-            .select("*")
-            .eq("id", session.user.id)
-            .single();
+          try {
+            const { data: profile } = await supabase
+              .from("profiles")
+              .select("*")
+              .eq("id", session.user.id)
+              .maybeSingle();
 
-          setCurrentUser({
-            id: session.user.id,
-            email: session.user.email,
-            accountType: profile?.account_type || "solo",
-            role: profile?.role || "solo"
-          });
-          setLoadingUser(false);
+            setCurrentUser({
+              id: session.user.id,
+              email: session.user.email,
+              accountType: profile?.account_type || "solo",
+              role: profile?.role || "solo"
+            });
+          } catch (err) {
+            console.error("Profile load err:", err);
+            setCurrentUser({
+              id: session.user.id,
+              email: session.user.email,
+              accountType: "solo",
+              role: "solo"
+            });
+          } finally {
+            setLoadingUser(false);
+          }
         };
 
         supabase.auth.getSession().then(({ data: { session } }) => {
@@ -237,17 +262,21 @@
       }, []);
 
       const loadData = async () => {
-        const { data: cData } = await supabase.from("clients").select("*").order("name");
-        if (cData) setClients(cData);
+        try {
+          const { data: cData } = await supabase.from("clients").select("*").order("name");
+          if (cData) setClients(cData);
 
-        const { data: pData } = await supabase.from("projects").select("*").order("name");
-        if (pData) setProjects(pData);
+          const { data: pData } = await supabase.from("projects").select("*").order("name");
+          if (pData) setProjects(pData);
 
-        const { data: vData } = await supabase.from("vehicles").select("*").order("created_at", { ascending: false });
-        if (vData) setVehicles(vData);
+          const { data: vData } = await supabase.from("vehicles").select("*").order("created_at", { ascending: false });
+          if (vData) setVehicles(vData);
 
-        if (cData && cData.length > 0 && !selectedClientId) {
-          setSelectedClientId(cData[0].id);
+          if (cData && cData.length > 0 && !selectedClientId) {
+            setSelectedClientId(cData[0].id);
+          }
+        } catch (e) {
+          console.error("Data fetch error:", e);
         }
       };
 
@@ -273,27 +302,53 @@
         e.preventDefault();
         setAuthError("");
 
-        try {
-          if (isRegistering) {
-            const roleToAssign = authAccountType === "company" ? authRole : "solo";
-            const { error } = await supabase.auth.signUp({
-              email: authEmail,
-              password: authPassword,
-              options: {
-                data: {
-                  account_type: authAccountType,
-                  role: roleToAssign
-                }
-              }
-            });
-            if (error) throw error;
-          } else {
-            const { error } = await supabase.auth.signInWithPassword({
-              email: authEmail,
-              password: authPassword
-            });
-            if (error) throw error;
+        if (isRegistering) {
+          if (authPassword.length < 6) {
+            setAuthError(t.passwordTooShort);
+            return;
           }
+          if (authPassword !== authConfirmPassword) {
+            setAuthError(t.passwordMismatch);
+            return;
+          }
+
+          const roleToAssign = authAccountType === "company" ? authRole : "solo";
+          const { error } = await supabase.auth.signUp({
+            email: authEmail,
+            password: authPassword,
+            options: {
+              data: {
+                account_type: authAccountType,
+                role: roleToAssign
+              }
+            }
+          });
+
+          if (error) {
+            setAuthError(error.message);
+          }
+        } else {
+          const { error } = await supabase.auth.signInWithPassword({
+            email: authEmail,
+            password: authPassword
+          });
+
+          if (error) {
+            setAuthError(error.message);
+          }
+        }
+      };
+
+      const handleGoogleLogin = async () => {
+        setAuthError("");
+        try {
+          const { error } = await supabase.auth.signInWithOAuth({
+            provider: 'google',
+            options: {
+              redirectTo: window.location.origin
+            }
+          });
+          if (error) throw error;
         } catch (err) {
           setAuthError(err.message);
         }
@@ -449,10 +504,26 @@
               </div>
 
               {authError && (
-                <div className="bg-red-900/40 border border-red-500/50 text-red-200 text-xs p-2.5 rounded-lg text-center">
+                <div className="bg-red-900/40 border border-red-500/50 text-red-200 text-xs p-2.5 rounded-lg text-center font-medium">
                   {authError}
                 </div>
               )}
+
+              {/* Tlačidlo Google */}
+              <button
+                type="button"
+                onClick={handleGoogleLogin}
+                className="w-full bg-white hover:bg-gray-100 text-gray-950 font-bold py-2.5 rounded-xl text-xs flex justify-center items-center gap-2 shadow transition"
+              >
+                <i className="fa-brands fa-google text-red-600 text-sm"></i>
+                <span>{t.googleLoginBtn}</span>
+              </button>
+
+              <div className="flex items-center my-1">
+                <div className="flex-1 border-t border-gray-700"></div>
+                <span className="px-2 text-[10px] text-gray-500 uppercase font-semibold">alebo e-mail</span>
+                <div className="flex-1 border-t border-gray-700"></div>
+              </div>
 
               {isRegistering && (
                 <div>
@@ -514,6 +585,28 @@
                 />
               </div>
 
+              {/* Opakovanie hesla pri registrácii */}
+              {isRegistering && (
+                <div>
+                  <label className="block text-[10px] text-gray-400 mb-1">Potvrdenie hesla</label>
+                  <input 
+                    type="password" 
+                    value={authConfirmPassword} 
+                    onChange={e => setAuthConfirmPassword(e.target.value)} 
+                    placeholder={t.confirmPasswordPlaceholder} 
+                    className={`w-full bg-gray-900 border rounded-lg p-2 text-xs text-white ${
+                      authConfirmPassword && authPassword !== authConfirmPassword 
+                        ? 'border-red-500 focus:border-red-500' 
+                        : 'border-gray-600'
+                    }`} 
+                    required 
+                  />
+                  {authConfirmPassword && authPassword !== authConfirmPassword && (
+                    <p className="text-[10px] text-red-400 mt-1 font-semibold">{t.passwordMismatch}</p>
+                  )}
+                </div>
+              )}
+
               <button type="submit" className="w-full bg-amber-500 hover:bg-amber-400 text-black font-extrabold py-3 rounded-xl text-sm shadow">
                 {isRegistering ? t.registerBtn : t.loginBtn}
               </button>
@@ -521,7 +614,11 @@
               <div className="text-center pt-1">
                 <button 
                   type="button" 
-                  onClick={() => { setIsRegistering(!isRegistering); setAuthError(""); }}
+                  onClick={() => { 
+                    setIsRegistering(!isRegistering); 
+                    setAuthError(""); 
+                    setAuthConfirmPassword(""); 
+                  }}
                   className="text-xs text-amber-400 hover:underline"
                 >
                   {isRegistering ? t.switchToLogin : t.switchToReg}
@@ -740,7 +837,7 @@
                       key={c}
                       type="button"
                       onClick={() => setColor(c)}
-                      className={`px-2 py-1 text-[10px] rounded border whitespace-nowrap ${color === c ? 'bg-amber-500 border-amber-400 text-black font-bold' : 'bg-gray-900 border-gray-700 text-gray-300'}`}
+                      className={`px-2.5 py-1 text-[10px] rounded border whitespace-nowrap ${color === c ? 'bg-amber-500 border-amber-400 text-black font-bold' : 'bg-gray-900 border-gray-700 text-gray-300'}`}
                     >
                       {c}
                     </button>
