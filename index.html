@@ -3,58 +3,32 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>PDR FlowBoard</title>
+  <title>PDR FlowBoard Pro</title>
   <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@400;600;700;900&display=swap');
-    
     body {
-      font-family: 'Inter', sans-serif;
       background-color: #111827;
       margin: 0;
       padding: 0;
     }
-
-    .logo-pdr {
-      font-family: 'Anton', sans-serif;
-      font-size: 2.5rem;
-      font-weight: 900;
-    }
-
-    /* PDR s väčšími rozostupmi, aby písmená nesplývali, v systémovej oranžovej */
-    .logo-pdr-brand { 
-      color: #f97316; 
-      letter-spacing: 0.08em; 
-    }
-    .logo-pdr-rest { 
-      color: #d1d5db; 
-      margin-left: 0.25em; 
-      letter-spacing: -0.01em;
-    }
-
     .login-container {
       background: rgba(17, 24, 39, 0.95);
       border: 1px solid #374151;
       border-radius: 1rem;
       box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
     }
-    
-    .p3dr0-colored {
-        color: #f97316;
-        font-weight: 900;
-    }
   </style>
 </head>
-<body class="min-h-screen flex flex-col justify-between text-gray-100">
+<body class="bg-gray-900 text-gray-100 min-h-screen flex flex-col justify-between font-sans">
   <div id="root" class="flex-1 flex flex-col justify-center items-center p-4"></div>
 
-  <!-- JEDNOTNÁ ČISTÁ PÄTIČKA -->
-  <footer class="py-3 text-center text-[11px] text-gray-500 border-t border-gray-800 bg-gray-950/50">
-    PDR FlowBoard &copy; 2026 | Powered by <span class="p3dr0-colored">P</span><span class="font-black text-gray-300">3</span><span class="p3dr0-colored">DR</span><span class="font-black text-gray-300">0</span> &bull; <span class="text-orange-500 font-bold uppercase tracking-wider">HAIL HAPPENS</span>
+  <!-- ČISTÁ PÄTIČKA (BEZ SPODNÉHO SLOGANU) -->
+  <footer class="py-3 text-center text-xs text-gray-500 border-t border-gray-800 bg-gray-950/50">
+    PDR FlowBoard &copy; 2026 | Powered by P<span class="text-amber-500 font-black">3</span>D<span class="text-amber-500 font-black">R</span>0
   </footer>
 
   <script type="text/babel">
@@ -104,8 +78,8 @@
         generateReport: "Generate Report (PDF / Export)",
         noReports: "No records match the filter.",
         totalFiltered: "Total items",
-        loginTitle: "Sign In",
-        registerTitle: "Register",
+        loginTitle: "System Login",
+        registerTitle: "Create New Account",
         emailPlaceholder: "E-mail address",
         passwordPlaceholder: "Password",
         loginBtn: "Sign In",
@@ -115,9 +89,9 @@
         accountType: "Account Type",
         soloTech: "Independent Technician (Solo)",
         companyTeam: "Company / Dispatch (Team)",
-        roleLabel: "My Role",
-        roleManager: "Manager",
-        roleEmployee: "Employee",
+        roleLabel: "My Role in Company",
+        roleManager: "Manager (Reports & Setup)",
+        roleEmployee: "Field Technician",
         switchToReg: "Don't have an account? Register",
         switchToLogin: "Already have an account? Sign In",
         logout: "Sign Out"
@@ -486,13 +460,14 @@
       if (!currentUser) {
         return (
           <div className="max-w-md w-full p-4">
-            {/* Logo PDR FlowBoard s upraveným rozostupom PDR */}
-            <div className="text-center mb-5">
-                <div className="logo-pdr flex items-center justify-center">
-                    <span className="logo-pdr-brand">PDR</span>
-                    <span className="logo-pdr-rest">FlowBoard</span>
+            {/* VÄČŠIE LOGO S PDR V SYSTEMOVEJ ORANŽOVEJ A FLOWBOARD V ŠEDOBIELAČI + SLOGAN V RÁMČEKU */}
+            <div className="text-center mb-6 space-y-2">
+                <h1 className="text-3xl font-black tracking-tight">
+                  <span className="text-amber-500">PDR</span> <span className="text-gray-200">FlowBoard</span>
+                </h1>
+                <div className="inline-block border border-amber-500/40 px-3 py-0.5 rounded-md bg-amber-500/10">
+                  <span className="text-[10px] text-amber-400 font-bold uppercase tracking-[0.2em]">HAIL HAPPENS</span>
                 </div>
-                <div className="text-[10px] text-amber-500 font-bold uppercase tracking-[0.2em] mt-0.5">HAIL HAPPENS</div>
             </div>
 
             <form onSubmit={handleAuthSubmit} className="login-container p-5 space-y-4">
@@ -630,10 +605,9 @@
 
           <header className="flex justify-between items-center mb-4 border-b border-gray-700 pb-3">
             <div>
-              <div className="logo-pdr flex items-center" style={{ fontSize: '1.25rem' }}>
-                <span className="logo-pdr-brand">PDR</span>
-                <span className="logo-pdr-rest">FlowBoard</span>
-              </div>
+              <h1 className="text-base font-black tracking-tight">
+                <span className="text-amber-500">PDR</span> <span className="text-gray-200">FlowBoard</span>
+              </h1>
               <p className="text-[10px] text-gray-400">
                 {currentUser.accountType === 'company' ? `Company (${currentUser.role})` : 'Solo Tech'} | {currentUser.email}
               </p>
@@ -972,7 +946,7 @@
                     <label className="block text-[10px] text-gray-400 mb-1"><i className="fa-solid fa-folder mr-1"></i>{t.projectLabel}</label>
                     <select 
                       value={reportFilterProject} 
-                      onChange={e => setReportFilterProject(e.target.value)} 
+                      onChange={e => reportFilterProject(e.target.value)} 
                       className="w-full bg-gray-900 border border-gray-600 rounded p-2 text-xs text-amber-400 font-bold"
                     >
                       <option value="all">{t.filterProject}</option>
