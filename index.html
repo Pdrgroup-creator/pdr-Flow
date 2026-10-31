@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>DentFlow PDR Pro</title>
+  <title>PDR FlowBoard Pro</title>
   <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -20,7 +20,7 @@
 
     const TRANSLATIONS = {
       SK: {
-        title: "DentFlow PDR",
+        title: "PDR FlowBoard",
         subtitle: "SaaS Inspektor & Cenníky",
         tabOrders: "Zákazky",
         tabClients: "Zákazníci",
@@ -48,7 +48,7 @@
         noEcvNotice: "Bez ŠPZ / Nové vozidlo"
       },
       DE: {
-        title: "DentFlow PDR",
+        title: "PDR FlowBoard",
         subtitle: "SaaS Inspektor & Preislisten",
         tabOrders: "Aufträge",
         tabClients: "Kunden",
@@ -76,7 +76,7 @@
         noEcvNotice: "Ohne Kennzeichen / Neufahrzeug"
       },
       EN: {
-        title: "DentFlow PDR",
+        title: "PDR FlowBoard",
         subtitle: "SaaS Inspector & Pricing",
         tabOrders: "Orders",
         tabClients: "Clients",
@@ -117,7 +117,6 @@
       const [rearPhoto, setRearPhoto] = useState(null);
       const [isAnalyzing, setIsAnalyzing] = useState(false);
 
-      // Klientske karty a ich zákazky (projekty s cenníkmi)
       const [clientsData, setClientsData] = useState([
         {
           id: 1,
@@ -280,7 +279,6 @@
             </div>
           </header>
 
-          {/* PREPÍNANIE ZÁLOŽIEK: ZÁKAZKY VS ZÁKAZNÍCI */}
           <div className="flex bg-gray-800 p-1 rounded-xl mb-4 border border-gray-700">
             <button 
               onClick={() => setActiveTab("orders")} 
@@ -298,7 +296,6 @@
 
           {activeTab === "orders" ? (
             <form className="bg-gray-800 p-4 rounded-xl border border-gray-700 space-y-4">
-              {/* SKENER CAR & 2-KROKOVÝ PROCES */}
               <div className="bg-amber-500/10 border border-amber-500/30 p-3 rounded-lg text-center space-y-3">
                 <button 
                   type="button" 
@@ -355,7 +352,6 @@
                 </div>
               </div>
 
-              {/* VÝBER ZÁKAZNÍKA (FIRMY) */}
               <div>
                 <div className="flex justify-between items-center mb-1">
                   <label className="text-xs text-gray-400">{t.clientLabel}</label>
@@ -380,7 +376,6 @@
                 </select>
               </div>
 
-              {/* VÝBER ZÁKAZKY (PROJEKTU) + HVIEZDIČKA PREDVOLENIA */}
               <div>
                 <label className="block text-xs text-gray-400 mb-1">{t.projectLabel}</label>
                 <div className="flex gap-2">
@@ -396,7 +391,6 @@
                     type="button" 
                     onClick={() => setDefaultProjectId(selectedProjectId)}
                     className={`px-3 py-2 rounded border ${defaultProjectId === Number(selectedProjectId) ? 'bg-amber-500 border-amber-400 text-black font-bold' : 'bg-gray-700 border-gray-600 text-gray-300'}`}
-                    title="Predvoliť túto zákazku"
                   >
                     <i className="fa-solid fa-star"></i>
                   </button>
@@ -406,7 +400,6 @@
                 )}
               </div>
 
-              {/* UDALOSTI A ÚDAJE O VOZIDLE */}
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <label className="block text-xs text-gray-400 mb-1">{t.vin}</label>
@@ -442,7 +435,6 @@
                 </div>
               </div>
 
-              {/* FARBA KAROSÉRIE */}
               <div>
                 <label className="block text-xs text-gray-400 mb-1">{t.color}</label>
                 <div className="flex gap-1 overflow-x-auto pb-1 mb-1">
@@ -460,7 +452,6 @@
                 <input type="text" value={color} onChange={e => setColor(e.target.value)} className="w-full bg-gray-900 border border-gray-600 rounded p-2 text-xs text-white" />
               </div>
 
-              {/* DYNAMICKÉ CENNÍKY PODĽA ZÁKAZKY */}
               {currentProject?.priceType === 'categories' && (
                 <div className="bg-gray-900/80 p-3 rounded-lg border border-amber-500/40 space-y-2">
                   <label className="block text-xs text-amber-300 font-medium">{t.priceLabel} (Cenník):</label>
@@ -522,7 +513,6 @@
               </button>
             </form>
           ) : (
-            /* ZÁLOŽKA ZÁKAZNÍCI (KLIENTSKE KARTY) */
             <div className="space-y-4">
               {showNewClientForm ? (
                 <form onSubmit={handleAddClient} className="bg-gray-800 p-4 rounded-xl border border-amber-500/50 space-y-3">
