@@ -117,11 +117,14 @@
       const [rearPhoto, setRearPhoto] = useState(null);
       const [isAnalyzing, setIsAnalyzing] = useState(false);
 
+      // Klientske karty a ich zákazky (projekty s cenníkmi)
       const [clientsData, setClientsData] = useState([
         {
           id: 1,
           name: "KHS Global",
           ico: "12345678",
+          phone: "+421 905 111 222",
+          email: "flota@khs.com",
           projects: [
             {
               id: 101,
@@ -132,6 +135,26 @@
                 { label: "Stredné poškodenie", price: 320 },
                 { label: "Veľké / Strecha", price: 650 }
               ]
+            },
+            {
+              id: 102,
+              name: "Trnava - Sklad Autohaus",
+              priceType: "fixed",
+              fixedPrice: 200
+            }
+          ]
+        },
+        {
+          id: 2,
+          name: "Bežné Autoservisy / Súkromní",
+          ico: "87654321",
+          phone: "+421 903 333 444",
+          email: "info@dielna.sk",
+          projects: [
+            {
+              id: 201,
+              name: "Bežná oprava v teréne",
+              priceType: "open"
             }
           ]
         }
@@ -139,6 +162,10 @@
 
       const [selectedClientId, setSelectedClientId] = useState(1);
       const [selectedProjectId, setSelectedProjectId] = useState(101);
+      const [defaultProjectId, setDefaultProjectId] = useState(101);
+
+      const [showNewClientForm, setShowNewClientForm] = useState(false);
+      const [newClientData, setNewClientData] = useState({ name: "", ico: "", phone: "", email: "" });
 
       const [ecv, setEcv] = useState("");
       const [vin, setVin] = useState("");
@@ -153,6 +180,19 @@
 
       const currentClient = useMemo(() => clientsData.find(c => c.id === Number(selectedClientId)), [clientsData, selectedClientId]);
       const currentProject = useMemo(() => currentClient?.projects.find(p => p.id === Number(selectedProjectId)), [currentClient, selectedProjectId]);
+
+      useEffect(() => {
+        if (currentProject) {
+          if (currentProject.priceType === 'categories' && currentProject.categories.length > 0) {
+            setSelectedCategoryPrice(currentProject.categories[0].price);
+          } else if (currentProject.priceType === 'fixed') {
+            setSelectedCategoryPrice(currentProject.fixedPrice);
+          } else {
+            setIsUnknownPrice(true);
+            setCustomPrice("");
+          }
+        }
+      }, [selectedProjectId, currentProject]);
 
       const startScanning = () => {
         setScanStep(1);
@@ -194,6 +234,22 @@
         }
       };
 
+      const handleAddClient = (e) => {
+        e.preventDefault();
+        if (!newClientData.name) return;
+        const newClient = {
+          id: Date.now(),
+          ...newClientData,
+          projects: [{ id: Date.now() + 1, name: "Všeobecná zákazka", priceType: "open" }]
+        };
+        setClientsData([...clientsData, newClient]);
+        setSelectedClientId(newClient.id);
+        setSelectedProjectId(newClient.projects[0].id);
+        setNewClientData({ name: "", ico: "", phone: "", email: "" });
+        setShowNewClientForm(false);
+        setActiveTab("orders");
+      };
+
       return (
         <div className="max-w-md mx-auto p-4 pb-24">
           <input 
@@ -224,125 +280,44 @@
             </div>
           </header>
 
-          <form className="bg-gray-800 p-4 rounded-xl border border-gray-700 space-y-4">
-            <div className="bg-amber-500/10 border border-amber-500/30 p-3 rounded-lg text-center space-y-3">
-              <button 
-                type="button" 
-                onClick={startScanning}
-                className="w-full bg-amber-500 hover:bg-amber-400 text-black font-extrabold py-3.5 rounded-lg text-base flex justify-center items-center gap-2 shadow-lg transition-all tracking-wide"
-              >
-                <i className="fa-solid fa-camera text-xl"></i>
-                <span>{t.scanBtn}</span>
-              </button>
-
-              {scanStep > 0 && (
-                <div className="bg-gray-900/90 p-3 rounded-lg border border-amber-500/50 space-y-2">
-                  <div className="flex justify-between items-center text-xs font-bold">
-                    <span className={scanStep === 1 ? "text-amber-400 font-black" : "text-gray-400"}>{t.step1Label}</span>
-                    <span className={scanStep === 2 ? "text-amber-400 font-black" : "text-gray-400"}>{t.step2Label}</span>
-                  </div>
-                  
-                  {isAnalyzing ? (
-                    <p className="text-xs text-amber-300 animate-pulse"><i className="fa-solid fa-spinner fa-spin mr-1"></i> Analyzujem fotku...</p>
-                  ) : scanStep === 1 && vin ? (
-                    <div className="space-y-2 pt-1 border-t border-gray-800">
-                      <p className="text-xs text-gray-300">Skontrolujte prečítaný VIN kód:</p>
-                      <input 
-                        type="text" 
-                        value={vin} 
-                        onChange={e => setVin(e.target.value)}
-                        className="w-full text-center text-sm font-mono font-bold text-amber-400 bg-black/60 py-1.5 px-2 rounded border border-amber-500/50 uppercase"
-                      />
-                      <button 
-                        type="button" 
-                        onClick={() => { setScanStep(2); triggerCamera(); }}
-                        className="w-full bg-amber-500 text-black font-bold py-2 rounded text-xs mt-1"
-                      >
-                        Pokračovať na Krok 2 (Fotka zozadu) ➔
-                      </button>
-                    </div>
-                  ) : null}
-                </div>
-              )}
-
-              <div className="flex gap-2 justify-center pt-1">
-                {vinPhoto && (
-                  <div className="relative w-16 h-16 rounded overflow-hidden border border-amber-500">
-                    <img src={vinPhoto} className="w-full h-full object-cover" />
-                    <span className="absolute bottom-0 right-0 bg-black/80 text-[8px] text-amber-300 px-1 font-bold">VIN</span>
-                  </div>
-                )}
-                {rearPhoto && (
-                  <div className="relative w-16 h-16 rounded overflow-hidden border border-amber-500">
-                    <img src={rearPhoto} className="w-full h-full object-cover" />
-                    <span className="absolute bottom-0 right-0 bg-black/80 text-[8px] text-amber-300 px-1 font-bold">Zadná</span>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <label className="block text-xs text-gray-400 mb-1">{t.vin}</label>
-                <input type="text" value={vin} onChange={e => setVin(e.target.value)} placeholder="WVWZZZ..." className="w-full bg-gray-900 border border-gray-600 rounded p-2 text-xs uppercase text-amber-400 font-mono font-bold" />
-              </div>
-              <div>
-                <div className="flex justify-between items-center mb-1">
-                  <label className="text-xs text-gray-400">{t.ecv}</label>
-                  <label className="text-[9px] text-gray-400 flex items-center gap-1 cursor-pointer">
-                    <input type="checkbox" checked={hasNoEcv} onChange={e => setHasNoEcv(e.target.checked)} />
-                     Bez ŠPZ
-                  </label>
-                </div>
-                <input 
-                  type="text" 
-                  value={hasNoEcv ? t.noEcvNotice : ecv} 
-                  disabled={hasNoEcv}
-                  onChange={e => setEcv(e.target.value)} 
-                  placeholder="BL-123AB" 
-                  className={`w-full bg-gray-900 border border-gray-600 rounded p-2 text-sm uppercase text-amber-400 font-bold ${hasNoEcv ? 'opacity-50 text-gray-400' : ''}`} 
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <label className="block text-[10px] text-gray-400 mb-1">{t.brand}</label>
-                <input type="text" value={brand} onChange={e => setBrand(e.target.value)} placeholder="Volkswagen" className="w-full bg-gray-900 border border-gray-600 rounded p-2 text-xs text-white" />
-              </div>
-              <div>
-                <label className="block text-[10px] text-gray-400 mb-1">{t.model}</label>
-                <input type="text" value={model} onChange={e => setModel(e.target.value)} placeholder="Passat" className="w-full bg-gray-900 border border-gray-600 rounded p-2 text-xs text-white" />
-              </div>
-            </div>
-
-            {/* VOLBA FARBY KAROSÉRIE (PÁSIK TLAČIDIEL + VLASTNÝ TEXT) */}
-            <div>
-              <label className="block text-xs text-gray-400 mb-1">{t.color}</label>
-              <div className="flex gap-1 overflow-x-auto pb-1 mb-1">
-                {COLOR_OPTIONS.map(c => (
-                  <button
-                    key={c}
-                    type="button"
-                    onClick={() => setColor(c)}
-                    className={`px-2.5 py-1 text-[10px] rounded border whitespace-nowrap ${color === c ? 'bg-amber-500 border-amber-400 text-black font-bold' : 'bg-gray-900 border-gray-700 text-gray-300'}`}
-                  >
-                    {c}
-                  </button>
-                ))}
-              </div>
-              <input type="text" value={color} onChange={e => setColor(e.target.value)} className="w-full bg-gray-900 border border-gray-600 rounded p-2 text-xs text-white" />
-            </div>
-
-            <button type="button" className="w-full bg-amber-500 text-black font-bold py-3 rounded-lg text-center mt-2">
-              {t.saveOrder}
+          {/* PREPÍNANIE ZÁLOŽIEK: ZÁKAZKY VS ZÁKAZNÍCI */}
+          <div className="flex bg-gray-800 p-1 rounded-xl mb-4 border border-gray-700">
+            <button 
+              onClick={() => setActiveTab("orders")} 
+              className={`flex-1 py-2 text-xs font-bold rounded-lg ${activeTab === 'orders' ? 'bg-amber-500 text-black' : 'text-gray-400'}`}
+            >
+              <i className="fa-solid fa-car mr-1"></i>{t.tabOrders}
             </button>
-          </form>
-        </div>
-      );
-    }
+            <button 
+              onClick={() => setActiveTab("clients")} 
+              className={`flex-1 py-2 text-xs font-bold rounded-lg ${activeTab === 'clients' ? 'bg-amber-500 text-black' : 'text-gray-400'}`}
+            >
+              <i className="fa-solid fa-address-book mr-1"></i>{t.tabClients} ({clientsData.length})
+            </button>
+          </div>
 
-    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
-  </script>
-</body>
-</html>
+          {activeTab === "orders" ? (
+            <form className="bg-gray-800 p-4 rounded-xl border border-gray-700 space-y-4">
+              {/* SKENER CAR & 2-KROKOVÝ PROCES */}
+              <div className="bg-amber-500/10 border border-amber-500/30 p-3 rounded-lg text-center space-y-3">
+                <button 
+                  type="button" 
+                  onClick={startScanning}
+                  className="w-full bg-amber-500 hover:bg-amber-400 text-black font-extrabold py-3.5 rounded-lg text-base flex justify-center items-center gap-2 shadow-lg transition-all tracking-wide"
+                >
+                  <i className="fa-solid fa-camera text-xl"></i>
+                  <span>{t.scanBtn}</span>
+                </button>
+
+                {scanStep > 0 && (
+                  <div className="bg-gray-900/90 p-3 rounded-lg border border-amber-500/50 space-y-2">
+                    <div className="flex justify-between items-center text-xs font-bold">
+                      <span className={scanStep === 1 ? "text-amber-400 font-black" : "text-gray-400"}>{t.step1Label}</span>
+                      <span className={scanStep === 2 ? "text-amber-400 font-black" : "text-gray-400"}>{t.step2Label}</span>
+                    </div>
+                    
+                    {isAnalyzing ? (
+                      <p className="text-xs text-amber-300 animate-pulse"><i className="fa-solid fa-spinner fa-spin mr-1"></i> Analyzujem fotku...</p>
+                    ) : scanStep === 1 && vin ? (
+                      <div className="space-y-2 pt-1 border-t border-gray-800">
+                        <p className="text-xs text
