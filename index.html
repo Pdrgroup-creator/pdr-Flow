@@ -16,7 +16,11 @@
   <script type="text/babel">
     const { useState, useEffect, useMemo, useRef } = React;
 
-    const COLOR_OPTIONS = ["Biela", "Čierna", "Sivá / Strieborná", "Modrá", "Červená", "Zelená", "Hnedá / Bronz"];
+    const COLOR_DATA = {
+      SK: ["Biela", "Čierna", "Sivá / Strieborná", "Modrá", "Červená", "Zelená", "Hnedá / Bronz"],
+      DE: ["Weiß", "Schwarz", "Grau / Silber", "Blau", "Rot", "Grün", "Braun / Bronze"],
+      EN: ["White", "Black", "Grey / Silver", "Blue", "Red", "Green", "Brown / Bronze"]
+    };
 
     const TRANSLATIONS = {
       SK: {
@@ -24,17 +28,20 @@
         subtitle: "SaaS Inspektor & Cenníky",
         tabOrders: "Zákazky",
         tabClients: "Zákazníci",
+        tabReports: "Reports",
         scanBtn: "Scan Car",
         step1Label: "1. Odfotiť VIN kód",
         step2Label: "2. Odfotiť auto zozadu",
         clientLabel: "Zákazník (Firma)",
         projectLabel: "Zákazka / Park / Miesto",
+        defaultProjectNotice: "✓ Predvolená zákazka",
         ecv: "ŠPZ / EČV",
+        noEcvCheckbox: "Bez ŠPZ",
         vin: "VIN kód (Skontrolujte/Opravte)",
         brand: "Značka",
         model: "Model",
         color: "Farba karosérie",
-        priceLabel: "Cena opravy",
+        priceLabel: "Cena opravy (Cenník)",
         unknownPrice: "Neznáma (0.00)",
         saveOrder: "Uložiť zákazku",
         addClientBtn: "+ Nový zákazník",
@@ -45,24 +52,37 @@
         email: "E-mail",
         saveClient: "Uložiť zákazníka",
         myClients: "Moje klientske karty",
-        noEcvNotice: "Bez ŠPZ / Nové vozidlo"
+        noEcvNotice: "Bez ŠPZ / Nové vozidlo",
+        catSmall: "Malé poškodenie",
+        catMedium: "Stredné poškodenie",
+        catLarge: "Veľké / Strecha",
+        // Reports preklady
+        filterClient: "Všetci zákazníci",
+        filterProject: "Všetky projekty",
+        filterMonth: "Všetky mesiace",
+        generateReport: "Vytvoriť report (PDF / Export)",
+        noReports: "Žiadne záznamy nevyhovujú filtru.",
+        totalFiltered: "Celkom položiek"
       },
       DE: {
         title: "PDR FlowBoard",
         subtitle: "SaaS Inspektor & Preislisten",
         tabOrders: "Aufträge",
         tabClients: "Kunden",
+        tabReports: "Reports",
         scanBtn: "Scan Car",
         step1Label: "1. FIN fotografieren",
         step2Label: "2. Heckfoto aufnehmen",
         clientLabel: "Kunde (Firma)",
         projectLabel: "Auftrag / Park / Standort",
+        defaultProjectNotice: "✓ Standardauftrag",
         ecv: "Kennzeichen",
+        noEcvCheckbox: "Ohne KZ",
         vin: "FIN / Fahrgestellnr.",
         brand: "Marke",
         model: "Modell",
         color: "Fahrzeugfarbe",
-        priceLabel: "Reparaturpreis",
+        priceLabel: "Reparaturpreis (Preisliste)",
         unknownPrice: "Unbekannt (0.00)",
         saveOrder: "Auftrag speichern",
         addClientBtn: "+ Neuer Kunde",
@@ -73,24 +93,36 @@
         email: "E-Mail",
         saveClient: "Kunde speichern",
         myClients: "Meine Kundenkartei",
-        noEcvNotice: "Ohne Kennzeichen / Neufahrzeug"
+        noEcvNotice: "Ohne Kennzeichen / Neufahrzeug",
+        catSmall: "Kleiner Schaden",
+        catMedium: "Mittlerer Schaden",
+        catLarge: "Groß / Dach",
+        filterClient: "Alle Kunden",
+        filterProject: "Alle Projekte",
+        filterMonth: "Alle Monate",
+        generateReport: "Report erstellen (PDF / Export)",
+        noReports: "Keine Einträge für diesen Filter.",
+        totalFiltered: "Einträge gesamt"
       },
       EN: {
         title: "PDR FlowBoard",
         subtitle: "SaaS Inspector & Pricing",
         tabOrders: "Orders",
         tabClients: "Clients",
+        tabReports: "Reports",
         scanBtn: "Scan Car",
         step1Label: "1. Capture VIN Code",
         step2Label: "2. Capture Rear Vehicle Photo",
         clientLabel: "Client (Company)",
         projectLabel: "Job / Location / Project",
+        defaultProjectNotice: "✓ Default project",
         ecv: "License Plate",
+        noEcvCheckbox: "No Plate",
         vin: "VIN Number",
         brand: "Make",
         model: "Model",
         color: "Body Color",
-        priceLabel: "Repair Price",
+        priceLabel: "Repair Price (Pricelist)",
         unknownPrice: "Unknown (0.00)",
         saveOrder: "Save Order",
         addClientBtn: "+ New Client",
@@ -101,7 +133,16 @@
         email: "E-mail",
         saveClient: "Save Client",
         myClients: "My Client Cards",
-        noEcvNotice: "No Plate / New Vehicle"
+        noEcvNotice: "No Plate / New Vehicle",
+        catSmall: "Small Damage",
+        catMedium: "Medium Damage",
+        catLarge: "Heavy / Roof",
+        filterClient: "All Clients",
+        filterProject: "All Projects",
+        filterMonth: "All Months",
+        generateReport: "Generate Report (PDF / Export)",
+        noReports: "No records match the filter.",
+        totalFiltered: "Total items"
       }
     };
 
@@ -109,6 +150,7 @@
       const [lang, setLang] = useState("SK");
       const [activeTab, setActiveTab] = useState("orders");
       const t = TRANSLATIONS[lang];
+      const colorOptions = COLOR_DATA[lang];
 
       const cameraInputRef = useRef(null);
 
@@ -130,9 +172,9 @@
               name: "Mníchov Logistický Park",
               priceType: "categories",
               categories: [
-                { label: "Malé poškodenie", price: 150 },
-                { label: "Stredné poškodenie", price: 320 },
-                { label: "Veľké / Strecha", price: 650 }
+                { key: "catSmall", price: 150 },
+                { key: "catMedium", price: 320 },
+                { key: "catLarge", price: 650 }
               ]
             },
             {
@@ -159,6 +201,55 @@
         }
       ]);
 
+      // Ukážkové uložené záznamy pre Reports
+      const [ordersList, setOrdersList] = useState([
+        {
+          id: 1,
+          clientId: 1,
+          clientName: "KHS Global",
+          projectId: 101,
+          projectName: "Mníchov Logistický Park",
+          vin: "WVWZZZ3CZWE987654",
+          ecv: "BL-555YY",
+          brand: "Volkswagen",
+          model: "Passat Variant",
+          color: "Sivá / Strieborná",
+          price: 320,
+          date: "2026-03-15",
+          monthYear: "2026-03"
+        },
+        {
+          id: 2,
+          clientId: 1,
+          clientName: "KHS Global",
+          projectId: 102,
+          projectName: "Trnava - Sklad Autohaus",
+          vin: "WAUZZZ4G5FN123789",
+          ecv: "TT-222AA",
+          brand: "Audi",
+          model: "A6 Avant",
+          color: "Čierna",
+          price: 200,
+          date: "2026-03-20",
+          monthYear: "2026-03"
+        },
+        {
+          id: 3,
+          clientId: 2,
+          clientName: "Bežné Autoservisy / Súkromní",
+          projectId: 201,
+          projectName: "Bežná oprava v teréne",
+          vin: "WBA3A5C50EF654321",
+          ecv: "KE-111XF",
+          brand: "BMW",
+          model: "Series 3",
+          color: "Modrá",
+          price: 450,
+          date: "2026-02-10",
+          monthYear: "2026-02"
+        }
+      ]);
+
       const [selectedClientId, setSelectedClientId] = useState(1);
       const [selectedProjectId, setSelectedProjectId] = useState(101);
       const [defaultProjectId, setDefaultProjectId] = useState(101);
@@ -170,15 +261,43 @@
       const [vin, setVin] = useState("");
       const [brand, setBrand] = useState("");
       const [model, setModel] = useState("");
-      const [color, setColor] = useState("Sivá / Strieborná");
+      const [color, setColor] = useState(colorOptions[2]);
       const [hasNoEcv, setHasNoEcv] = useState(false);
 
       const [selectedCategoryPrice, setSelectedCategoryPrice] = useState(null);
       const [isUnknownPrice, setIsUnknownPrice] = useState(true);
       const [customPrice, setCustomPrice] = useState("");
 
+      // Filtre pre záložku Reports
+      const [reportFilterClient, setReportFilterClient] = useState("all");
+      const [reportFilterProject, setReportFilterProject] = useState("all");
+      const [reportFilterMonth, setReportFilterMonth] = useState("all");
+
       const currentClient = useMemo(() => clientsData.find(c => c.id === Number(selectedClientId)), [clientsData, selectedClientId]);
       const currentProject = useMemo(() => currentClient?.projects.find(p => p.id === Number(selectedProjectId)), [currentClient, selectedProjectId]);
+
+      // Dostupné projekty pre vybraného klienta vo filtri reportov
+      const reportProjectsList = useMemo(() => {
+        if (reportFilterClient === "all") {
+          return clientsData.flatMap(c => c.projects);
+        }
+        const cl = clientsData.find(c => c.id === Number(reportFilterClient));
+        return cl ? cl.projects : [];
+      }, [reportFilterClient, clientsData]);
+
+      // Filtrované záznamy pre Reports
+      const filteredReports = useMemo(() => {
+        return ordersList.filter(ord => {
+          if (reportFilterClient !== "all" && ord.clientId !== Number(reportFilterClient)) return false;
+          if (reportFilterProject !== "all" && ord.projectId !== Number(reportFilterProject)) return false;
+          if (reportFilterMonth !== "all" && ord.monthYear !== reportFilterMonth) return false;
+          return true;
+        });
+      }, [ordersList, reportFilterClient, reportFilterProject, reportFilterMonth]);
+
+      useEffect(() => {
+        setColor(colorOptions[2]);
+      }, [lang]);
 
       useEffect(() => {
         if (currentProject) {
@@ -249,6 +368,40 @@
         setActiveTab("orders");
       };
 
+      // Uloženie novej zákazky a pridanie do Reports
+      const handleSaveOrder = (e) => {
+        e.preventDefault();
+        const finalPrice = currentProject?.priceType === 'open' 
+          ? (isUnknownPrice ? 0 : Number(customPrice)) 
+          : selectedCategoryPrice;
+
+        const newOrder = {
+          id: Date.now(),
+          clientId: currentClient.id,
+          clientName: currentClient.name,
+          projectId: currentProject.id,
+          projectName: currentProject.name,
+          vin: vin || "N/A",
+          ecv: hasNoEcv ? "Bez ŠPZ" : (ecv || "N/A"),
+          brand: brand || "Neznáma",
+          model: model || "Neznámy",
+          color: color,
+          price: finalPrice || 0,
+          date: new Date().toISOString().split('T')[0],
+          monthYear: new Date().toISOString().slice(0, 7)
+        };
+
+        setOrdersList([newOrder, ...ordersList]);
+        alert("Zákazka úspešne uložená do reportov!");
+        // Reset formulára
+        setVin("");
+        setEcv("");
+        setBrand("");
+        setModel("");
+        setVinPhoto(null);
+        setRearPhoto(null);
+      };
+
       return (
         <div className="max-w-md mx-auto p-4 pb-24">
           <input 
@@ -279,23 +432,30 @@
             </div>
           </header>
 
+          {/* HLAVNÁ NAVIGÁCIA (3 ZÁLOŽKY) */}
           <div className="flex bg-gray-800 p-1 rounded-xl mb-4 border border-gray-700">
             <button 
               onClick={() => setActiveTab("orders")} 
-              className={`flex-1 py-2 text-xs font-bold rounded-lg ${activeTab === 'orders' ? 'bg-amber-500 text-black' : 'text-gray-400'}`}
+              className={`flex-1 py-2 text-[11px] font-bold rounded-lg ${activeTab === 'orders' ? 'bg-amber-500 text-black' : 'text-gray-400'}`}
             >
               <i className="fa-solid fa-car mr-1"></i>{t.tabOrders}
             </button>
             <button 
               onClick={() => setActiveTab("clients")} 
-              className={`flex-1 py-2 text-xs font-bold rounded-lg ${activeTab === 'clients' ? 'bg-amber-500 text-black' : 'text-gray-400'}`}
+              className={`flex-1 py-2 text-[11px] font-bold rounded-lg ${activeTab === 'clients' ? 'bg-amber-500 text-black' : 'text-gray-400'}`}
             >
-              <i className="fa-solid fa-address-book mr-1"></i>{t.tabClients} ({clientsData.length})
+              <i className="fa-solid fa-address-book mr-1"></i>{t.tabClients}
+            </button>
+            <button 
+              onClick={() => setActiveTab("reports")} 
+              className={`flex-1 py-2 text-[11px] font-bold rounded-lg ${activeTab === 'reports' ? 'bg-amber-500 text-black' : 'text-gray-400'}`}
+            >
+              <i className="fa-solid fa-chart-pie mr-1"></i>{t.tabReports} ({ordersList.length})
             </button>
           </div>
 
           {activeTab === "orders" ? (
-            <form className="bg-gray-800 p-4 rounded-xl border border-gray-700 space-y-4">
+            <form onSubmit={handleSaveOrder} className="bg-gray-800 p-4 rounded-xl border border-gray-700 space-y-4">
               <div className="bg-amber-500/10 border border-amber-500/30 p-3 rounded-lg text-center space-y-3">
                 <button 
                   type="button" 
@@ -329,7 +489,7 @@
                           onClick={() => { setScanStep(2); triggerCamera(); }}
                           className="w-full bg-amber-500 text-black font-bold py-2 rounded text-xs mt-1"
                         >
-                          Pokračovať na Krok 2 (Fotka zozadu) ➔
+                          Pokračovať na Krok 2 ➔
                         </button>
                       </div>
                     ) : null}
@@ -396,7 +556,7 @@
                   </button>
                 </div>
                 {defaultProjectId === Number(selectedProjectId) && (
-                  <p className="text-[10px] text-green-400 mt-1">✓ Predvolená zákazka</p>
+                  <p className="text-[10px] text-green-400 mt-1">{t.defaultProjectNotice}</p>
                 )}
               </div>
 
@@ -410,7 +570,7 @@
                     <label className="text-xs text-gray-400">{t.ecv}</label>
                     <label className="text-[9px] text-gray-400 flex items-center gap-1 cursor-pointer">
                       <input type="checkbox" checked={hasNoEcv} onChange={e => setHasNoEcv(e.target.checked)} />
-                       Bez ŠPZ
+                      {t.noEcvCheckbox}
                     </label>
                   </div>
                   <input 
@@ -438,7 +598,7 @@
               <div>
                 <label className="block text-xs text-gray-400 mb-1">{t.color}</label>
                 <div className="flex gap-1 overflow-x-auto pb-1 mb-1">
-                  {COLOR_OPTIONS.map(c => (
+                  {colorOptions.map(c => (
                     <button
                       key={c}
                       type="button"
@@ -454,7 +614,7 @@
 
               {currentProject?.priceType === 'categories' && (
                 <div className="bg-gray-900/80 p-3 rounded-lg border border-amber-500/40 space-y-2">
-                  <label className="block text-xs text-amber-300 font-medium">{t.priceLabel} (Cenník):</label>
+                  <label className="block text-xs text-amber-300 font-medium">{t.priceLabel}:</label>
                   <div className="grid grid-cols-1 gap-2">
                     {currentProject.categories.map((cat, idx) => (
                       <button
@@ -463,7 +623,7 @@
                         onClick={() => setSelectedCategoryPrice(cat.price)}
                         className={`p-2 rounded-lg border text-left flex justify-between items-center transition-all ${selectedCategoryPrice === cat.price ? 'bg-amber-500 border-amber-400 text-black font-bold' : 'bg-gray-800 border-gray-700 text-gray-300'}`}
                       >
-                        <span className="text-xs">{cat.label}</span>
+                        <span className="text-xs">{t[cat.key]}</span>
                         <span className="text-sm font-black">{cat.price} €</span>
                       </button>
                     ))}
@@ -508,11 +668,11 @@
                 </div>
               )}
 
-              <button type="button" className="w-full bg-amber-500 text-black font-bold py-3 rounded-lg text-center mt-2">
+              <button type="submit" className="w-full bg-amber-500 hover:bg-amber-400 text-black font-bold py-3 rounded-lg text-center mt-2 shadow">
                 {t.saveOrder}
               </button>
             </form>
-          ) : (
+          ) : activeTab === "clients" ? (
             <div className="space-y-4">
               {showNewClientForm ? (
                 <form onSubmit={handleAddClient} className="bg-gray-800 p-4 rounded-xl border border-amber-500/50 space-y-3">
@@ -555,6 +715,112 @@
                     <p className="text-xs text-gray-400"><i className="fa-solid fa-folder-open mr-1"></i>Projekty / Zákazky: {c.projects.length}</p>
                   </div>
                 ))}
+              </div>
+            </div>
+          ) : (
+            /* ZÁLOŽKA REPORTS (PREHĽADY A FILTRE) */
+            <div className="space-y-4">
+              {/* PANEL FILTROV */}
+              <div className="bg-gray-800 p-3 rounded-xl border border-gray-700 space-y-2">
+                <div className="grid grid-cols-1 gap-2">
+                  {/* Filter zákazníka */}
+                  <div>
+                    <label className="block text-[10px] text-gray-400 mb-1"><i className="fa-solid fa-filter mr-1"></i>{t.clientLabel}</label>
+                    <select 
+                      value={reportFilterClient} 
+                      onChange={e => {
+                        setReportFilterClient(e.target.value);
+                        setReportFilterProject("all"); // Reset projektu pri zmene klienta
+                      }} 
+                      className="w-full bg-gray-900 border border-gray-600 rounded p-2 text-xs text-white font-semibold"
+                    >
+                      <option value="all">{t.filterClient}</option>
+                      {clientsData.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    </select>
+                  </div>
+
+                  {/* Filter projektu / zákazky */}
+                  <div>
+                    <label className="block text-[10px] text-gray-400 mb-1"><i className="fa-solid fa-folder mr-1"></i>{t.projectLabel}</label>
+                    <select 
+                      value={reportFilterProject} 
+                      onChange={e => setReportFilterProject(e.target.value)} 
+                      className="w-full bg-gray-900 border border-gray-600 rounded p-2 text-xs text-amber-400 font-bold"
+                    >
+                      <option value="all">{t.filterProject}</option>
+                      {reportProjectsList.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                    </select>
+                  </div>
+
+                  {/* Filter mesiaca a roka */}
+                  <div>
+                    <label className="block text-[10px] text-gray-400 mb-1"><i className="fa-solid fa-calendar mr-1"></i>Mesiac / Rok</label>
+                    <select 
+                      value={reportFilterMonth} 
+                      onChange={e => setReportFilterMonth(e.target.value)} 
+                      className="w-full bg-gray-900 border border-gray-600 rounded p-2 text-xs text-white"
+                    >
+                      <option value="all">{t.filterMonth}</option>
+                      <option value="2026-03">Marec 2026</option>
+                      <option value="2026-02">Február 2026</option>
+                      <option value="2026-01">Január 2026</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* TLAČIDLO VYTVORIŤ REPORT */}
+                <button 
+                  type="button" 
+                  onClick={() => alert(`Generujem report pre ${filteredReports.length} záznamov...`)}
+                  className="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-2.5 rounded-lg text-xs flex justify-center items-center gap-2 mt-2 shadow"
+                >
+                  <i className="fa-solid fa-file-pdf text-sm"></i>
+                  <span>{t.generateReport}</span>
+                </button>
+              </div>
+
+              {/* VÝPIS ZÁZNAMOV PODĽA FILTRA */}
+              <div className="space-y-2">
+                <div className="flex justify-between items-center text-xs text-gray-400 px-1">
+                  <span>{t.totalFiltered}:</span>
+                  <span className="font-bold text-amber-400">{filteredReports.length}</span>
+                </div>
+
+                {filteredReports.length === 0 ? (
+                  <div className="bg-gray-800 p-6 rounded-xl border border-gray-700 text-center text-gray-400 text-xs">
+                    {t.noReports}
+                  </div>
+                ) : (
+                  filteredReports.map(ord => (
+                    <div key={ord.id} className="bg-gray-800 p-3 rounded-xl border border-gray-700 space-y-2">
+                      <div className="flex justify-between items-start border-b border-gray-700 pb-1.5">
+                        <div>
+                          <p className="font-bold text-amber-400 text-xs">{ord.clientName}</p>
+                          <p className="text-[10px] text-gray-400"><i className="fa-solid fa-location-dot mr-1"></i>{ord.projectName}</p>
+                        </div>
+                        <span className="text-xs bg-amber-500/20 text-amber-300 font-black px-2 py-0.5 rounded border border-amber-500/40">
+                          {ord.price} €
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                        <div>
+                          <span className="text-[10px] text-gray-400 block">Vozidlo:</span>
+                          <span className="font-bold text-white">{ord.brand} {ord.model}</span>
+                        </div>
+                        <div>
+                          <span className="text-[10px] text-gray-400 block">ŠPZ / VIN:</span>
+                          <span className="font-mono text-[11px] text-amber-300">{ord.ecv}</span>
+                        </div>
+                      </div>
+
+                      <div className="flex justify-between items-center text-[10px] text-gray-400 pt-1 border-t border-gray-700/60">
+                        <span>Farba: {ord.color}</span>
+                        <span>Dátum: {ord.date}</span>
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
           )}
