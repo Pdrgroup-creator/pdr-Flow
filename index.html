@@ -10,25 +10,51 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
+    @import url('https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@400;600;700;900&display=swap');
+    
     body {
+      font-family: 'Inter', sans-serif;
       background-color: #111827;
       margin: 0;
       padding: 0;
     }
+
+    .logo-pdr {
+      font-family: 'Anton', sans-serif;
+      font-size: 2.5rem;
+      font-weight: 900;
+    }
+
+    /* PDR s väčšími rozostupmi, aby písmená nesplývali, v systémovej oranžovej */
+    .logo-pdr-brand { 
+      color: #f97316; 
+      letter-spacing: 0.08em; 
+    }
+    .logo-pdr-rest { 
+      color: #d1d5db; 
+      margin-left: 0.25em; 
+      letter-spacing: -0.01em;
+    }
+
     .login-container {
       background: rgba(17, 24, 39, 0.95);
       border: 1px solid #374151;
       border-radius: 1rem;
       box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
     }
+    
+    .p3dr0-colored {
+        color: #f97316;
+        font-weight: 900;
+    }
   </style>
 </head>
-<body class="min-h-screen flex flex-col justify-between text-gray-100 font-sans">
+<body class="min-h-screen flex flex-col justify-between text-gray-100">
   <div id="root" class="flex-1 flex flex-col justify-center items-center p-4"></div>
 
-  <!-- PÄTIČKA -->
+  <!-- JEDNOTNÁ ČISTÁ PÄTIČKA -->
   <footer class="py-3 text-center text-[11px] text-gray-500 border-t border-gray-800 bg-gray-950/50">
-    PDR FlowBoard &copy; 2026 | Powered by P3DR0 &bull; <span class="text-amber-500 font-bold uppercase tracking-wider">HAIL HAPPENS</span>
+    PDR FlowBoard &copy; 2026 | Powered by <span class="p3dr0-colored">P</span><span class="font-black text-gray-300">3</span><span class="p3dr0-colored">DR</span><span class="font-black text-gray-300">0</span> &bull; <span class="text-orange-500 font-bold uppercase tracking-wider">HAIL HAPPENS</span>
   </footer>
 
   <script type="text/babel">
@@ -42,8 +68,6 @@
 
     const TRANSLATIONS = {
       EN: {
-        title: "PDR FlowBoard",
-        subtitle: "HAIL HAPPENS",
         tabOrders: "Orders",
         tabClients: "Clients",
         tabReports: "Reports",
@@ -99,8 +123,6 @@
         logout: "Sign Out"
       },
       SK: {
-        title: "PDR FlowBoard",
-        subtitle: "HAIL HAPPENS",
         tabOrders: "Zákazky",
         tabClients: "Zákazníci",
         tabReports: "Reports",
@@ -156,8 +178,6 @@
         logout: "Odhlásiť sa"
       },
       DE: {
-        title: "PDR FlowBoard",
-        subtitle: "HAIL HAPPENS",
         tabOrders: "Aufträge",
         tabClients: "Kunden",
         tabReports: "Reports",
@@ -466,9 +486,13 @@
       if (!currentUser) {
         return (
           <div className="max-w-md w-full p-4">
-            <div className="text-center mb-5 space-y-1">
-                <h1 className="text-2xl font-black text-amber-500 tracking-tight">{t.title}</h1>
-                <p className="text-[10px] text-amber-400 font-bold uppercase tracking-[0.2em]">{t.subtitle}</p>
+            {/* Logo PDR FlowBoard s upraveným rozostupom PDR */}
+            <div className="text-center mb-5">
+                <div className="logo-pdr flex items-center justify-center">
+                    <span className="logo-pdr-brand">PDR</span>
+                    <span className="logo-pdr-rest">FlowBoard</span>
+                </div>
+                <div className="text-[10px] text-amber-500 font-bold uppercase tracking-[0.2em] mt-0.5">HAIL HAPPENS</div>
             </div>
 
             <form onSubmit={handleAuthSubmit} className="login-container p-5 space-y-4">
@@ -606,7 +630,10 @@
 
           <header className="flex justify-between items-center mb-4 border-b border-gray-700 pb-3">
             <div>
-              <h1 className="text-lg font-bold text-amber-500">{t.title}</h1>
+              <div className="logo-pdr flex items-center" style={{ fontSize: '1.25rem' }}>
+                <span className="logo-pdr-brand">PDR</span>
+                <span className="logo-pdr-rest">FlowBoard</span>
+              </div>
               <p className="text-[10px] text-gray-400">
                 {currentUser.accountType === 'company' ? `Company (${currentUser.role})` : 'Solo Tech'} | {currentUser.email}
               </p>
