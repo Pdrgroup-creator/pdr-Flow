@@ -50,7 +50,7 @@
     const TRANSLATIONS = {
       SK: {
         tabVehicles: "Vozidlá",
-        tabProjects: "Projekty & Klienti",
+        tabProjects: "Klienti & Miesta",
         tabReports: "Reporty",
         scanBtn: "Scan Car (VIN / Auto / Hárok)",
         step1Label: "1. VIN štítok",
@@ -72,10 +72,10 @@
         saveVehicle: "Uložiť vozidlo",
         addClientBtn: "+ Nový Klient",
         scanCardBtn: "Sken vizitky",
-        addProjectQuick: "+ Miesto / Servis",
+        addProjectQuick: "+ Pridať miesto",
         noVehicles: "Zatiaľ nie sú evidované žiadne vozidlá.",
         noClients: "Zatiaľ nie sú vytvorení žiadni klienti.",
-        noProjectsForClient: "Tento klient nemá žiadne priradené pobočky / miesta.",
+        noProjectsForClient: "Žiadne zodpovedajúce miesta.",
         loginTitle: "Prihlásenie",
         registerTitle: "Registrácia",
         emailPlaceholder: "E-mailová adresa",
@@ -98,11 +98,12 @@
         newPasswordPlaceholder: "Nové heslo",
         updatePasswordBtn: "Zmeniť heslo",
         passwordUpdated: "Heslo úspešne zmenené!",
-        searchPlaceholder: "Hľadať VIN, ŠPZ, kalkuláciu, klienta..."
+        searchPlaceholder: "Hľadať VIN, ŠPZ, kalkuláciu, klienta...",
+        searchLocationsPlaceholder: "Hľadať miesto (napr. Opel, Hala 3)..."
       },
       EN: {
         tabVehicles: "Vehicles",
-        tabProjects: "Projects & Clients",
+        tabProjects: "Clients & Locations",
         tabReports: "Reports",
         scanBtn: "Scan Car (VIN / Rear / Sheet)",
         step1Label: "1. VIN Plate",
@@ -124,10 +125,10 @@
         saveVehicle: "Save Vehicle",
         addClientBtn: "+ New Client",
         scanCardBtn: "Scan Card",
-        addProjectQuick: "+ Location / Shop",
+        addProjectQuick: "+ Add Location",
         noVehicles: "No vehicles recorded yet.",
         noClients: "No clients registered yet.",
-        noProjectsForClient: "No locations registered for this client.",
+        noProjectsForClient: "No matching locations.",
         loginTitle: "Sign In",
         registerTitle: "Register",
         emailPlaceholder: "Email address",
@@ -150,11 +151,12 @@
         newPasswordPlaceholder: "New password",
         updatePasswordBtn: "Update Password",
         passwordUpdated: "Password updated!",
-        searchPlaceholder: "Search VIN, Plate, Calc no, Client..."
+        searchPlaceholder: "Search VIN, Plate, Calc no, Client...",
+        searchLocationsPlaceholder: "Filter locations (e.g. Opel)..."
       },
       DE: {
         tabVehicles: "Fahrzeuge",
-        tabProjects: "Projekte & Kunden",
+        tabProjects: "Kunden & Standorte",
         tabReports: "Reports",
         scanBtn: "Scan Car (FIN / Heck / Formular)",
         step1Label: "1. FIN Schild",
@@ -179,7 +181,7 @@
         addProjectQuick: "+ Standort",
         noVehicles: "Keine Fahrzeuge erfasst.",
         noClients: "Noch keine Kunden erfasst.",
-        noProjectsForClient: "Keine Standorte für diesen Kunden vorhanden.",
+        noProjectsForClient: "Keine passenden Standorte.",
         loginTitle: "Anmeldung",
         registerTitle: "Registrierung",
         emailPlaceholder: "E-Mail-Adresse",
@@ -202,7 +204,8 @@
         newPasswordPlaceholder: "Neues Passwort",
         updatePasswordBtn: "Passwort aktualisieren",
         passwordUpdated: "Passwort erfolgreich geändert!",
-        searchPlaceholder: "Suche FIN, KZ, Kalkulations-Nr..."
+        searchPlaceholder: "Suche FIN, KZ, Kalkulations-Nr...",
+        searchLocationsPlaceholder: "Standorte filtern..."
       }
     };
 
@@ -231,13 +234,17 @@
       const [projects, setProjects] = useState([]);
       const [vehicles, setVehicles] = useState([]);
 
-      const [selectedClientId, setSelectedClientId] = useState("");
-      const [selectedProjectId, setSelectedProjectId] = useState("");
+      // Pamäť posledného výberu
+      const [selectedClientId, setSelectedClientId] = useState(() => localStorage.getItem("pdr_last_client") || "");
+      const [selectedProjectId, setSelectedProjectId] = useState(() => localStorage.getItem("pdr_last_project") || "");
 
-      // Modálne spodné okná (Bottom Sheets) pre rýchle detaily
-      const [activeBottomSheet, setActiveBottomSheet] = useState(null); // { type: 'client'|'project', data: {...} }
+      // Bottom Sheet
+      const [activeBottomSheet, setActiveBottomSheet] = useState(null);
 
-      // Formulár klienta
+      // Správa na karte Klienti & Miesta
+      const [selectedClientDetailId, setSelectedClientDetailId] = useState(null); // otvorené miesta pod klientom
+      const [locationSearchFilter, setLocationSearchFilter] = useState("");
+
       const [showNewClientForm, setShowNewClientForm] = useState(false);
       const [newClientName, setNewClientName] = useState("");
       const [newClientPrefix, setNewClientPrefix] = useState("");
@@ -247,12 +254,15 @@
       const [newClientPhone, setNewClientPhone] = useState("");
       const [newClientContactPerson, setNewClientContactPerson] = useState("");
 
-      // Formulár miesta
+      // Formulár pre nové miesto
       const [addingProjectClientId, setAddingProjectClientId] = useState(null);
       const [newProjectName, setNewProjectName] = useState("");
       const [newProjectAddress, setNewProjectAddress] = useState("");
       const [newProjectPhone, setNewProjectPhone] = useState("");
       const [newProjectContactPerson, setNewProjectContactPerson] = useState("");
+      const [newProjectPricingMode, setNewProjectPricingMode] = useState("free"); // free, fixed, categories
+      const [newProjectFixedPrice, setNewProjectFixedPrice] = useState("");
+      const [newProjectCategories, setNewProjectCategories] = useState("Kat 1:120, Kat 2:250, Kat 3:450");
 
       const [searchTerm, setSearchTerm] = useState("");
 
@@ -273,6 +283,7 @@
       const [model, setModel] = useState("");
       const [color, setColor] = useState(colorOptions[2]);
       const [price, setPrice] = useState("");
+      const [selectedCategoryLabel, setSelectedCategoryLabel] = useState("");
       const [riPrice, setRiPrice] = useState("");
       const [isPricePending, setIsPricePending] = useState(false);
 
@@ -325,8 +336,9 @@
           const { data: cData } = await supabase.from("clients").select("*").order("name");
           if (cData) {
             setClients(cData);
-            if (cData.length > 0 && !selectedClientId) {
+            if (!selectedClientId && cData.length > 0) {
               setSelectedClientId(cData[0].id);
+              localStorage.setItem("pdr_last_client", cData[0].id);
             }
           }
 
@@ -350,15 +362,52 @@
         return projects.filter(p => p.client_id === selectedClientId);
       }, [projects, selectedClientId]);
 
+      // Správa pamäte miesta
       useEffect(() => {
         if (availableProjects.length > 0) {
-          setSelectedProjectId(availableProjects[0].id);
+          const found = availableProjects.find(p => p.id === selectedProjectId);
+          if (!found) {
+            setSelectedProjectId(availableProjects[0].id);
+            localStorage.setItem("pdr_last_project", availableProjects[0].id);
+          }
         } else {
           setSelectedProjectId("");
         }
-      }, [availableProjects]);
+      }, [availableProjects, selectedClientId]);
 
-      // Automatické číslovanie podľa vybraného klienta
+      const handleClientChange = (clientId) => {
+        setSelectedClientId(clientId);
+        localStorage.setItem("pdr_last_client", clientId);
+      };
+
+      const handleProjectChange = (projectId) => {
+        setSelectedProjectId(projectId);
+        localStorage.setItem("pdr_last_project", projectId);
+      };
+
+      // Aktuálne vybraný projekt a jeho cenový režim
+      const currentSelectedProject = useMemo(() => {
+        return projects.find(p => p.id === selectedProjectId);
+      }, [projects, selectedProjectId]);
+
+      // Adaptácia cien podľa projektu
+      useEffect(() => {
+        if (!currentSelectedProject) return;
+
+        if (currentSelectedProject.pricing_mode === 'fixed' && currentSelectedProject.fixed_price) {
+          setPrice(String(currentSelectedProject.fixed_price));
+          setSelectedCategoryLabel("");
+        } else if (currentSelectedProject.pricing_mode === 'categories') {
+          // Nastavíme prvú kategóriu ako východiskovú
+          const cats = currentSelectedProject.pricing_categories || [];
+          if (cats.length > 0) {
+            setSelectedCategoryLabel(cats[0].label);
+            setPrice(String(cats[0].price));
+          }
+        }
+      }, [currentSelectedProject]);
+
+      // Automatické číslovanie kalkulácie
       useEffect(() => {
         if (!selectedClientId) return;
         const currentClient = clients.find(c => c.id === selectedClientId);
@@ -460,7 +509,7 @@
 
         if (!error && data) {
           setClients([...clients, data[0]]);
-          setSelectedClientId(data[0].id);
+          handleClientChange(data[0].id);
           setNewClientName("");
           setNewClientPrefix("");
           setNewClientAddress("");
@@ -476,6 +525,18 @@
       const handleCreateProject = async (clientId) => {
         if (!newProjectName.trim()) return;
 
+        // Spracovanie kategórií z textu "Kat 1:120, Kat 2:250"
+        let parsedCategories = null;
+        if (newProjectPricingMode === 'categories') {
+          parsedCategories = newProjectCategories.split(',').map(item => {
+            const [label, priceStr] = item.split(':');
+            return {
+              label: (label || "").trim(),
+              price: Number(priceStr) || 0
+            };
+          }).filter(c => c.label);
+        }
+
         const { data, error } = await supabase.from("projects").insert([
           { 
             client_id: clientId, 
@@ -483,6 +544,9 @@
             address: newProjectAddress.trim() || null,
             phone: newProjectPhone.trim() || null,
             contact_person: newProjectContactPerson.trim() || null,
+            pricing_mode: newProjectPricingMode,
+            fixed_price: newProjectPricingMode === 'fixed' ? Number(newProjectFixedPrice) || 0 : null,
+            pricing_categories: parsedCategories,
             created_by: currentUser.id 
           }
         ]).select();
@@ -490,12 +554,14 @@
         if (!error && data) {
           setProjects([...projects, data[0]]);
           if (clientId === selectedClientId) {
-            setSelectedProjectId(data[0].id);
+            handleProjectChange(data[0].id);
           }
           setNewProjectName("");
           setNewProjectAddress("");
           setNewProjectPhone("");
           setNewProjectContactPerson("");
+          setNewProjectPricingMode("free");
+          setNewProjectFixedPrice("");
           setAddingProjectClientId(null);
         } else if (error) {
           alert("Chyba: " + error.message);
@@ -524,10 +590,10 @@
 
         setAddingProjectClientId(clientId);
         setTimeout(() => {
-          setNewProjectName("BMW Bertani Verona");
-          setNewProjectAddress("Via delle Nazioni 45, 37135 Verona");
-          setNewProjectPhone("+39 045 889911");
-          setNewProjectContactPerson("Ing. Roberto Ferrari");
+          setNewProjectName("Opel Denk Augsburg");
+          setNewProjectAddress("Augsburger Str. 88, 86157 Augsburg");
+          setNewProjectPhone("+49 821 556677");
+          setNewProjectContactPerson("Herr Weber");
         }, 700);
       };
 
@@ -580,6 +646,7 @@
           created_by: currentUser.id,
           internal_record_no: generatedInternalRecordNo,
           client_calc_no: clientCalcNo || null,
+          price_category: selectedCategoryLabel || null,
           ri_price: Number(riPrice) || 0.00,
           vin: vin || "N/A",
           ecv: hasNoEcv ? "Bez ŠPZ" : (ecv || "N/A"),
@@ -602,7 +669,7 @@
           setEcv("");
           setBrand("");
           setModel("");
-          setPrice("");
+          if (currentSelectedProject?.pricing_mode === 'free') setPrice("");
           setRiPrice("");
           setIsPricePending(false);
           setVinPhoto(null);
@@ -800,7 +867,7 @@
             className="hidden" 
           />
 
-          {/* Vyskakovací spodný panel (Bottom Sheet) pre detaily */}
+          {/* Bottom Sheet pre vizitky */}
           {activeBottomSheet && (
             <div className="fixed inset-0 bg-black/75 z-50 flex flex-col justify-end">
               <div 
@@ -813,26 +880,22 @@
                 <div className="flex justify-between items-start mb-3">
                   <div>
                     <span className="text-[10px] font-bold tracking-wider text-amber-400 uppercase">
-                      {activeBottomSheet.type === 'client' ? 'Vizitka Klienta' : 'Pobočka / Miesto Servisu'}
+                      {activeBottomSheet.type === 'client' ? 'Vizitka Klienta' : 'Pobočka / Miesto'}
                     </span>
                     <h3 className="text-lg font-black text-white">{activeBottomSheet.data.name}</h3>
                   </div>
-                  <button 
-                    onClick={() => setActiveBottomSheet(null)}
-                    className="text-gray-400 hover:text-white p-1"
-                  >
+                  <button onClick={() => setActiveBottomSheet(null)} className="text-gray-400 hover:text-white p-1">
                     <i className="fa-solid fa-circle-xmark text-xl"></i>
                   </button>
                 </div>
 
                 <div className="space-y-3 pt-2 text-xs">
-                  {/* Adresa s priamym preklikom do máp */}
                   {activeBottomSheet.data.address ? (
                     <a 
                       href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(activeBottomSheet.data.address)}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-start gap-3 p-3 bg-gray-800/80 rounded-xl border border-gray-700 hover:border-amber-500/50 transition-colors"
+                      className="flex items-start gap-3 p-3 bg-gray-800/80 rounded-xl border border-gray-700 hover:border-amber-500/50"
                     >
                       <i className="fa-solid fa-location-dot text-amber-400 text-base mt-0.5"></i>
                       <div className="flex-1">
@@ -847,11 +910,10 @@
                     </div>
                   )}
 
-                  {/* Telefón s priamym vytočením hovoru */}
                   {activeBottomSheet.data.phone && (
                     <a 
                       href={`tel:${activeBottomSheet.data.phone}`}
-                      className="flex items-center gap-3 p-3 bg-gray-800/80 rounded-xl border border-gray-700 hover:border-amber-500/50 transition-colors"
+                      className="flex items-center gap-3 p-3 bg-gray-800/80 rounded-xl border border-gray-700 hover:border-amber-500/50"
                     >
                       <i className="fa-solid fa-phone text-green-400 text-base"></i>
                       <div className="flex-1">
@@ -862,25 +924,14 @@
                     </a>
                   )}
 
-                  {/* Kontaktná osoba */}
-                  {activeBottomSheet.data.contact_person && (
-                    <div className="flex items-center gap-3 p-3 bg-gray-800/80 rounded-xl border border-gray-700">
-                      <i className="fa-solid fa-user-tie text-amber-400 text-base"></i>
-                      <div>
-                        <p className="text-[10px] text-gray-400 font-bold uppercase">Kontaktná osoba</p>
-                        <p className="text-white font-medium">{activeBottomSheet.data.contact_person}</p>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* IČO pri klientovi */}
-                  {activeBottomSheet.type === 'client' && activeBottomSheet.data.ico && (
-                    <div className="flex items-center gap-3 p-3 bg-gray-800/80 rounded-xl border border-gray-700">
-                      <i className="fa-solid fa-building text-amber-400 text-base"></i>
-                      <div>
-                        <p className="text-[10px] text-gray-400 font-bold uppercase">IČO / UID / DIČ</p>
-                        <p className="text-white font-mono font-bold">{activeBottomSheet.data.ico}</p>
-                      </div>
+                  {activeBottomSheet.data.pricing_mode && (
+                    <div className="p-3 bg-gray-800/80 rounded-xl border border-gray-700">
+                      <p className="text-[10px] text-gray-400 font-bold uppercase mb-1">Cenový model</p>
+                      <p className="text-amber-400 font-bold uppercase text-xs">
+                        {activeBottomSheet.data.pricing_mode === 'free' && 'Voľná kalkulácia (FREE)'}
+                        {activeBottomSheet.data.pricing_mode === 'fixed' && `Fixná sadzba (${activeBottomSheet.data.fixed_price} €)`}
+                        {activeBottomSheet.data.pricing_mode === 'categories' && 'Kategórie poškodenia'}
+                      </p>
                     </div>
                   )}
                 </div>
@@ -888,7 +939,7 @@
             </div>
           )}
 
-          {/* Nastavenia účtu */}
+          {/* Nastavenia */}
           {showSettingsModal && (
             <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50">
               <div className="bg-gray-800 border border-gray-700 rounded-xl p-5 w-full max-w-sm space-y-3">
@@ -973,7 +1024,7 @@
           {activeTab === "vehicles" ? (
             <form onSubmit={handleSaveVehicle} className="bg-gray-800 p-4 rounded-xl border border-gray-700 space-y-4">
               
-              {/* 1. SEKCIA: Výber Klienta a Miesta s adresou v roletke */}
+              {/* 1. SEKCIA: Výber Klienta a Miesta */}
               <div className="space-y-3 bg-gray-900/40 p-3 rounded-lg border border-gray-700/80">
                 <div>
                   <div className="flex justify-between items-center mb-1">
@@ -993,11 +1044,11 @@
                   </div>
                   <select 
                     value={selectedClientId} 
-                    onChange={e => setSelectedClientId(e.target.value)} 
+                    onChange={e => handleClientChange(e.target.value)} 
                     className="w-full bg-gray-900 border border-gray-600 rounded p-2 text-sm text-white font-semibold"
                   >
                     {clients.length === 0 ? (
-                      <option value="">(Žiadny klient - vytvorte ho v záložke Miesta)</option>
+                      <option value="">(Žiadny klient - vytvorte ho v záložke Klienti)</option>
                     ) : (
                       clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)
                     )}
@@ -1022,11 +1073,11 @@
                   </div>
                   <select 
                     value={selectedProjectId} 
-                    onChange={e => setSelectedProjectId(e.target.value)} 
+                    onChange={e => handleProjectChange(e.target.value)} 
                     className="w-full bg-gray-900 border border-gray-600 rounded p-2 text-sm text-amber-400 font-bold"
                   >
                     {availableProjects.length === 0 ? (
-                      <option value="">(Žiadne miesto - pridajte ho v záložke Miesta)</option>
+                      <option value="">(Žiadne miesto - pridajte ho v záložke Klienti)</option>
                     ) : (
                       availableProjects.map(p => (
                         <option key={p.id} value={p.id}>
@@ -1179,11 +1230,19 @@
                 </div>
               </div>
 
-              {/* 4. SEKCIA: PDR cena a hneď pod ňou R&I */}
+              {/* 4. SEKCIA: Financie - Dynamické podľa miesta (FREE / FIXED / CATEGORIES) */}
               <div className="space-y-3 pt-1 border-t border-gray-700">
                 <div className="bg-gray-900/60 p-3 rounded-lg border border-gray-700 space-y-2">
                   <div className="flex justify-between items-center">
-                    <label className="text-xs font-bold text-gray-300">{t.priceLabel}</label>
+                    <label className="text-xs font-bold text-gray-300">
+                      {t.priceLabel}
+                      {currentSelectedProject?.pricing_mode === 'fixed' && (
+                        <span className="ml-1 text-[10px] text-amber-400 font-normal">(Fixný paušál)</span>
+                      )}
+                      {currentSelectedProject?.pricing_mode === 'categories' && (
+                        <span className="ml-1 text-[10px] text-amber-400 font-normal">(Výber kategórie)</span>
+                      )}
+                    </label>
                     <label className="text-xs text-amber-400 flex items-center gap-1.5 cursor-pointer font-bold">
                       <input 
                         type="checkbox" 
@@ -1193,14 +1252,43 @@
                       {t.pricePendingCheckbox}
                     </label>
                   </div>
+
                   {!isPricePending && (
-                    <input 
-                      type="number" 
-                      value={price} 
-                      onChange={e => setPrice(e.target.value)} 
-                      placeholder="0.00" 
-                      className="w-full bg-gray-900 border border-gray-600 rounded p-2 text-sm text-amber-400 font-bold" 
-                    />
+                    <div>
+                      {/* Ak je režim CATEGORIES: Zobrazíme tlačidlá kategórií */}
+                      {currentSelectedProject?.pricing_mode === 'categories' && currentSelectedProject.pricing_categories?.length > 0 ? (
+                        <div className="space-y-2">
+                          <div className="grid grid-cols-3 gap-2">
+                            {currentSelectedProject.pricing_categories.map((cat, idx) => (
+                              <button
+                                key={idx}
+                                type="button"
+                                onClick={() => {
+                                  setSelectedCategoryLabel(cat.label);
+                                  setPrice(String(cat.price));
+                                }}
+                                className={`py-2 px-1 text-center rounded-lg border font-bold text-xs ${selectedCategoryLabel === cat.label ? 'bg-amber-500 text-black border-amber-400' : 'bg-gray-900 text-gray-300 border-gray-700'}`}
+                              >
+                                <div>{cat.label}</div>
+                                <div className="text-[10px] font-normal">{cat.price} €</div>
+                              </button>
+                            ))}
+                          </div>
+                          <div className="text-right text-[11px] font-bold text-amber-400">
+                            Zvolené: {selectedCategoryLabel} ({price} €)
+                          </div>
+                        </div>
+                      ) : (
+                        /* Režim FREE alebo FIXED */
+                        <input 
+                          type="number" 
+                          value={price} 
+                          onChange={e => setPrice(e.target.value)} 
+                          placeholder="0.00" 
+                          className="w-full bg-gray-900 border border-gray-600 rounded p-2 text-sm text-amber-400 font-bold" 
+                        />
+                      )}
+                    </div>
                   )}
                 </div>
 
@@ -1330,7 +1418,7 @@
                 </form>
               )}
 
-              {/* Zoznam Klientov s pobočkami a adresami */}
+              {/* Zoznam Klientov - Čistý zoznam s rozklikom do miest */}
               <div className="space-y-3">
                 {clients.length === 0 ? (
                   <div className="bg-gray-800 p-6 rounded-xl border border-gray-700 text-center text-gray-400 text-xs">
@@ -1339,11 +1427,26 @@
                 ) : (
                   clients.map(c => {
                     const clientProjects = projects.filter(p => p.client_id === c.id);
+                    const isOpen = selectedClientDetailId === c.id;
                     const isAddingToThisClient = addingProjectClientId === c.id;
 
+                    // Filtrovanie miest v rámci tohto klienta
+                    const filteredLocations = clientProjects.filter(p => {
+                      if (!locationSearchFilter.trim()) return true;
+                      const f = locationSearchFilter.toLowerCase();
+                      return (p.name && p.name.toLowerCase().includes(f)) || (p.address && p.address.toLowerCase().includes(f));
+                    });
+
                     return (
-                      <div key={c.id} className="bg-gray-800 p-3.5 rounded-xl border border-gray-700 space-y-3">
-                        <div className="flex justify-between items-start">
+                      <div key={c.id} className="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden">
+                        {/* Riadok klienta */}
+                        <div 
+                          onClick={() => {
+                            setSelectedClientDetailId(isOpen ? null : c.id);
+                            setLocationSearchFilter("");
+                          }}
+                          className="p-3.5 flex justify-between items-center cursor-pointer hover:bg-gray-750 transition-colors"
+                        >
                           <div>
                             <div className="flex items-center gap-2">
                               <h4 className="font-extrabold text-white text-base">{c.name}</h4>
@@ -1354,137 +1457,189 @@
                               )}
                             </div>
                             <p className="text-[10px] text-gray-400 mt-0.5">
-                              {clientProjects.length} {clientProjects.length === 1 ? 'miesto / servis' : 'miest / servisov'}
+                              {clientProjects.length} {clientProjects.length === 1 ? 'miesto / pobočka' : 'miest / pobočiek'}
                             </p>
                           </div>
 
-                          <div className="flex items-center gap-1.5">
-                            {/* Tlačidlo pre otvorenie Bottom Sheet vizitky klienta */}
+                          <div className="flex items-center gap-2">
                             <button
                               type="button"
-                              onClick={() => setActiveBottomSheet({ type: 'client', data: c })}
-                              className="text-xs px-2.5 py-1.5 rounded-lg border bg-gray-900 text-amber-400 border-gray-700 hover:border-amber-400 font-bold flex items-center gap-1"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setActiveBottomSheet({ type: 'client', data: c });
+                              }}
+                              className="text-xs px-2.5 py-1.5 rounded-lg border bg-gray-900 text-amber-400 border-gray-700 font-bold"
                               title="Vizitka klienta"
                             >
                               <i className="fa-solid fa-address-card"></i>
-                              <span className="text-[10px]">Vizitka</span>
                             </button>
-
-                            {/* Tlačidlo na pridanie miesta k tomuto klientovi */}
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setAddingProjectClientId(isAddingToThisClient ? null : c.id);
-                                setNewProjectName("");
-                                setNewProjectAddress("");
-                                setNewProjectPhone("");
-                                setNewProjectContactPerson("");
-                              }}
-                              className="text-[11px] bg-gray-900 hover:bg-gray-700 border border-gray-600 text-amber-400 font-bold px-2 py-1.5 rounded-lg"
-                            >
-                              <i className="fa-solid fa-plus mr-1"></i>Miesto
-                            </button>
+                            <span className="text-gray-400 p-1 text-sm">
+                              <i className={`fa-solid ${isOpen ? 'fa-chevron-up' : 'fa-chevron-down'}`}></i>
+                            </span>
                           </div>
                         </div>
 
-                        {/* Rýchly formulár na pridanie miesta / pobočky */}
-                        {isAddingToThisClient && (
-                          <div className="bg-gray-950 p-3 rounded-lg border border-amber-500/40 space-y-2">
-                            <div className="flex justify-between items-center mb-1">
-                              <span className="text-[10px] font-bold text-amber-400 uppercase">Nové miesto / servis</span>
+                        {/* Rozbalené miesta klienta */}
+                        {isOpen && (
+                          <div className="p-3.5 bg-gray-900/70 border-t border-gray-700/80 space-y-3">
+                            <div className="flex justify-between items-center gap-2">
+                              {/* Vyhľadávanie medzi miestami tohto klienta */}
+                              <div className="relative flex-1">
+                                <i className="fa-solid fa-magnifying-glass absolute left-2.5 top-2 text-[10px] text-gray-500"></i>
+                                <input 
+                                  type="text" 
+                                  value={locationSearchFilter} 
+                                  onChange={e => setLocationSearchFilter(e.target.value)} 
+                                  placeholder={t.searchLocationsPlaceholder} 
+                                  className="w-full bg-gray-950 border border-gray-700 rounded-lg pl-7 pr-2 py-1 text-xs text-white"
+                                />
+                              </div>
+
                               <button
                                 type="button"
-                                onClick={() => { if(cardProjectInputRef.current) cardProjectInputRef.current.click(); }}
-                                className="text-[10px] bg-gray-900 hover:bg-gray-800 border border-gray-700 text-amber-400 font-bold px-2 py-0.5 rounded flex items-center gap-1"
+                                onClick={() => {
+                                  setAddingProjectClientId(isAddingToThisClient ? null : c.id);
+                                  setNewProjectName("");
+                                  setNewProjectAddress("");
+                                  setNewProjectPhone("");
+                                  setNewProjectContactPerson("");
+                                  setNewProjectPricingMode("free");
+                                  setNewProjectFixedPrice("");
+                                }}
+                                className="text-[11px] bg-amber-500 hover:bg-amber-400 text-black font-extrabold px-2.5 py-1.5 rounded-lg whitespace-nowrap shadow"
                               >
-                                <i className="fa-solid fa-id-card text-[10px]"></i>
-                                <span>Sken vizitky servisu</span>
+                                <i className="fa-solid fa-plus mr-1"></i>Miesto
                               </button>
                             </div>
 
-                            <input 
-                              type="text" 
-                              value={newProjectName} 
-                              onChange={e => setNewProjectName(e.target.value)} 
-                              placeholder="Názov (napr. BMW Bertani Verona)" 
-                              className="w-full bg-gray-900 border border-gray-600 rounded px-2 py-1.5 text-xs text-white"
-                              required
-                            />
+                            {/* Formulár pre pridanie miesta s konfiguráciou cien */}
+                            {isAddingToThisClient && (
+                              <div className="bg-gray-950 p-3 rounded-xl border border-amber-500/50 space-y-2.5">
+                                <div className="flex justify-between items-center">
+                                  <span className="text-[10px] font-bold text-amber-400 uppercase">Nové miesto / servis</span>
+                                  <button
+                                    type="button"
+                                    onClick={() => { if(cardProjectInputRef.current) cardProjectInputRef.current.click(); }}
+                                    className="text-[9px] bg-gray-900 border border-gray-700 text-amber-400 font-bold px-2 py-0.5 rounded flex items-center gap-1"
+                                  >
+                                    <i className="fa-solid fa-id-card"></i> Sken vizitky
+                                  </button>
+                                </div>
 
-                            <input 
-                              type="text" 
-                              value={newProjectAddress} 
-                              onChange={e => setNewProjectAddress(e.target.value)} 
-                              placeholder="Presná adresa (Ulica, Mesto - napr. Via delle Nazioni 45)" 
-                              className="w-full bg-gray-900 border border-gray-700 rounded px-2 py-1 text-xs text-gray-200"
-                            />
+                                <input 
+                                  type="text" 
+                                  value={newProjectName} 
+                                  onChange={e => setNewProjectName(e.target.value)} 
+                                  placeholder="Názov (napr. Opel Denk Augsburg)" 
+                                  className="w-full bg-gray-900 border border-gray-700 rounded p-1.5 text-xs text-white"
+                                  required
+                                />
 
-                            <div className="grid grid-cols-2 gap-2">
-                              <input 
-                                type="text" 
-                                value={newProjectPhone} 
-                                onChange={e => setNewProjectPhone(e.target.value)} 
-                                placeholder="Telefón na príjem" 
-                                className="w-full bg-gray-900 border border-gray-700 rounded px-2 py-1 text-xs text-gray-200"
-                              />
-                              <input 
-                                type="text" 
-                                value={newProjectContactPerson} 
-                                onChange={e => setNewProjectContactPerson(e.target.value)} 
-                                placeholder="Vedúci servisu" 
-                                className="w-full bg-gray-900 border border-gray-700 rounded px-2 py-1 text-xs text-gray-200"
-                              />
-                            </div>
+                                <input 
+                                  type="text" 
+                                  value={newProjectAddress} 
+                                  onChange={e => setNewProjectAddress(e.target.value)} 
+                                  placeholder="Ulica, Mesto (napr. Augsburger Str. 88)" 
+                                  className="w-full bg-gray-900 border border-gray-700 rounded p-1.5 text-xs text-gray-200"
+                                />
 
-                            <div className="flex gap-2 pt-1">
-                              <button 
-                                type="button" 
-                                onClick={() => handleCreateProject(c.id)} 
-                                className="flex-1 bg-amber-500 text-black font-extrabold py-1.5 text-xs rounded"
-                              >
-                                Uložiť miesto
-                              </button>
-                              <button 
-                                type="button" 
-                                onClick={() => setAddingProjectClientId(null)} 
-                                className="bg-gray-800 text-gray-400 px-3 py-1.5 text-xs rounded"
-                              >
-                                Zrušiť
-                              </button>
+                                {/* Voľba cenového modelu */}
+                                <div className="pt-1">
+                                  <label className="block text-[10px] text-gray-400 mb-1 font-bold uppercase">Cenový model miesta</label>
+                                  <div className="grid grid-cols-3 gap-1.5">
+                                    {['free', 'fixed', 'categories'].map(mode => (
+                                      <button
+                                        key={mode}
+                                        type="button"
+                                        onClick={() => setNewProjectPricingMode(mode)}
+                                        className={`py-1.5 text-[10px] font-bold rounded uppercase border ${newProjectPricingMode === mode ? 'bg-amber-500 text-black border-amber-400' : 'bg-gray-900 text-gray-300 border-gray-700'}`}
+                                      >
+                                        {mode}
+                                      </button>
+                                    ))}
+                                  </div>
+                                </div>
+
+                                {newProjectPricingMode === 'fixed' && (
+                                  <div>
+                                    <label className="block text-[9px] text-gray-400 mb-0.5">Pevná sadzba za auto (€)</label>
+                                    <input 
+                                      type="number" 
+                                      value={newProjectFixedPrice} 
+                                      onChange={e => setNewProjectFixedPrice(e.target.value)} 
+                                      placeholder="Napr. 180.00" 
+                                      className="w-full bg-gray-900 border border-amber-500/50 rounded p-1.5 text-xs text-amber-300 font-bold"
+                                    />
+                                  </div>
+                                )}
+
+                                {newProjectPricingMode === 'categories' && (
+                                  <div>
+                                    <label className="block text-[9px] text-gray-400 mb-0.5">Kategórie poškodenia (Názov:Cena oddelené čiarkou)</label>
+                                    <input 
+                                      type="text" 
+                                      value={newProjectCategories} 
+                                      onChange={e => setNewProjectCategories(e.target.value)} 
+                                      placeholder="Kat 1:120, Kat 2:250, Kat 3:450" 
+                                      className="w-full bg-gray-900 border border-amber-500/50 rounded p-1.5 text-xs text-amber-300 font-mono"
+                                    />
+                                  </div>
+                                )}
+
+                                <div className="flex gap-2 pt-1">
+                                  <button 
+                                    type="button" 
+                                    onClick={() => handleCreateProject(c.id)} 
+                                    className="flex-1 bg-amber-500 text-black font-extrabold py-1.5 text-xs rounded"
+                                  >
+                                    Uložiť miesto
+                                  </button>
+                                  <button 
+                                    type="button" 
+                                    onClick={() => setAddingProjectClientId(null)} 
+                                    className="bg-gray-800 text-gray-400 px-3 py-1.5 text-xs rounded"
+                                  >
+                                    Zrušiť
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Zoznam pobočiek */}
+                            <div className="space-y-1.5">
+                              {filteredLocations.length === 0 ? (
+                                <p className="text-[10px] text-gray-500 italic py-1">{t.noProjectsForClient}</p>
+                              ) : (
+                                filteredLocations.map(p => (
+                                  <div 
+                                    key={p.id} 
+                                    onClick={() => setActiveBottomSheet({ type: 'project', data: p })}
+                                    className="text-xs text-gray-300 p-2.5 rounded-lg bg-gray-950/80 border border-gray-800 hover:border-gray-700 cursor-pointer flex justify-between items-center"
+                                  >
+                                    <div>
+                                      <div className="flex items-center gap-1.5">
+                                        <i className="fa-solid fa-warehouse text-amber-500 text-[10px]"></i>
+                                        <span className="font-bold text-white text-xs">{p.name}</span>
+                                        <span className="text-[8px] uppercase tracking-wider bg-gray-800 text-amber-400 px-1.5 py-0.5 rounded font-mono font-bold">
+                                          {p.pricing_mode || 'free'}
+                                        </span>
+                                      </div>
+                                      {p.address && (
+                                        <p className="text-[10px] text-gray-400 pl-4 mt-0.5 flex items-center gap-1">
+                                          <i className="fa-solid fa-location-dot text-[9px] text-gray-500"></i>
+                                          <span>{p.address}</span>
+                                        </p>
+                                      )}
+                                    </div>
+                                    <span className="text-[10px] text-gray-500 hover:text-amber-400">
+                                      <i className="fa-solid fa-chevron-right"></i>
+                                    </span>
+                                  </div>
+                                ))
+                              )}
                             </div>
                           </div>
                         )}
-
-                        {/* Zoznam priradených pobočiek s priamym zobrazením adresy */}
-                        <div className="space-y-1.5 pt-1 border-t border-gray-700/60">
-                          {clientProjects.length === 0 ? (
-                            <p className="text-[10px] text-gray-400 italic">{t.noProjectsForClient}</p>
-                          ) : (
-                            clientProjects.map(p => (
-                              <div 
-                                key={p.id} 
-                                onClick={() => setActiveBottomSheet({ type: 'project', data: p })}
-                                className="text-xs text-gray-300 p-2 rounded-lg bg-gray-900/60 border border-gray-800 hover:border-gray-700 cursor-pointer flex justify-between items-center"
-                              >
-                                <div>
-                                  <div className="flex items-center gap-1.5">
-                                    <i className="fa-solid fa-warehouse text-amber-500 text-[10px]"></i>
-                                    <span className="font-bold text-white text-xs">{p.name}</span>
-                                  </div>
-                                  {p.address && (
-                                    <p className="text-[10px] text-gray-400 pl-4 mt-0.5 flex items-center gap-1">
-                                      <i className="fa-solid fa-location-dot text-[9px] text-gray-500"></i>
-                                      <span>{p.address}</span>
-                                    </p>
-                                  )}
-                                </div>
-                                <span className="text-[10px] text-gray-500 hover:text-amber-400">
-                                  <i className="fa-solid fa-chevron-right"></i>
-                                </span>
-                              </div>
-                            ))
-                          )}
-                        </div>
                       </div>
                     );
                   })
@@ -1520,8 +1675,13 @@
                           <span className="text-xs font-bold text-white">{v.brand} {v.model} ({v.ecv})</span>
                         </div>
                         <p className="text-[10px] text-gray-400 font-mono">VIN: {v.vin}</p>
+                        {v.price_category && (
+                          <span className="text-[9px] bg-amber-500/20 text-amber-300 px-1.5 py-0.5 rounded font-bold mr-1">
+                            {v.price_category}
+                          </span>
+                        )}
                         {v.ri_price > 0 && (
-                          <p className="text-[10px] text-amber-500/80 font-bold">R&I: +{v.ri_price} €</p>
+                          <span className="text-[10px] text-amber-500/80 font-bold">R&I: +{v.ri_price} €</span>
                         )}
                       </div>
                       <div className="text-right">
