@@ -10,8 +10,14 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
-<body class="bg-gray-900 text-gray-100 min-h-screen">
-  <div id="root"></div>
+<body class="bg-gray-900 text-gray-100 min-h-screen flex flex-col justify-between">
+  <div id="root" class="flex-1"></div>
+
+  <!-- PÄTIČKA S BRANDOM P3DR0 A SLOGANOM HAIL HAPPENS -->
+  <footer class="py-4 text-center text-xs text-gray-500 border-t border-gray-800 space-y-1">
+    <div>PDR FlowBoard &copy; 2026 | Powered by P<span class="text-amber-500 font-black">3</span>D<span class="text-amber-500 font-black">R</span>0</div>
+    <div class="text-[10px] text-amber-500/80 font-bold uppercase tracking-widest">HAIL HAPPENS</div>
+  </footer>
 
   <script type="text/babel">
     const { useState, useEffect, useMemo, useRef } = React;
@@ -25,7 +31,7 @@
     const TRANSLATIONS = {
       SK: {
         title: "PDR FlowBoard",
-        subtitle: "SaaS Inspektor & Cenníky",
+        subtitle: "HAIL HAPPENS",
         tabOrders: "Zákazky",
         tabClients: "Zákazníci",
         tabReports: "Reports",
@@ -56,17 +62,31 @@
         catSmall: "Malé poškodenie",
         catMedium: "Stredné poškodenie",
         catLarge: "Veľké / Strecha",
-        // Reports preklady
         filterClient: "Všetci zákazníci",
         filterProject: "Všetky projekty",
         filterMonth: "Všetky mesiace",
         generateReport: "Vytvoriť report (PDF / Export)",
         noReports: "Žiadne záznamy nevyhovujú filtru.",
-        totalFiltered: "Celkom položiek"
+        totalFiltered: "Celkom položiek",
+        loginTitle: "Prihlásenie do systému",
+        registerTitle: "Vytvoriť nové konto",
+        emailPlaceholder: "E-mailová adresa",
+        passwordPlaceholder: "Heslo",
+        loginBtn: "Prihlásiť sa",
+        registerBtn: "Zaregistrovať sa",
+        accountType: "Typ účtu",
+        soloTech: "Nezávislý technik (Solo)",
+        companyTeam: "Firma / Dispečing (Tím)",
+        roleLabel: "Moja rola vo firme",
+        roleManager: "Manažér (Správa firiem a reportov)",
+        roleEmployee: "Zamestnanec / Technik v teréne",
+        switchToReg: "Nemáte účet? Zaregistrujte sa",
+        switchToLogin: "Už máte účet? Prihláste sa",
+        logout: "Odhlásiť sa"
       },
       DE: {
         title: "PDR FlowBoard",
-        subtitle: "SaaS Inspektor & Preislisten",
+        subtitle: "HAIL HAPPENS",
         tabOrders: "Aufträge",
         tabClients: "Kunden",
         tabReports: "Reports",
@@ -102,11 +122,26 @@
         filterMonth: "Alle Monate",
         generateReport: "Report erstellen (PDF / Export)",
         noReports: "Keine Einträge für diesen Filter.",
-        totalFiltered: "Einträge gesamt"
+        totalFiltered: "Einträge gesamt",
+        loginTitle: "Anmeldung",
+        registerTitle: "Neues Konto erstellen",
+        emailPlaceholder: "E-Mail-Adresse",
+        passwordPlaceholder: "Passwort",
+        loginBtn: "Anmelden",
+        registerBtn: "Registrieren",
+        accountType: "Kontotyp",
+        soloTech: "Unabhängiger Techniker (Solo)",
+        companyTeam: "Unternehmen / Disposition (Team)",
+        roleLabel: "Meine Rolle im Unternehmen",
+        roleManager: "Manager (Verwaltung & Reports)",
+        roleEmployee: "Außendienst-Techniker",
+        switchToReg: "Kein Konto? Jetzt registrieren",
+        switchToLogin: "Bereits ein Konto? Anmelden",
+        logout: "Abmelden"
       },
       EN: {
         title: "PDR FlowBoard",
-        subtitle: "SaaS Inspector & Pricing",
+        subtitle: "HAIL HAPPENS",
         tabOrders: "Orders",
         tabClients: "Clients",
         tabReports: "Reports",
@@ -142,7 +177,22 @@
         filterMonth: "All Months",
         generateReport: "Generate Report (PDF / Export)",
         noReports: "No records match the filter.",
-        totalFiltered: "Total items"
+        totalFiltered: "Total items",
+        loginTitle: "System Login",
+        registerTitle: "Create New Account",
+        emailPlaceholder: "E-mail address",
+        passwordPlaceholder: "Password",
+        loginBtn: "Sign In",
+        registerBtn: "Register",
+        accountType: "Account Type",
+        soloTech: "Independent Technician (Solo)",
+        companyTeam: "Company / Dispatch (Team)",
+        roleLabel: "My Role in Company",
+        roleManager: "Manager (Reports & Setup)",
+        roleEmployee: "Field Technician",
+        switchToReg: "Don't have an account? Register",
+        switchToLogin: "Already have an account? Sign In",
+        logout: "Sign Out"
       }
     };
 
@@ -151,6 +201,13 @@
       const [activeTab, setActiveTab] = useState("orders");
       const t = TRANSLATIONS[lang];
       const colorOptions = COLOR_DATA[lang];
+
+      const [currentUser, setCurrentUser] = useState(null);
+      const [isRegistering, setIsRegistering] = useState(false);
+      const [authEmail, setAuthEmail] = useState("");
+      const [authPassword, setAuthPassword] = useState("");
+      const [authAccountType, setAuthAccountType] = useState("solo");
+      const [authRole, setAuthRole] = useState("manager");
 
       const cameraInputRef = useRef(null);
 
@@ -184,24 +241,9 @@
               fixedPrice: 200
             }
           ]
-        },
-        {
-          id: 2,
-          name: "Bežné Autoservisy / Súkromní",
-          ico: "87654321",
-          phone: "+421 903 333 444",
-          email: "info@dielna.sk",
-          projects: [
-            {
-              id: 201,
-              name: "Bežná oprava v teréne",
-              priceType: "open"
-            }
-          ]
         }
       ]);
 
-      // Ukážkové uložené záznamy pre Reports
       const [ordersList, setOrdersList] = useState([
         {
           id: 1,
@@ -216,37 +258,8 @@
           color: "Sivá / Strieborná",
           price: 320,
           date: "2026-03-15",
-          monthYear: "2026-03"
-        },
-        {
-          id: 2,
-          clientId: 1,
-          clientName: "KHS Global",
-          projectId: 102,
-          projectName: "Trnava - Sklad Autohaus",
-          vin: "WAUZZZ4G5FN123789",
-          ecv: "TT-222AA",
-          brand: "Audi",
-          model: "A6 Avant",
-          color: "Čierna",
-          price: 200,
-          date: "2026-03-20",
-          monthYear: "2026-03"
-        },
-        {
-          id: 3,
-          clientId: 2,
-          clientName: "Bežné Autoservisy / Súkromní",
-          projectId: 201,
-          projectName: "Bežná oprava v teréne",
-          vin: "WBA3A5C50EF654321",
-          ecv: "KE-111XF",
-          brand: "BMW",
-          model: "Series 3",
-          color: "Modrá",
-          price: 450,
-          date: "2026-02-10",
-          monthYear: "2026-02"
+          monthYear: "2026-03",
+          tech: "P3DR0 (Manager)"
         }
       ]);
 
@@ -268,7 +281,6 @@
       const [isUnknownPrice, setIsUnknownPrice] = useState(true);
       const [customPrice, setCustomPrice] = useState("");
 
-      // Filtre pre záložku Reports
       const [reportFilterClient, setReportFilterClient] = useState("all");
       const [reportFilterProject, setReportFilterProject] = useState("all");
       const [reportFilterMonth, setReportFilterMonth] = useState("all");
@@ -276,7 +288,6 @@
       const currentClient = useMemo(() => clientsData.find(c => c.id === Number(selectedClientId)), [clientsData, selectedClientId]);
       const currentProject = useMemo(() => currentClient?.projects.find(p => p.id === Number(selectedProjectId)), [currentClient, selectedProjectId]);
 
-      // Dostupné projekty pre vybraného klienta vo filtri reportov
       const reportProjectsList = useMemo(() => {
         if (reportFilterClient === "all") {
           return clientsData.flatMap(c => c.projects);
@@ -285,7 +296,6 @@
         return cl ? cl.projects : [];
       }, [reportFilterClient, clientsData]);
 
-      // Filtrované záznamy pre Reports
       const filteredReports = useMemo(() => {
         return ordersList.filter(ord => {
           if (reportFilterClient !== "all" && ord.clientId !== Number(reportFilterClient)) return false;
@@ -312,6 +322,16 @@
         }
       }, [selectedProjectId, currentProject]);
 
+      const handleAuthSubmit = (e) => {
+        e.preventDefault();
+        const userData = {
+          email: authEmail || "technik@pdrflowboard.com",
+          accountType: authAccountType,
+          role: authAccountType === 'company' ? authRole : 'solo'
+        };
+        setCurrentUser(userData);
+      };
+
       const startScanning = () => {
         setScanStep(1);
         triggerCamera();
@@ -332,16 +352,13 @@
         if (scanStep === 1) {
           setVinPhoto(photoUrl);
           setIsAnalyzing(true);
-          
           setTimeout(() => {
             setVin("WVWZZZ3CZWE987654");
             setIsAnalyzing(false);
           }, 1000);
-
         } else if (scanStep === 2) {
           setRearPhoto(photoUrl);
           setIsAnalyzing(true);
-
           setTimeout(() => {
             setEcv("BL-555YY");
             setBrand("Volkswagen");
@@ -368,7 +385,6 @@
         setActiveTab("orders");
       };
 
-      // Uloženie novej zákazky a pridanie do Reports
       const handleSaveOrder = (e) => {
         e.preventDefault();
         const finalPrice = currentProject?.priceType === 'open' 
@@ -388,12 +404,12 @@
           color: color,
           price: finalPrice || 0,
           date: new Date().toISOString().split('T')[0],
-          monthYear: new Date().toISOString().slice(0, 7)
+          monthYear: new Date().toISOString().slice(0, 7),
+          tech: currentUser.email
         };
 
         setOrdersList([newOrder, ...ordersList]);
-        alert("Zákazka úspešne uložená do reportov!");
-        // Reset formulára
+        alert("Zákazka úspešne uložená!");
         setVin("");
         setEcv("");
         setBrand("");
@@ -401,6 +417,95 @@
         setVinPhoto(null);
         setRearPhoto(null);
       };
+
+      if (!currentUser) {
+        return (
+          <div className="max-w-md mx-auto p-4 pt-10">
+            <header className="text-center mb-6">
+              <h1 className="text-2xl font-black text-amber-500">PDR FlowBoard</h1>
+              <p className="text-xs text-amber-400/80 font-bold tracking-wider uppercase">HAIL HAPPENS</p>
+            </header>
+
+            <form onSubmit={handleAuthSubmit} className="bg-gray-800 p-5 rounded-2xl border border-gray-700 space-y-4 shadow-xl">
+              <h2 className="text-sm font-bold text-amber-400 border-b border-gray-700 pb-2">
+                {isRegistering ? t.registerTitle : t.loginTitle}
+              </h2>
+
+              <div>
+                <label className="block text-[10px] text-gray-400 mb-1">{t.accountType}</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setAuthAccountType("solo")}
+                    className={`py-2 px-2 text-xs font-bold rounded-lg border ${authAccountType === 'solo' ? 'bg-amber-500 border-amber-400 text-black' : 'bg-gray-900 border-gray-700 text-gray-300'}`}
+                  >
+                    {t.soloTech}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setAuthAccountType("company")}
+                    className={`py-2 px-2 text-xs font-bold rounded-lg border ${authAccountType === 'company' ? 'bg-amber-500 border-amber-400 text-black' : 'bg-gray-900 border-gray-700 text-gray-300'}`}
+                  >
+                    {t.companyTeam}
+                  </button>
+                </div>
+              </div>
+
+              {authAccountType === "company" && (
+                <div>
+                  <label className="block text-[10px] text-gray-400 mb-1">{t.roleLabel}</label>
+                  <select 
+                    value={authRole} 
+                    onChange={e => setAuthRole(e.target.value)}
+                    className="w-full bg-gray-900 border border-gray-600 rounded p-2 text-xs text-amber-400 font-bold"
+                  >
+                    <option value="manager">{t.roleManager}</option>
+                    <option value="employee">{t.roleEmployee}</option>
+                  </select>
+                </div>
+              )}
+
+              <div>
+                <label className="block text-[10px] text-gray-400 mb-1">E-mail</label>
+                <input 
+                  type="email" 
+                  value={authEmail} 
+                  onChange={e => setAuthEmail(e.target.value)} 
+                  placeholder={t.emailPlaceholder} 
+                  className="w-full bg-gray-900 border border-gray-600 rounded p-2.5 text-xs text-white" 
+                  required 
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] text-gray-400 mb-1">Heslo</label>
+                <input 
+                  type="password" 
+                  value={authPassword} 
+                  onChange={e => setAuthPassword(e.target.value)} 
+                  placeholder={t.passwordPlaceholder} 
+                  className="w-full bg-gray-900 border border-gray-600 rounded p-2.5 text-xs text-white" 
+                  required 
+                />
+              </div>
+
+              <button type="submit" className="w-full bg-amber-500 hover:bg-amber-400 text-black font-extrabold py-3 rounded-xl text-sm shadow">
+                {isRegistering ? t.registerBtn : t.loginBtn}
+              </button>
+
+              <div className="text-center pt-2">
+                <button 
+                  type="button" 
+                  onClick={() => setIsRegistering(!isRegistering)}
+                  className="text-xs text-amber-400 hover:underline"
+                >
+                  {isRegistering ? t.switchToLogin : t.switchToReg}
+                </button>
+              </div>
+            </form>
+          </div>
+        );
+      }
 
       return (
         <div className="max-w-md mx-auto p-4 pb-24">
@@ -416,23 +521,33 @@
           <header className="flex justify-between items-center mb-4 border-b border-gray-700 pb-3">
             <div>
               <h1 className="text-xl font-bold text-amber-500">{t.title}</h1>
-              <p className="text-xs text-gray-400">{t.subtitle}</p>
+              <p className="text-[10px] text-gray-400">
+                {currentUser.accountType === 'company' ? `Firma (${currentUser.role.toUpperCase()})` : 'Solo Technik'} | {currentUser.email}
+              </p>
             </div>
             
-            <div className="flex bg-gray-800 border border-gray-600 rounded p-1 gap-1">
-              {["SK", "DE", "EN"].map(l => (
-                <button
-                  key={l}
-                  onClick={() => setLang(l)}
-                  className={`px-2 py-0.5 text-xs font-bold rounded ${lang === l ? 'bg-amber-500 text-black' : 'text-gray-400 hover:text-white'}`}
-                >
-                  {l}
-                </button>
-              ))}
+            <div className="flex items-center gap-2">
+              <div className="flex bg-gray-800 border border-gray-600 rounded p-1 gap-1">
+                {["SK", "DE", "EN"].map(l => (
+                  <button
+                    key={l}
+                    onClick={() => setLang(l)}
+                    className={`px-1.5 py-0.5 text-[10px] font-bold rounded ${lang === l ? 'bg-amber-500 text-black' : 'text-gray-400 hover:text-white'}`}
+                  >
+                    {l}
+                  </button>
+                ))}
+              </div>
+              <button 
+                onClick={() => setCurrentUser(null)} 
+                className="bg-gray-800 border border-red-500/50 text-red-400 px-2 py-1 text-[10px] rounded hover:bg-red-500/20"
+                title={t.logout}
+              >
+                <i className="fa-solid fa-power-off"></i>
+              </button>
             </div>
           </header>
 
-          {/* HLAVNÁ NAVIGÁCIA (3 ZÁLOŽKY) */}
           <div className="flex bg-gray-800 p-1 rounded-xl mb-4 border border-gray-700">
             <button 
               onClick={() => setActiveTab("orders")} 
@@ -440,12 +555,14 @@
             >
               <i className="fa-solid fa-car mr-1"></i>{t.tabOrders}
             </button>
-            <button 
-              onClick={() => setActiveTab("clients")} 
-              className={`flex-1 py-2 text-[11px] font-bold rounded-lg ${activeTab === 'clients' ? 'bg-amber-500 text-black' : 'text-gray-400'}`}
-            >
-              <i className="fa-solid fa-address-book mr-1"></i>{t.tabClients}
-            </button>
+            {currentUser.role !== 'employee' && (
+              <button 
+                onClick={() => setActiveTab("clients")} 
+                className={`flex-1 py-2 text-[11px] font-bold rounded-lg ${activeTab === 'clients' ? 'bg-amber-500 text-black' : 'text-gray-400'}`}
+              >
+                <i className="fa-solid fa-address-book mr-1"></i>{t.tabClients}
+              </button>
+            )}
             <button 
               onClick={() => setActiveTab("reports")} 
               className={`flex-1 py-2 text-[11px] font-bold rounded-lg ${activeTab === 'reports' ? 'bg-amber-500 text-black' : 'text-gray-400'}`}
@@ -515,13 +632,15 @@
               <div>
                 <div className="flex justify-between items-center mb-1">
                   <label className="text-xs text-gray-400">{t.clientLabel}</label>
-                  <button 
-                    type="button" 
-                    onClick={() => { setActiveTab("clients"); setShowNewClientForm(true); }}
-                    className="text-xs text-amber-400 font-semibold hover:underline"
-                  >
-                    {t.addClientBtn}
-                  </button>
+                  {currentUser.role !== 'employee' && (
+                    <button 
+                      type="button" 
+                      onClick={() => { setActiveTab("clients"); setShowNewClientForm(true); }}
+                      className="text-xs text-amber-400 font-semibold hover:underline"
+                    >
+                      {t.addClientBtn}
+                    </button>
+                  )}
                 </div>
                 <select 
                   value={selectedClientId} 
@@ -672,7 +791,7 @@
                 {t.saveOrder}
               </button>
             </form>
-          ) : activeTab === "clients" ? (
+          ) : activeTab === "clients" && currentUser.role !== 'employee' ? (
             <div className="space-y-4">
               {showNewClientForm ? (
                 <form onSubmit={handleAddClient} className="bg-gray-800 p-4 rounded-xl border border-amber-500/50 space-y-3">
@@ -718,19 +837,16 @@
               </div>
             </div>
           ) : (
-            /* ZÁLOŽKA REPORTS (PREHĽADY A FILTRE) */
             <div className="space-y-4">
-              {/* PANEL FILTROV */}
               <div className="bg-gray-800 p-3 rounded-xl border border-gray-700 space-y-2">
                 <div className="grid grid-cols-1 gap-2">
-                  {/* Filter zákazníka */}
                   <div>
                     <label className="block text-[10px] text-gray-400 mb-1"><i className="fa-solid fa-filter mr-1"></i>{t.clientLabel}</label>
                     <select 
                       value={reportFilterClient} 
                       onChange={e => {
                         setReportFilterClient(e.target.value);
-                        setReportFilterProject("all"); // Reset projektu pri zmene klienta
+                        setReportFilterProject("all");
                       }} 
                       className="w-full bg-gray-900 border border-gray-600 rounded p-2 text-xs text-white font-semibold"
                     >
@@ -739,7 +855,6 @@
                     </select>
                   </div>
 
-                  {/* Filter projektu / zákazky */}
                   <div>
                     <label className="block text-[10px] text-gray-400 mb-1"><i className="fa-solid fa-folder mr-1"></i>{t.projectLabel}</label>
                     <select 
@@ -752,7 +867,6 @@
                     </select>
                   </div>
 
-                  {/* Filter mesiaca a roka */}
                   <div>
                     <label className="block text-[10px] text-gray-400 mb-1"><i className="fa-solid fa-calendar mr-1"></i>Mesiac / Rok</label>
                     <select 
@@ -763,12 +877,10 @@
                       <option value="all">{t.filterMonth}</option>
                       <option value="2026-03">Marec 2026</option>
                       <option value="2026-02">Február 2026</option>
-                      <option value="2026-01">Január 2026</option>
                     </select>
                   </div>
                 </div>
 
-                {/* TLAČIDLO VYTVORIŤ REPORT */}
                 <button 
                   type="button" 
                   onClick={() => alert(`Generujem report pre ${filteredReports.length} záznamov...`)}
@@ -779,7 +891,6 @@
                 </button>
               </div>
 
-              {/* VÝPIS ZÁZNAMOV PODĽA FILTRA */}
               <div className="space-y-2">
                 <div className="flex justify-between items-center text-xs text-gray-400 px-1">
                   <span>{t.totalFiltered}:</span>
@@ -815,7 +926,7 @@
                       </div>
 
                       <div className="flex justify-between items-center text-[10px] text-gray-400 pt-1 border-t border-gray-700/60">
-                        <span>Farba: {ord.color}</span>
+                        <span>Technik: {ord.tech}</span>
                         <span>Dátum: {ord.date}</span>
                       </div>
                     </div>
