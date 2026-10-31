@@ -9,14 +9,9 @@
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <!-- Stabilný Supabase JS klient s podporou nových kľúčov -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.48.1/dist/umd/supabase.min.js"></script>
   <style>
-    body {
-      background-color: #111827;
-      margin: 0;
-      padding: 0;
-    }
+    body { background-color: #111827; margin: 0; padding: 0; }
     .login-container {
       background: rgba(17, 24, 39, 0.95);
       border: 1px solid #374151;
@@ -36,7 +31,8 @@
     const { useState, useEffect, useMemo, useRef } = React;
 
     const SUPABASE_URL = "https://hzmipgjpjhibxmkdadvf.supabase.co";
-    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh6bWlwZ2pwamhpYnhta2RhZHZmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTM0NjMyOTcsImV4cCI6MjEwOTAzOTI5N30.RFquqmHdxD9-zuZYGVd-R94T5vBjUGBpVF9vttltK14";
+    // Sem vlož svoj legacy anon kľúč začínajúci na eyJ...
+    const SUPABASE_KEY = "VLOZ_SEM_SVOJ_ANON_PUBLIC_KLUC_ZACINAJUCI_NA_eyJ";
     const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
     const COLOR_DATA = {
@@ -50,9 +46,12 @@
         tabVehicles: "Vozidlá",
         tabProjects: "Projekty & Klienti",
         tabReports: "Reporty",
-        scanBtn: "Scan Car",
-        step1Label: "1. Odfotiť VIN kód",
-        step2Label: "2. Odfotiť auto zozadu",
+        scanBtn: "Scan Car (VIN / Auto / Hárok)",
+        step1Label: "1. VIN štítok",
+        step2Label: "2. Auto zozadu",
+        step3Label: "3. Hárok kalkulácie",
+        calcNumberLabel: "Číslo kalkulácie",
+        riPriceLabel: "R&I Cena (Demontáž/Montáž €)",
         clientLabel: "Klient (Firma)",
         projectLabel: "Projekt / Miesto / Servis",
         addProjectQuick: "+ Nové miesto",
@@ -61,9 +60,9 @@
         vin: "VIN kód",
         brand: "Značka",
         model: "Model",
-        color: "Farba karosérie",
-        priceLabel: "Cena opravy (€)",
-        pricePendingCheckbox: "Cena zatiaľ neznáma",
+        color: "Farba",
+        priceLabel: "Cena opravy PDR (€)",
+        pricePendingCheckbox: "Cena neznáma",
         saveVehicle: "Uložiť vozidlo",
         addClientBtn: "+ Nový klient",
         noVehicles: "Zatiaľ nie sú evidované žiadne vozidlá.",
@@ -75,7 +74,6 @@
         passwordMismatch: "Heslá sa nezhodujú!",
         passwordTooShort: "Heslo musí mať aspoň 6 znakov.",
         loginBtn: "Prihlásiť sa",
-        googleLoginBtn: "Pokračovať cez Google",
         registerBtn: "Zaregistrovať sa",
         accountType: "Typ účtu",
         soloTech: "Nezávislý technik (Solo)",
@@ -85,26 +83,33 @@
         roleEmployee: "Zamestnanec / Technik",
         switchToReg: "Nemáte účet? Zaregistrujte sa",
         switchToLogin: "Už máte účet? Prihláste sa",
-        logout: "Odhlásiť sa"
+        logout: "Odhlásiť sa",
+        settingsTitle: "Nastavenia účtu",
+        newPasswordPlaceholder: "Nové heslo",
+        updatePasswordBtn: "Zmeniť heslo",
+        passwordUpdated: "Heslo bolo úspešne zmenené!"
       },
       EN: {
         tabVehicles: "Vehicles",
         tabProjects: "Projects & Clients",
         tabReports: "Reports",
-        scanBtn: "Scan Car",
-        step1Label: "1. Capture VIN",
-        step2Label: "2. Capture Rear Photo",
+        scanBtn: "Scan Car (VIN / Rear / Sheet)",
+        step1Label: "1. VIN Plate",
+        step2Label: "2. Rear Photo",
+        step3Label: "3. Calc Sheet",
+        calcNumberLabel: "Calculation No.",
+        riPriceLabel: "R&I Price (R&I €)",
         clientLabel: "Client (Company)",
-        projectLabel: "Project / Location / Shop",
+        projectLabel: "Project / Location",
         addProjectQuick: "+ New location",
         ecv: "License Plate",
         noEcvCheckbox: "No Plate",
         vin: "VIN Code",
         brand: "Make",
         model: "Model",
-        color: "Body Color",
-        priceLabel: "Repair Price (€)",
-        pricePendingCheckbox: "Price currently unknown",
+        color: "Color",
+        priceLabel: "PDR Repair Price (€)",
+        pricePendingCheckbox: "Price unknown",
         saveVehicle: "Save Vehicle",
         addClientBtn: "+ New Client",
         noVehicles: "No vehicles recorded yet.",
@@ -116,7 +121,6 @@
         passwordMismatch: "Passwords do not match!",
         passwordTooShort: "Password must have at least 6 characters.",
         loginBtn: "Sign In",
-        googleLoginBtn: "Continue with Google",
         registerBtn: "Register",
         accountType: "Account Type",
         soloTech: "Independent Tech (Solo)",
@@ -126,48 +130,58 @@
         roleEmployee: "Employee / Tech",
         switchToReg: "Don't have an account? Register",
         switchToLogin: "Already have an account? Sign In",
-        logout: "Sign Out"
+        logout: "Sign Out",
+        settingsTitle: "Account Settings",
+        newPasswordPlaceholder: "New password",
+        updatePasswordBtn: "Update Password",
+        passwordUpdated: "Password updated successfully!"
       },
       DE: {
         tabVehicles: "Fahrzeuge",
         tabProjects: "Projekte & Kunden",
         tabReports: "Reports",
-        scanBtn: "Scan Car",
-        step1Label: "1. FIN aufnehmen",
-        step2Label: "2. Heckfoto aufnehmen",
+        scanBtn: "Scan Car (FIN / Heck / Formular)",
+        step1Label: "1. FIN Schild",
+        step2Label: "2. Heckfoto",
+        step3Label: "3. Kalkulationsblatt",
+        calcNumberLabel: "Kalkulationsnummer",
+        riPriceLabel: "R&I Preis (Demontage €)",
         clientLabel: "Kunde (Firma)",
-        projectLabel: "Projekt / Standort / Werkstatt",
+        projectLabel: "Projekt / Standort",
         addProjectQuick: "+ Neuer Standort",
         ecv: "Kennzeichen",
         noEcvCheckbox: "Ohne KZ",
-        vin: "FIN / Fahrgestellnr.",
+        vin: "FIN",
         brand: "Marke",
         model: "Modell",
-        color: "Fahrzeugfarbe",
-        priceLabel: "Reparaturpreis (€)",
-        pricePendingCheckbox: "Preis vorerst unbekannt",
+        color: "Farbe",
+        priceLabel: "Dellenreparatur (€)",
+        pricePendingCheckbox: "Preis unbekannt",
         saveVehicle: "Fahrzeug speichern",
         addClientBtn: "+ Neuer Kunde",
-        noVehicles: "Noch keine Fahrzeuge erfasst.",
+        noVehicles: "Keine Fahrzeuge erfasst.",
         loginTitle: "Anmeldung",
         registerTitle: "Registrierung",
         emailPlaceholder: "E-Mail-Adresse",
         passwordPlaceholder: "Passwort (mind. 6 Zeichen)",
         confirmPasswordPlaceholder: "Passwort wiederholen",
         passwordMismatch: "Passwörter stimmen nicht überein!",
-        passwordTooShort: "Passwort muss mindestens 6 Zeichen lang sein.",
+        passwordTooShort: "Mindestens 6 Zeichen erforderlich.",
         loginBtn: "Anmelden",
-        googleLoginBtn: "Mit Google fortfahren",
         registerBtn: "Registrieren",
         accountType: "Kontotyp",
         soloTech: "Solo-Techniker",
         companyTeam: "Unternehmen / Team",
-        roleLabel: "Rolle im Team",
+        roleLabel: "Rolle",
         roleManager: "Manager",
-        roleEmployee: "Mitarbeiter / Techniker",
-        switchToReg: "Kein Konto? Registrieren",
-        switchToLogin: "Bereits ein Konto? Anmelden",
-        logout: "Abmelden"
+        roleEmployee: "Mitarbeiter",
+        switchToReg: "Registrieren",
+        switchToLogin: "Anmelden",
+        logout: "Abmelden",
+        settingsTitle: "Kontoeinstellungen",
+        newPasswordPlaceholder: "Neues Passwort",
+        updatePasswordBtn: "Passwort aktualisieren",
+        passwordUpdated: "Passwort erfolgreich geändert!"
       }
     };
 
@@ -180,6 +194,10 @@
       const [currentUser, setCurrentUser] = useState(null);
       const [loadingUser, setLoadingUser] = useState(true);
       const [authError, setAuthError] = useState("");
+
+      const [showSettingsModal, setShowSettingsModal] = useState(false);
+      const [newAccountPassword, setNewAccountPassword] = useState("");
+      const [settingsMsg, setSettingsMsg] = useState("");
 
       const [isRegistering, setIsRegistering] = useState(false);
       const [authEmail, setAuthEmail] = useState("");
@@ -197,7 +215,6 @@
 
       const [isAddingProject, setIsAddingProject] = useState(false);
       const [newProjectName, setNewProjectName] = useState("");
-
       const [isAddingClient, setIsAddingClient] = useState(false);
       const [newClientName, setNewClientName] = useState("");
 
@@ -205,8 +222,11 @@
       const [scanStep, setScanStep] = useState(0);
       const [vinPhoto, setVinPhoto] = useState(null);
       const [rearPhoto, setRearPhoto] = useState(null);
+      const [sheetPhoto, setSheetPhoto] = useState(null);
       const [isAnalyzing, setIsAnalyzing] = useState(false);
 
+      const [calcNumber, setCalcNumber] = useState("");
+      const [riPrice, setRiPrice] = useState("");
       const [vin, setVin] = useState("");
       const [ecv, setEcv] = useState("");
       const [hasNoEcv, setHasNoEcv] = useState(false);
@@ -238,7 +258,6 @@
               role: profile?.role || "solo"
             });
           } catch (err) {
-            console.error("Profile load err:", err);
             setCurrentUser({
               id: session.user.id,
               email: session.user.email,
@@ -276,7 +295,7 @@
             setSelectedClientId(cData[0].id);
           }
         } catch (e) {
-          console.error("Data fetch error:", e);
+          console.error("Data load err:", e);
         }
       };
 
@@ -297,6 +316,21 @@
           setSelectedProjectId("");
         }
       }, [availableProjects]);
+
+      // Automatické generovanie poradového čísla kalkulácie: [PREFIX]/[ROK]/[PORADIE]
+      useEffect(() => {
+        if (!currentUser) return;
+        
+        const currentYear = new Date().getFullYear();
+        // Z e-mailu vytiahneme prefix (napr. pedro.hlavac -> HLA, alebo prvé 3 písmená mailu)
+        const emailPrefix = (currentUser.email.split('@')[0].split('.')[1] || currentUser.email.substring(0, 3)).toUpperCase().substring(0, 3);
+        
+        // Zistíme koľko áut v tomto roku už má daný klient/projekt
+        const yearVehicles = vehicles.filter(v => v.calc_number && v.calc_number.includes(`/${currentYear}/`));
+        const nextSequence = String(yearVehicles.length + 1).padStart(3, '0');
+        
+        setCalcNumber(`${emailPrefix}/${currentYear}/${nextSequence}`);
+      }, [vehicles, currentUser, selectedClientId]);
 
       const handleAuthSubmit = async (e) => {
         e.preventDefault();
@@ -324,33 +358,35 @@
             }
           });
 
-          if (error) {
-            setAuthError(error.message);
-          }
+          if (error) setAuthError(error.message);
         } else {
           const { error } = await supabase.auth.signInWithPassword({
             email: authEmail,
             password: authPassword
           });
 
-          if (error) {
-            setAuthError(error.message);
-          }
+          if (error) setAuthError(error.message);
         }
       };
 
-      const handleGoogleLogin = async () => {
-        setAuthError("");
-        try {
-          const { error } = await supabase.auth.signInWithOAuth({
-            provider: 'google',
-            options: {
-              redirectTo: window.location.origin
-            }
-          });
-          if (error) throw error;
-        } catch (err) {
-          setAuthError(err.message);
+      const handlePasswordUpdate = async (e) => {
+        e.preventDefault();
+        setSettingsMsg("");
+        if (newAccountPassword.length < 6) {
+          setSettingsMsg("Heslo musí mať aspoň 6 znakov.");
+          return;
+        }
+
+        const { error } = await supabase.auth.updateUser({
+          password: newAccountPassword
+        });
+
+        if (error) {
+          setSettingsMsg("Chyba: " + error.message);
+        } else {
+          setSettingsMsg(t.passwordUpdated);
+          setNewAccountPassword("");
+          setTimeout(() => setShowSettingsModal(false), 1500);
         }
       };
 
@@ -411,7 +447,7 @@
           setTimeout(() => {
             setVin("WVWZZZ3CZWE987654");
             setIsAnalyzing(false);
-          }, 1000);
+          }, 800);
         } else if (scanStep === 2) {
           setRearPhoto(photoUrl);
           setIsAnalyzing(true);
@@ -420,8 +456,10 @@
             setBrand("Volkswagen");
             setModel("Passat Variant");
             setIsAnalyzing(false);
-            setScanStep(0);
-          }, 1200);
+          }, 800);
+        } else if (scanStep === 3) {
+          setSheetPhoto(photoUrl);
+          setScanStep(0);
         }
       };
 
@@ -435,6 +473,8 @@
         const newVehicleRecord = {
           project_id: selectedProjectId,
           created_by: currentUser.id,
+          calc_number: calcNumber || null,
+          ri_price: Number(riPrice) || 0.00,
           vin: vin || "N/A",
           ecv: hasNoEcv ? "Bez ŠPZ" : (ecv || "N/A"),
           has_no_ecv: hasNoEcv,
@@ -451,15 +491,17 @@
           alert("Chyba pri ukladaní: " + error.message);
         } else if (data) {
           setVehicles([data[0], ...vehicles]);
-          alert("Vozidlo bolo úspešne uložené do databázy!");
+          alert("Vozidlo bolo úspešne uložené!");
           setVin("");
           setEcv("");
           setBrand("");
           setModel("");
           setPrice("");
+          setRiPrice("");
           setIsPricePending(false);
           setVinPhoto(null);
           setRearPhoto(null);
+          setSheetPhoto(null);
         }
       };
 
@@ -508,22 +550,6 @@
                   {authError}
                 </div>
               )}
-
-              {/* Tlačidlo Google */}
-              <button
-                type="button"
-                onClick={handleGoogleLogin}
-                className="w-full bg-white hover:bg-gray-100 text-gray-950 font-bold py-2.5 rounded-xl text-xs flex justify-center items-center gap-2 shadow transition"
-              >
-                <i className="fa-brands fa-google text-red-600 text-sm"></i>
-                <span>{t.googleLoginBtn}</span>
-              </button>
-
-              <div className="flex items-center my-1">
-                <div className="flex-1 border-t border-gray-700"></div>
-                <span className="px-2 text-[10px] text-gray-500 uppercase font-semibold">alebo e-mail</span>
-                <div className="flex-1 border-t border-gray-700"></div>
-              </div>
 
               {isRegistering && (
                 <div>
@@ -585,7 +611,6 @@
                 />
               </div>
 
-              {/* Opakovanie hesla pri registrácii */}
               {isRegistering && (
                 <div>
                   <label className="block text-[10px] text-gray-400 mb-1">Potvrdenie hesla</label>
@@ -640,6 +665,39 @@
             className="hidden" 
           />
 
+          {/* Modálne okno: Nastavenia účtu a zmena hesla */}
+          {showSettingsModal && (
+            <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50">
+              <div className="bg-gray-800 border border-gray-700 rounded-xl p-5 w-full max-w-sm space-y-3">
+                <div className="flex justify-between items-center border-b border-gray-700 pb-2">
+                  <h3 className="text-sm font-bold text-amber-400">{t.settingsTitle}</h3>
+                  <button onClick={() => setShowSettingsModal(false)} className="text-gray-400 hover:text-white">
+                    <i className="fa-solid fa-xmark"></i>
+                  </button>
+                </div>
+                {settingsMsg && (
+                  <p className="text-xs text-center text-amber-300 bg-amber-500/10 p-2 rounded">{settingsMsg}</p>
+                )}
+                <form onSubmit={handlePasswordUpdate} className="space-y-3">
+                  <div>
+                    <label className="block text-[10px] text-gray-400 mb-1">{t.newPasswordPlaceholder}</label>
+                    <input 
+                      type="password" 
+                      value={newAccountPassword} 
+                      onChange={e => setNewAccountPassword(e.target.value)} 
+                      placeholder="Minimálne 6 znakov"
+                      className="w-full bg-gray-900 border border-gray-600 rounded p-2 text-xs text-white"
+                      required
+                    />
+                  </div>
+                  <button type="submit" className="w-full bg-amber-500 text-black font-bold py-2 rounded text-xs shadow">
+                    {t.updatePasswordBtn}
+                  </button>
+                </form>
+              </div>
+            </div>
+          )}
+
           <header className="flex justify-between items-center mb-4 border-b border-gray-700 pb-3">
             <div>
               <h1 className="text-base font-black tracking-tight">
@@ -651,6 +709,13 @@
             </div>
             
             <div className="flex items-center gap-2">
+              <button 
+                onClick={() => setShowSettingsModal(true)} 
+                className="bg-gray-800 border border-gray-600 text-gray-300 px-2 py-1 text-xs rounded hover:text-amber-400"
+                title={t.settingsTitle}
+              >
+                <i className="fa-solid fa-gear"></i>
+              </button>
               <button 
                 onClick={handleLogout} 
                 className="bg-gray-800 border border-red-500/50 text-red-400 px-2.5 py-1 text-xs rounded hover:bg-red-500/20"
@@ -688,7 +753,7 @@
                 <button 
                   type="button" 
                   onClick={startScanning}
-                  className="w-full bg-amber-500 hover:bg-amber-400 text-black font-extrabold py-3.5 rounded-lg text-base flex justify-center items-center gap-2 shadow-lg tracking-wide"
+                  className="w-full bg-amber-500 hover:bg-amber-400 text-black font-extrabold py-3.5 rounded-lg text-sm flex justify-center items-center gap-2 shadow-lg tracking-wide uppercase"
                 >
                   <i className="fa-solid fa-camera text-xl"></i>
                   <span>{t.scanBtn}</span>
@@ -696,9 +761,10 @@
 
                 {scanStep > 0 && (
                   <div className="bg-gray-900/90 p-3 rounded-lg border border-amber-500/50 space-y-2">
-                    <div className="flex justify-between items-center text-xs font-bold">
+                    <div className="flex justify-between items-center text-[10px] font-bold">
                       <span className={scanStep === 1 ? "text-amber-400 font-black" : "text-gray-400"}>{t.step1Label}</span>
                       <span className={scanStep === 2 ? "text-amber-400 font-black" : "text-gray-400"}>{t.step2Label}</span>
+                      <span className={scanStep === 3 ? "text-amber-400 font-black" : "text-gray-400"}>{t.step3Label}</span>
                     </div>
                     
                     {isAnalyzing ? (
@@ -714,14 +780,60 @@
                         <button 
                           type="button" 
                           onClick={() => { setScanStep(2); if(cameraInputRef.current) cameraInputRef.current.click(); }}
-                          className="w-full bg-amber-500 text-black font-bold py-2 rounded text-xs mt-1"
+                          className="w-full bg-amber-500 text-black font-bold py-1.5 rounded text-xs"
                         >
-                          Pokračovať na Krok 2 ➔
+                          Pokračovať: 2. Auto zozadu ➔
+                        </button>
+                      </div>
+                    ) : scanStep === 2 && ecv ? (
+                      <div className="space-y-2 pt-1 border-t border-gray-800">
+                        <button 
+                          type="button" 
+                          onClick={() => { setScanStep(3); if(cameraInputRef.current) cameraInputRef.current.click(); }}
+                          className="w-full bg-amber-500 text-black font-bold py-1.5 rounded text-xs"
+                        >
+                          Pokračovať: 3. Hárok kalkulácie ➔
                         </button>
                       </div>
                     ) : null}
                   </div>
                 )}
+
+                <div className="flex gap-2 justify-center pt-1">
+                  {vinPhoto && (
+                    <div className="relative w-14 h-14 rounded overflow-hidden border border-amber-500">
+                      <img src={vinPhoto} className="w-full h-full object-cover" />
+                      <span className="absolute bottom-0 right-0 bg-black/80 text-[7px] text-amber-300 px-1 font-bold">VIN</span>
+                    </div>
+                  )}
+                  {rearPhoto && (
+                    <div className="relative w-14 h-14 rounded overflow-hidden border border-amber-500">
+                      <img src={rearPhoto} className="w-full h-full object-cover" />
+                      <span className="absolute bottom-0 right-0 bg-black/80 text-[7px] text-amber-300 px-1 font-bold">Auto</span>
+                    </div>
+                  )}
+                  {sheetPhoto && (
+                    <div className="relative w-14 h-14 rounded overflow-hidden border border-amber-500">
+                      <img src={sheetPhoto} className="w-full h-full object-cover" />
+                      <span className="absolute bottom-0 right-0 bg-black/80 text-[7px] text-amber-300 px-1 font-bold">Hárok</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Číslo kalkulácie */}
+              <div>
+                <label className="text-xs text-amber-400 font-bold mb-1 flex items-center justify-between">
+                  <span>{t.calcNumberLabel}</span>
+                  <span className="text-[9px] text-gray-400 font-normal">Automatické poradie (editovateľné)</span>
+                </label>
+                <input 
+                  type="text" 
+                  value={calcNumber} 
+                  onChange={e => setCalcNumber(e.target.value)} 
+                  placeholder="HLA/2026/001" 
+                  className="w-full bg-gray-900 border border-amber-500/50 rounded p-2 text-sm text-amber-300 font-mono font-bold"
+                />
               </div>
 
               <div>
@@ -845,6 +957,22 @@
                 </div>
               </div>
 
+              {/* R&I Demontáž / Montáž */}
+              <div className="bg-gray-900/60 p-3 rounded-lg border border-gray-700 space-y-1">
+                <label className="text-xs font-bold text-gray-300 flex items-center gap-1.5">
+                  <i className="fa-solid fa-wrench text-amber-500 text-xs"></i>
+                  <span>{t.riPriceLabel}</span>
+                </label>
+                <input 
+                  type="number" 
+                  value={riPrice} 
+                  onChange={e => setRiPrice(e.target.value)} 
+                  placeholder="0.00" 
+                  className="w-full bg-gray-900 border border-gray-600 rounded p-2 text-sm text-amber-400 font-bold" 
+                />
+              </div>
+
+              {/* PDR Cena */}
               <div className="bg-gray-900/60 p-3 rounded-lg border border-gray-700 space-y-2">
                 <div className="flex justify-between items-center">
                   <label className="text-xs font-bold text-gray-300">{t.priceLabel}</label>
@@ -901,12 +1029,20 @@
                 vehicles.map(v => (
                   <div key={v.id} className="bg-gray-800 p-3 rounded-xl border border-gray-700 flex justify-between items-center">
                     <div>
-                      <p className="font-bold text-white text-xs">{v.brand} {v.model} ({v.ecv})</p>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-amber-400 font-mono">{v.calc_number || "Bez č."}</span>
+                        <span className="text-xs font-bold text-white">{v.brand} {v.model} ({v.ecv})</span>
+                      </div>
                       <p className="text-[10px] text-gray-400 font-mono">VIN: {v.vin}</p>
+                      {v.ri_price > 0 && (
+                        <p className="text-[10px] text-amber-500/80 font-bold">R&I: +{v.ri_price} €</p>
+                      )}
                     </div>
-                    <span className="text-xs bg-amber-500/20 text-amber-300 font-bold px-2 py-1 rounded">
-                      {v.is_price_pending ? "Neznáma" : `${v.price} €`}
-                    </span>
+                    <div className="text-right">
+                      <span className="text-xs bg-amber-500/20 text-amber-300 font-bold px-2 py-1 rounded inline-block">
+                        {v.is_price_pending ? "Neznáma" : `${Number(v.price) + Number(v.ri_price || 0)} €`}
+                      </span>
+                    </div>
                   </div>
                 ))
               )}
