@@ -18,7 +18,7 @@
     .bottom-sheet { animation: slideUp 0.22s ease-out forwards; }
     @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
 
-    /* ZRUŠENIE ŠÍPOK HORE/DOLE NA ČÍSELNÝCH VSTUPOCH */
+    /* Vypnutie šípok hore/dole pri číselných poliach */
     input[type=number]::-webkit-inner-spin-button, 
     input[type=number]::-webkit-outer-spin-button { 
       -webkit-appearance: none; 
@@ -43,9 +43,160 @@
     const SUPABASE_KEY = "sb_publishable_5lQPiP19Qy2xwDq6eUXDmQ_MB5IYkHQ";
     const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    const COLOR_OPTIONS = ["Biela", "Čierna", "Sivá / Strieborná", "Modrá", "Červená", "Zelená", "Hnedá / Bronz"];
+    const COLOR_DATA = {
+      SK: ["Biela", "Čierna", "Sivá / Strieborná", "Modrá", "Červená", "Zelená", "Hnedá / Bronz"],
+      EN: ["White", "Black", "Grey / Silver", "Blue", "Red", "Green", "Brown / Bronze"],
+      DE: ["Weiß", "Schwarz", "Grau / Silber", "Blau", "Rot", "Grün", "Braun / Bronze"]
+    };
 
-    // Klientska kompresia na max 1600 px (JPEG 0.78)
+    const TRANSLATIONS = {
+      SK: {
+        tabVehicles: "Vozidlá",
+        tabProjects: "Klienti & Miesta",
+        tabReports: "Súpis & Report",
+        scanBtn: "Scan Car (VIN / Auto / Hárok)",
+        step1Label: "1. VIN štítok",
+        step2Label: "2. Auto zozadu",
+        step3Label: "3. Hárok kalkulácie",
+        clientLabel: "Klient (Firma)",
+        projectLabel: "Miesto / Servis",
+        calcNumberLabel: "Číslo kalkulácie (Klient)",
+        calcNumberSub: "Priebežné poradie alebo kód",
+        ecv: "ŠPZ / EČV",
+        noEcvCheckbox: "Bez ŠPZ",
+        vin: "VIN kód",
+        brand: "Značka",
+        model: "Model",
+        color: "Farba karosérie",
+        priceLabel: "PDR Cena opravy",
+        pricePendingCheckbox: "Cena neznáma",
+        riPriceLabel: "R&I Cena (Demontáž / Montáž)",
+        saveVehicle: "Uložiť vozidlo",
+        addClientBtn: "+ Nový Klient",
+        scanCardBtn: "Sken vizitky",
+        noVehicles: "Zatiaľ nie sú zaevidované žiadne vozidlá.",
+        loginTitle: "Prihlásenie",
+        registerTitle: "Registrácia",
+        emailPlaceholder: "E-mailová adresa",
+        passwordPlaceholder: "Heslo (min. 6 znakov)",
+        confirmPasswordPlaceholder: "Zopakujte heslo",
+        passwordMismatch: "Heslá sa nezhodujú!",
+        passwordTooShort: "Heslo musí mať aspoň 6 znakov.",
+        loginBtn: "Prihlásiť sa",
+        registerBtn: "Zaregistrovať sa",
+        accountType: "Typ účtu",
+        soloTech: "Solo Technik",
+        companyTeam: "Firma / Tím",
+        roleLabel: "Moja rola",
+        roleManager: "Manažér",
+        roleEmployee: "Technik",
+        switchToReg: "Nemáte účet? Zaregistrujte sa",
+        switchToLogin: "Už máte účet? Prihláste sa",
+        settingsTitle: "Nastavenia účtu",
+        updatePasswordBtn: "Zmeniť heslo",
+        passwordUpdated: "Heslo úspešne zmenené!",
+        searchPlaceholder: "Hľadať VIN, ŠPZ, model (napr. Audi Q5)...",
+        searchLocationsPlaceholder: "Hľadať miesto..."
+      },
+      EN: {
+        tabVehicles: "Vehicles",
+        tabProjects: "Clients & Locations",
+        tabReports: "Reconciliation & Reports",
+        scanBtn: "Scan Car (VIN / Rear / Sheet)",
+        step1Label: "1. VIN Plate",
+        step2Label: "2. Rear Photo",
+        step3Label: "3. Calc Sheet",
+        clientLabel: "Client (Company)",
+        projectLabel: "Location / Shop",
+        calcNumberLabel: "Calculation No. (Client)",
+        calcNumberSub: "Sequential or custom code",
+        ecv: "License Plate",
+        noEcvCheckbox: "No Plate",
+        vin: "VIN Code",
+        brand: "Make",
+        model: "Model",
+        color: "Vehicle Color",
+        priceLabel: "PDR Repair Price",
+        pricePendingCheckbox: "Price unknown",
+        riPriceLabel: "R&I Price",
+        saveVehicle: "Save Vehicle",
+        addClientBtn: "+ New Client",
+        scanCardBtn: "Scan Card",
+        noVehicles: "No vehicles recorded yet.",
+        loginTitle: "Sign In",
+        registerTitle: "Register",
+        emailPlaceholder: "Email address",
+        passwordPlaceholder: "Password (min. 6 chars)",
+        confirmPasswordPlaceholder: "Confirm password",
+        passwordMismatch: "Passwords do not match!",
+        passwordTooShort: "Password must have at least 6 characters.",
+        loginBtn: "Sign In",
+        registerBtn: "Register",
+        accountType: "Account Type",
+        soloTech: "Solo Tech",
+        companyTeam: "Company / Team",
+        roleLabel: "Role",
+        roleManager: "Manager",
+        roleEmployee: "Technician",
+        switchToReg: "Don't have an account? Register",
+        switchToLogin: "Already have an account? Sign In",
+        settingsTitle: "Account Settings",
+        updatePasswordBtn: "Update Password",
+        passwordUpdated: "Password updated!",
+        searchPlaceholder: "Search VIN, Plate, Model...",
+        searchLocationsPlaceholder: "Filter locations..."
+      },
+      DE: {
+        tabVehicles: "Fahrzeuge",
+        tabProjects: "Kunden & Standorte",
+        tabReports: "Abgleich & Reports",
+        scanBtn: "Scan Car (FIN / Heck / Formular)",
+        step1Label: "1. FIN Schild",
+        step2Label: "2. Heckfoto",
+        step3Label: "3. Kalkulationsblatt",
+        clientLabel: "Kunde (Firma)",
+        projectLabel: "Standort / Werkstatt",
+        calcNumberLabel: "Kalkulations-Nr. (Kunde)",
+        calcNumberSub: "Laufende Nummer oder Code",
+        ecv: "Kennzeichen",
+        noEcvCheckbox: "Ohne KZ",
+        vin: "FIN",
+        brand: "Marke",
+        model: "Modell",
+        color: "Farbe",
+        priceLabel: "Dellenreparatur",
+        pricePendingCheckbox: "Preis unbekannt",
+        riPriceLabel: "R&I Demontage",
+        saveVehicle: "Fahrzeug speichern",
+        addClientBtn: "+ Neuer Kunde",
+        scanCardBtn: "Visitenkarte",
+        noVehicles: "Keine Fahrzeuge erfasst.",
+        loginTitle: "Anmeldung",
+        registerTitle: "Registrierung",
+        emailPlaceholder: "E-Mail-Adresse",
+        passwordPlaceholder: "Passwort (mind. 6 Zeichen)",
+        confirmPasswordPlaceholder: "Passwort wiederholen",
+        passwordMismatch: "Passwörter stimmen nicht überein!",
+        passwordTooShort: "Mindestens 6 Zeichen erforderlich.",
+        loginBtn: "Anmelden",
+        registerBtn: "Registrieren",
+        accountType: "Kontotyp",
+        soloTech: "Solo-Techniker",
+        companyTeam: "Unternehmen / Team",
+        roleLabel: "Rolle",
+        roleManager: "Manager",
+        roleEmployee: "Techniker",
+        switchToReg: "Registrieren",
+        switchToLogin: "Anmelden",
+        settingsTitle: "Kontoeinstellungen",
+        updatePasswordBtn: "Passwort aktualisieren",
+        passwordUpdated: "Passwort geändert!",
+        searchPlaceholder: "Suche FIN, KZ, Modell...",
+        searchLocationsPlaceholder: "Standorte filtern..."
+      }
+    };
+
+    // Canvas kompresia (max 1600 px, JPEG 0.78)
     const compressImage = (file) => {
       return new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -77,7 +228,7 @@
             canvas.toBlob(
               (blob) => {
                 if (blob) resolve(blob);
-                else reject(new Error("Canvas kompresia zlyhala"));
+                else reject(new Error("Canvas blob error"));
               },
               "image/jpeg",
               0.78
@@ -90,12 +241,29 @@
     };
 
     function App() {
+      const [lang, setLang] = useState(() => localStorage.getItem("pdr_lang") || "SK");
       const [currency, setCurrency] = useState(() => localStorage.getItem("pdr_curr") || "EUR");
       const [activeTab, setActiveTab] = useState("vehicles");
+      const t = TRANSLATIONS[lang];
+      const colorOptions = COLOR_DATA[lang];
       const currSymbol = currency === "EUR" ? "€" : "$";
 
       const [currentUser, setCurrentUser] = useState(null);
       const [loadingUser, setLoadingUser] = useState(true);
+      const [authError, setAuthError] = useState("");
+
+      // Modál nastavení
+      const [showSettingsModal, setShowSettingsModal] = useState(false);
+      const [newAccountPassword, setNewAccountPassword] = useState("");
+      const [settingsMsg, setSettingsMsg] = useState("");
+
+      // Auth polia
+      const [isRegistering, setIsRegistering] = useState(false);
+      const [authEmail, setAuthEmail] = useState("");
+      const [authPassword, setAuthPassword] = useState("");
+      const [authConfirmPassword, setAuthConfirmPassword] = useState("");
+      const [authAccountType, setAuthAccountType] = useState("solo");
+      const [authRole, setAuthRole] = useState("manager");
 
       const [clients, setClients] = useState([]);
       const [projects, setProjects] = useState([]);
@@ -104,7 +272,7 @@
       const [selectedClientId, setSelectedClientId] = useState(() => localStorage.getItem("pdr_last_client") || "");
       const [selectedProjectId, setSelectedProjectId] = useState(() => localStorage.getItem("pdr_last_project") || "");
 
-      // Bottom Sheet & Editácia
+      // Bottom Sheet pre Klienta / Miesto (Detail & Edit)
       const [activeBottomSheet, setActiveBottomSheet] = useState(null);
       const [isEditingSheet, setIsEditingSheet] = useState(false);
       const [sheetEditData, setSheetEditData] = useState({});
@@ -113,12 +281,14 @@
       const [isUploading, setIsUploading] = useState(false);
       const [uploadStatusText, setUploadStatusText] = useState("");
 
-      // Doplnenie ceny pre uzavreté auto s neznámou cenou
+      // Doplnenie schválenej ceny pri aute so stavom "Cena neznáma"
       const [latePriceInput, setLatePriceInput] = useState("");
 
       // Správa Klientov a Miest
       const [selectedClientDetailId, setSelectedClientDetailId] = useState(null);
+      const [locationSearchFilter, setLocationSearchFilter] = useState("");
       const [showArchivedProjects, setShowArchivedProjects] = useState(false);
+
       const [showNewClientForm, setShowNewClientForm] = useState(false);
       const [newClientName, setNewClientName] = useState("");
       const [newClientPrefix, setNewClientPrefix] = useState("");
@@ -144,9 +314,10 @@
       const [repDateRange, setRepDateRange] = useState("all");
       const [repSearchQuery, setRepSearchQuery] = useState("");
 
-      // Formulár vozidla
+      // Vstupné polia vozidla (Kamera aj Galéria)
       const cameraInputRef = useRef(null);
       const damagePhotoInputRef = useRef(null);
+      const cardClientInputRef = useRef(null);
 
       const [scanStep, setScanStep] = useState(0);
       const [vinFile, setVinFile] = useState(null);
@@ -157,6 +328,7 @@
       const [vinPreview, setVinPreview] = useState(null);
       const [rearPreview, setRearPreview] = useState(null);
       const [sheetPreview, setSheetPreview] = useState(null);
+      const [isAnalyzing, setIsAnalyzing] = useState(false);
 
       const [clientCalcNo, setClientCalcNo] = useState("");
       const [vin, setVin] = useState("");
@@ -164,9 +336,9 @@
       const [hasNoEcv, setHasNoEcv] = useState(false);
       const [brand, setBrand] = useState("");
       const [model, setModel] = useState("");
-      const [color, setColor] = useState("Sivá / Strieborná");
+      const [color, setColor] = useState(colorOptions[2]);
 
-      // Ceny a AW
+      // Duálne ceny a AW
       const [price, setPrice] = useState("");
       const [awCount, setAwCount] = useState("");
       const [selectedCategoryLabel, setSelectedCategoryLabel] = useState("");
@@ -174,22 +346,46 @@
       const [isPricePending, setIsPricePending] = useState(false);
       const [damageNote, setDamageNote] = useState("");
 
-      // Inicializácia prihlásenia
+      // Bezpečné načítanie Auth relácie
       useEffect(() => {
         let mounted = true;
-        supabase.auth.getSession().then(({ data: { session } }) => {
-          if (mounted) {
-            if (session?.user) setCurrentUser({ id: session.user.id, email: session.user.email });
-            setLoadingUser(false);
+        const initAuth = async () => {
+          try {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (mounted && session?.user) {
+              setCurrentUser({
+                id: session.user.id,
+                email: session.user.email,
+                accountType: session.user.user_metadata?.account_type || "solo",
+                role: session.user.user_metadata?.role || "solo"
+              });
+            }
+          } catch (e) {
+            console.warn(e);
+          } finally {
+            if (mounted) setLoadingUser(false);
           }
-        });
+        };
+        initAuth();
+
         const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
           if (mounted) {
-            setCurrentUser(session?.user ? { id: session.user.id, email: session.user.email } : null);
+            if (session?.user) {
+              setCurrentUser({
+                id: session.user.id,
+                email: session.user.email,
+                accountType: session.user.user_metadata?.account_type || "solo",
+                role: session.user.user_metadata?.role || "solo"
+              });
+            } else {
+              setCurrentUser(null);
+            }
             setLoadingUser(false);
           }
         });
-        return () => { mounted = false; subscription.unsubscribe(); };
+
+        const timer = setTimeout(() => { if (mounted && loadingUser) setLoadingUser(false); }, 1500);
+        return () => { mounted = false; clearTimeout(timer); subscription.unsubscribe(); };
       }, []);
 
       const loadData = async () => {
@@ -232,11 +428,21 @@
         }
       }, [availableProjects, selectedClientId]);
 
+      const handleClientChange = (cId) => {
+        setSelectedClientId(cId);
+        localStorage.setItem("pdr_last_client", cId);
+      };
+
+      const handleProjectChange = (pId) => {
+        setSelectedProjectId(pId);
+        localStorage.setItem("pdr_last_project", pId);
+      };
+
       const currentSelectedProject = useMemo(() => {
         return projects.find(p => p.id === selectedProjectId);
       }, [projects, selectedProjectId]);
 
-      // Správanie cien podľa režimu miesta
+      // Režimy miesta (FIXED, CATEGORIES, FREE)
       useEffect(() => {
         if (!currentSelectedProject) return;
 
@@ -259,14 +465,14 @@
       }, [currentSelectedProject]);
 
       // DUÁLNA LOGIKA CENA vs AW (Vzájomné blokovanie v režime FREE)
-      const isTypingPrice = Boolean(price && price.trim() !== "");
-      const isTypingAw = Boolean(awCount && awCount.trim() !== "");
+      const isTypingPrice = Boolean(price && String(price).trim() !== "");
+      const isTypingAw = Boolean(awCount && String(awCount).trim() !== "");
       const isAwRateMissing = currentSelectedProject?.pricing_mode === "free" && isTypingAw && !currentSelectedProject?.aw_rate;
 
       const handleDirectPriceChange = (val) => {
         setPrice(val);
         if (val && val.trim() !== "") {
-          setAwCount(""); // Deaktivácia a vyčistenie AW
+          setAwCount(""); // Deaktivácia a vyčistenie AW poľa
           setIsPricePending(false);
         }
       };
@@ -279,18 +485,18 @@
             setPrice((count * parseFloat(currentSelectedProject.aw_rate)).toFixed(2));
             setIsPricePending(false);
           } else {
-            setPrice(""); // Sadzba chýba, cena zostáva neznáma
+            setPrice(""); // Sadzba chýba, cena zostáva nevyplnená
           }
         } else {
           setPrice("");
         }
       };
 
-      // Stav možnosti uzavretia zákazky
+      // Pravidlo možnosti uzavretia záznamu
       const canCloseRecord = useMemo(() => {
-        if (isPricePending) return true; // Explicitné odloženie ceny povoľuje uzavretie
+        if (isPricePending) return true; // Explicitné označenie "Cena neznáma" povoľuje uzavretie
         if (currentSelectedProject?.pricing_mode === "free" && isTypingAw && isAwRateMissing) {
-          return false; // Chýbajúca sadzba bez zaškrtnutia blokuje uzavretie
+          return false; // Chýbajúca sadzba AW bez zaškrtnutia blokuje uzavretie
         }
         return true;
       }, [isPricePending, currentSelectedProject, isTypingAw, isAwRateMissing]);
@@ -303,7 +509,7 @@
         return (pdrVal * pdrP + riVal * riP).toFixed(2);
       }, [price, riPrice, currentSelectedProject]);
 
-      // Automatické poradové číslovanie kalkulácie
+      // Sekvenčné číslovanie kalkulácie (neporuší sa pri manuálnom prepise)
       useEffect(() => {
         if (!selectedClientId) return;
         const client = clients.find(c => c.id === selectedClientId);
@@ -326,11 +532,11 @@
         }
       }, [selectedClientId, clients, projects, vehicles]);
 
-      // Generátor kategórií (Cat 1: 350 €)
+      // Generátor kategórií cien (Cat 1: 350 €)
       const handleAddCategoryItem = () => {
         const p = parseFloat(tempCategoryPrice);
         if (isNaN(p) || p <= 0) return alert("Zadajte platnú sumu.");
-        if (projectCategoriesList.length >= 10) return alert("Maximum je 10 kategórií.");
+        if (projectCategoriesList.length >= 10) return alert("Dosiahli ste maximum 10 kategórií.");
 
         const nextCat = { label: `Cat ${projectCategoriesList.length + 1}`, price: p };
         setProjectCategoriesList([...projectCategoriesList, nextCat]);
@@ -342,6 +548,43 @@
         setProjectCategoriesList(reindexed);
       };
 
+      // Autentifikácia
+      const handleAuthSubmit = async (e) => {
+        e.preventDefault();
+        setAuthError("");
+
+        if (isRegistering) {
+          if (authPassword.length < 6) return setAuthError(t.passwordTooShort);
+          if (authPassword !== authConfirmPassword) return setAuthError(t.passwordMismatch);
+
+          const roleToAssign = authAccountType === "company" ? authRole : "solo";
+          const { error } = await supabase.auth.signUp({
+            email: authEmail,
+            password: authPassword,
+            options: { data: { account_type: authAccountType, role: roleToAssign } }
+          });
+          if (error) setAuthError(error.message);
+        } else {
+          const { error } = await supabase.auth.signInWithPassword({ email: authEmail, password: authPassword });
+          if (error) setAuthError(error.message);
+        }
+      };
+
+      const handlePasswordUpdate = async (e) => {
+        e.preventDefault();
+        setSettingsMsg("");
+        if (newAccountPassword.length < 6) return setSettingsMsg("Heslo musí mať aspoň 6 znakov.");
+
+        const { error } = await supabase.auth.updateUser({ password: newAccountPassword });
+        if (error) {
+          setSettingsMsg("Chyba: " + error.message);
+        } else {
+          setSettingsMsg(t.passwordUpdated);
+          setNewAccountPassword("");
+          setTimeout(() => setShowSettingsModal(false), 1500);
+        }
+      };
+
       // Foto záchyt (Kamera aj Galéria)
       const handlePhotoCapture = (e) => {
         const file = e.target.files[0];
@@ -350,14 +593,17 @@
         if (scanStep === 1) {
           setVinFile(file);
           setVinPreview(URL.createObjectURL(file));
-          setTimeout(() => setVin("WVWZZZ3CZWE987654"), 400);
+          setIsAnalyzing(true);
+          setTimeout(() => { setVin("WVWZZZ3CZWE987654"); setIsAnalyzing(false); }, 400);
         } else if (scanStep === 2) {
           setRearFile(file);
           setRearPreview(URL.createObjectURL(file));
+          setIsAnalyzing(true);
           setTimeout(() => {
             setEcv("BL-555YY");
             setBrand("Volkswagen");
             setModel("Passat Variant");
+            setIsAnalyzing(false);
           }, 400);
         } else if (scanStep === 3) {
           setSheetFile(file);
@@ -383,7 +629,7 @@
         return data.publicUrl;
       };
 
-      // Uloženie auta s kontrolou uzavretia
+      // Uloženie vozidla
       const handleSaveVehicle = async (e) => {
         e.preventDefault();
         if (!selectedProjectId) return alert("Vyberte najprv platného Klienta a Miesto.");
@@ -490,13 +736,13 @@
           setVehicles(vehicles.map(v => v.id === vehicleId ? { ...v, price: val, is_price_pending: false, status: "completed" } : v));
           setSelectedVehicleDetail(prev => prev ? { ...prev, price: val, is_price_pending: false, status: "completed" } : null);
           setLatePriceInput("");
-          alert("Cena bola úspešne doplnená a zákazka definitívne uzatvorená.");
+          alert("Cena bola úspešne doplnená.");
         } else {
-          alert("Chyba zápisu ceny: " + error.message);
+          alert("Chyba: " + error.message);
         }
       };
 
-      // Otvorenie a úprava údajov v Bottom Sheete
+      // Bottom Sheet Detail & Úprava (Edit)
       const handleOpenSheet = (type, data) => {
         setActiveBottomSheet({ type, data });
         setSheetEditData({ ...data });
@@ -516,13 +762,26 @@
           }
           setActiveBottomSheet({ type: activeBottomSheet.type, data: sheetEditData });
           setIsEditingSheet(false);
-          alert("Údaje boli úspešne aktualizované.");
+          alert("Údaje boli úspešne upravené.");
         } else {
           alert("Chyba: " + error.message);
         }
       };
 
-      // Filtrovaný súpis pre Reporty
+      const handleToggleArchiveProject = async (pId, currentStatus) => {
+        const nextStatus = !currentStatus;
+        const msg = nextStatus ? "Obnoviť toto miesto do aktívnych?" : "Archivovať toto miesto? Zmizne z ponuky pri skenovaní, no autá v histórii zostanú.";
+        if (!confirm(msg)) return;
+
+        const { error } = await supabase.from("projects").update({ is_active: nextStatus }).eq("id", pId);
+        if (!error) {
+          setProjects(projects.map(p => p.id === pId ? { ...p, is_active: nextStatus } : p));
+        } else {
+          alert("Chyba: " + error.message);
+        }
+      };
+
+      // Filtrovaný zoznam pre Reporty
       const reportVehicles = useMemo(() => {
         return vehicles.filter(v => {
           if (repClientFilter !== "all") {
@@ -564,10 +823,89 @@
         });
         return {
           count: reportVehicles.length,
+          pdr: pdrTotal.toFixed(2),
+          ri: riTotal.toFixed(2),
           gross: (pdrTotal + riTotal).toFixed(2),
           tech: techTotal.toFixed(2)
         };
       }, [reportVehicles]);
+
+      const exportCSV = () => {
+        if (reportVehicles.length === 0) return alert("Žiadne vozidlá na export.");
+
+        const headers = ["Dátum", "Interné číslo", "Číslo kalkulácie", "VIN", "ŠPZ", "Značka a Model", "AW / Kategória", "R&I", "PDR", "Spolu", "Poznámka"];
+        const rows = reportVehicles.map(v => [
+          new Date(v.created_at).toLocaleDateString(),
+          v.internal_record_no || "",
+          v.client_calc_no || "",
+          v.vin || "",
+          v.ecv || "",
+          `${v.brand} ${v.model}`,
+          v.aw_count ? `${v.aw_count} AW` : (v.price_category || ""),
+          v.ri_price || 0,
+          v.price || 0,
+          (Number(v.price) + Number(v.ri_price || 0)).toFixed(2),
+          `"${(v.note || "").replace(/"/g, '""')}"`
+        ]);
+
+        const csvContent = "\uFEFF" + [headers.join(";"), ...rows.map(r => r.join(";"))].join("\n");
+        const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = `PDR_Supis_${new Date().toISOString().slice(0, 10)}.csv`;
+        link.click();
+      };
+
+      const exportPDF = () => {
+        if (reportVehicles.length === 0) return alert("Žiadne vozidlá na export.");
+
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF("landscape", "mm", "a4");
+
+        const clientObj = clients.find(c => c.id === repClientFilter);
+        const projectObj = projects.find(p => p.id === repProjectFilter);
+        const clientName = clientObj ? clientObj.name : "Všetci klienti";
+        const projectName = projectObj ? projectObj.name : "Všetky miesta";
+
+        doc.setFontSize(15);
+        doc.setTextColor(30, 41, 59);
+        doc.text("PDR Súpis vykonaných prác (Príloha k vyúčtovaniu)", 14, 15);
+
+        doc.setFontSize(9);
+        doc.setTextColor(100, 116, 139);
+        doc.text(`Klient: ${clientName} | Miesto: ${projectName} | Mena: ${currency} | Vygenerované: ${new Date().toLocaleDateString()}`, 14, 21);
+        doc.text(`Vozidlá: ${reportTotals.count} ks | Objem spolu: ${reportTotals.gross} ${currSymbol} (PDR: ${reportTotals.pdr} ${currSymbol}, R&I: ${reportTotals.ri} ${currSymbol})`, 14, 26);
+
+        const tableRows = reportVehicles.map((v, index) => [
+          index + 1,
+          v.client_calc_no || "-",
+          v.internal_record_no || "-",
+          v.vin || "-",
+          v.ecv || "-",
+          `${v.brand} ${v.model}`,
+          v.aw_count ? `${v.aw_count} AW` : (v.price_category || "-"),
+          `${Number(v.ri_price || 0).toFixed(2)} ${currSymbol}`,
+          `${Number(v.price || 0).toFixed(2)} ${currSymbol}`,
+          `${(Number(v.price) + Number(v.ri_price || 0)).toFixed(2)} ${currSymbol}`
+        ]);
+
+        doc.autoTable({
+          startY: 30,
+          head: [["#", "Kalkulácia klienta", "Interné č.", "VIN", "ŠPZ", "Vozidlo", "AW / Kat", `R&I (${currSymbol})`, `PDR (${currSymbol})`, `Spolu (${currSymbol})`]],
+          body: tableRows,
+          theme: "grid",
+          headStyles: { fillColor: [245, 158, 11], textColor: [0, 0, 0], fontStyle: "bold", fontSize: 8 },
+          styles: { fontSize: 8, cellPadding: 1.8 },
+          columnStyles: {
+            0: { cellWidth: 8 },
+            1: { cellWidth: 32, fontStyle: "bold" },
+            3: { cellWidth: 38, font: "courier" },
+            9: { halign: "right", fontStyle: "bold" }
+          }
+        });
+
+        doc.save(`PDR_Supis_${clientName.replace(/\s+/g, "_")}_${new Date().toISOString().slice(0, 10)}.pdf`);
+      };
 
       const toggleCurrency = () => {
         const next = currency === "EUR" ? "USD" : "EUR";
@@ -576,14 +914,125 @@
       };
 
       if (loadingUser) {
-        return <div className="p-8 text-amber-500 font-bold text-center"><i className="fa-solid fa-spinner fa-spin text-2xl"></i></div>;
+        return (
+          <div className="flex flex-col items-center justify-center p-8 space-y-3">
+            <i className="fa-solid fa-spinner fa-spin text-amber-500 text-3xl"></i>
+            <p className="text-xs text-gray-400">Načítavam systém...</p>
+          </div>
+        );
       }
 
+      // PRIHLASOVACIA OBRAZOVKA
+      if (!currentUser) {
+        return (
+          <div className="max-w-md w-full p-3">
+            <div className="text-center mb-6 space-y-2">
+              <h1 className="text-3xl font-black tracking-tight">
+                <span className="text-amber-500">PDR</span> <span className="text-gray-200">FlowBoard</span>
+              </h1>
+              <div className="inline-block border border-amber-500/40 px-3 py-0.5 rounded-md bg-amber-500/10">
+                <span className="text-[10px] text-amber-400 font-bold uppercase tracking-[0.2em]">HAIL HAPPENS</span>
+              </div>
+            </div>
+
+            <form onSubmit={handleAuthSubmit} className="bg-gray-800/95 border border-gray-700 rounded-2xl p-5 space-y-4 shadow-2xl">
+              <div className="flex justify-between items-center border-b border-gray-700 pb-3">
+                <h2 className="text-sm font-bold text-amber-400">
+                  {isRegistering ? t.registerTitle : t.loginTitle}
+                </h2>
+                <div className="flex bg-gray-900 border border-gray-700 rounded-lg p-0.5 gap-0.5">
+                  {["SK", "EN", "DE"].map(l => (
+                    <button
+                      key={l}
+                      type="button"
+                      onClick={() => { setLang(l); localStorage.setItem("pdr_lang", l); }}
+                      className={`px-2 py-0.5 text-[10px] font-bold rounded ${lang === l ? "bg-amber-500 text-black" : "text-gray-400 hover:text-white"}`}
+                    >
+                      {l}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {authError && (
+                <div className="bg-red-900/40 border border-red-500/50 text-red-200 text-xs p-2.5 rounded-lg text-center font-medium">
+                  {authError}
+                </div>
+              )}
+
+              {isRegistering && (
+                <div>
+                  <label className="block text-[10px] text-gray-400 mb-1">{t.accountType}</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setAuthAccountType("solo")}
+                      className={`py-2 px-2 text-[11px] font-bold rounded-lg border ${authAccountType === "solo" ? "bg-amber-500 border-amber-400 text-black" : "bg-gray-900 border-gray-700 text-gray-300"}`}
+                    >
+                      {t.soloTech}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setAuthAccountType("company")}
+                      className={`py-2 px-2 text-[11px] font-bold rounded-lg border ${authAccountType === "company" ? "bg-amber-500 border-amber-400 text-black" : "bg-gray-900 border-gray-700 text-gray-300"}`}
+                    >
+                      {t.companyTeam}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {isRegistering && authAccountType === "company" && (
+                <div>
+                  <label className="block text-[10px] text-gray-400 mb-1">{t.roleLabel}</label>
+                  <select 
+                    value={authRole} 
+                    onChange={e => setAuthRole(e.target.value)}
+                    className="w-full bg-gray-900 border border-gray-600 rounded-lg p-2 text-xs text-amber-400 font-bold"
+                  >
+                    <option value="manager">{t.roleManager}</option>
+                    <option value="employee">{t.roleEmployee}</option>
+                  </select>
+                </div>
+              )}
+
+              <div>
+                <label className="block text-[10px] text-gray-400 mb-1">E-mail</label>
+                <input type="email" value={authEmail} onChange={e => setAuthEmail(e.target.value)} placeholder={t.emailPlaceholder} className="w-full bg-gray-900 border border-gray-600 rounded-lg p-2 text-xs text-white" required />
+              </div>
+
+              <div>
+                <label className="block text-[10px] text-gray-400 mb-1">Heslo</label>
+                <input type="password" value={authPassword} onChange={e => setAuthPassword(e.target.value)} placeholder={t.passwordPlaceholder} className="w-full bg-gray-900 border border-gray-600 rounded-lg p-2 text-xs text-white" required />
+              </div>
+
+              {isRegistering && (
+                <div>
+                  <label className="block text-[10px] text-gray-400 mb-1">Potvrdenie hesla</label>
+                  <input type="password" value={authConfirmPassword} onChange={e => setAuthConfirmPassword(e.target.value)} placeholder={t.confirmPasswordPlaceholder} className="w-full bg-gray-900 border border-gray-600 rounded-lg p-2 text-xs text-white" required />
+                </div>
+              )}
+
+              <button type="submit" className="w-full bg-amber-500 hover:bg-amber-400 text-black font-extrabold py-3 rounded-xl text-sm shadow">
+                {isRegistering ? t.registerBtn : t.loginBtn}
+              </button>
+
+              <div className="text-center pt-1">
+                <button type="button" onClick={() => { setIsRegistering(!isRegistering); setAuthError(""); }} className="text-xs text-amber-400 hover:underline">
+                  {isRegistering ? t.switchToLogin : t.switchToReg}
+                </button>
+              </div>
+            </form>
+          </div>
+        );
+      }
+
+      // HLAVNÁ APLIKÁCIA PRE PRIHLÁSENÉHO POUŽÍVATEĽA
       return (
         <div className="max-w-md mx-auto w-full p-2 pb-24">
-          {/* Univerzálne vstupy pre súbory (Kamera aj Knižnica fotiek) */}
           <input type="file" accept="image/*" ref={cameraInputRef} onChange={handlePhotoCapture} className="hidden" />
           <input type="file" accept="image/*" ref={damagePhotoInputRef} onChange={handleDamagePhotoAdd} className="hidden" />
+          <input type="file" accept="image/*" ref={cardClientInputRef} onChange={() => {}} className="hidden" />
 
           {/* NAHRÁVANIE OVERLAY */}
           {isUploading && (
@@ -610,7 +1059,6 @@
                   </button>
                 </div>
 
-                {/* BLOK SPÄTNÉHO DOPLNENIA CENY */}
                 {selectedVehicleDetail.is_price_pending && (
                   <div className="p-3 bg-amber-500/15 border border-amber-500/50 rounded-xl space-y-2">
                     <div className="flex justify-between items-center text-[10px] font-bold text-amber-400">
@@ -750,13 +1198,36 @@
             </div>
           )}
 
+          {/* NASTAVENIA HESLA */}
+          {showSettingsModal && (
+            <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50">
+              <div className="bg-gray-800 border border-gray-700 rounded-xl p-5 w-full max-w-sm space-y-3">
+                <div className="flex justify-between items-center border-b border-gray-700 pb-2">
+                  <h3 className="text-sm font-bold text-amber-400">{t.settingsTitle}</h3>
+                  <button onClick={() => setShowSettingsModal(false)} className="text-gray-400 hover:text-white">
+                    <i className="fa-solid fa-xmark"></i>
+                  </button>
+                </div>
+                {settingsMsg && <p className="text-xs text-center text-amber-300 bg-amber-500/10 p-2 rounded">{settingsMsg}</p>}
+                <form onSubmit={handlePasswordUpdate} className="space-y-3">
+                  <input type="password" value={newAccountPassword} onChange={e => setNewAccountPassword(e.target.value)} placeholder="Nové heslo (min. 6 znakov)" className="w-full bg-gray-900 border border-gray-600 rounded p-2 text-xs text-white" required />
+                  <button type="submit" className="w-full bg-amber-500 text-black font-bold py-2 rounded text-xs shadow">
+                    {t.updatePasswordBtn}
+                  </button>
+                </form>
+              </div>
+            </div>
+          )}
+
           {/* HLAVIČKA A PREPÍNAČ MENY */}
           <header className="flex justify-between items-center mb-2.5 border-b border-gray-800 pb-2">
             <div>
               <h1 className="text-base font-black tracking-tight">
                 <span className="text-amber-500">PDR</span> <span className="text-gray-200">FlowBoard</span>
               </h1>
-              <p className="text-[10px] text-gray-400">{currentUser?.email || "Neprihlásený"}</p>
+              <p className="text-[10px] text-gray-400">
+                {currentUser.accountType === "company" ? `Tím (${currentUser.role})` : "Solo"} | {currentUser.email}
+              </p>
             </div>
             
             <div className="flex items-center gap-1.5">
@@ -766,19 +1237,25 @@
               >
                 {currency} ({currSymbol})
               </button>
+              <button onClick={() => setShowSettingsModal(true)} className="bg-gray-800 border border-gray-600 text-gray-300 px-2 py-1 text-xs rounded hover:text-amber-400">
+                <i className="fa-solid fa-gear"></i>
+              </button>
+              <button onClick={() => { supabase.auth.signOut(); setCurrentUser(null); }} className="bg-gray-800 border border-red-500/50 text-red-400 px-2.5 py-1 text-xs rounded hover:bg-red-500/20">
+                <i className="fa-solid fa-power-off"></i>
+              </button>
             </div>
           </header>
 
-          {/* ZÁLOŽKY */}
+          {/* TAB BAR */}
           <div className="flex bg-gray-800 p-1 rounded-xl mb-3 border border-gray-700">
             <button onClick={() => setActiveTab("vehicles")} className={`flex-1 py-2 text-xs font-bold rounded-lg ${activeTab === "vehicles" ? "bg-amber-500 text-black" : "text-gray-400"}`}>
-              <i className="fa-solid fa-car mr-1"></i>Vozidlá
+              <i className="fa-solid fa-car mr-1"></i>{t.tabVehicles}
             </button>
             <button onClick={() => setActiveTab("projects")} className={`flex-1 py-2 text-xs font-bold rounded-lg ${activeTab === "projects" ? "bg-amber-500 text-black" : "text-gray-400"}`}>
-              <i className="fa-solid fa-warehouse mr-1"></i>Klienti & Miesta
+              <i className="fa-solid fa-warehouse mr-1"></i>{t.tabProjects}
             </button>
             <button onClick={() => setActiveTab("reports")} className={`flex-1 py-2 text-xs font-bold rounded-lg ${activeTab === "reports" ? "bg-amber-500 text-black" : "text-gray-400"}`}>
-              <i className="fa-solid fa-chart-pie mr-1"></i>Súpis ({vehicles.length})
+              <i className="fa-solid fa-chart-pie mr-1"></i>{t.tabReports} ({vehicles.length})
             </button>
           </div>
 
@@ -788,32 +1265,32 @@
               
               <div className="space-y-2 bg-gray-900/60 p-2.5 rounded-lg border border-gray-700">
                 <div className="flex justify-between items-center">
-                  <label className="text-xs font-bold text-gray-300">Klient</label>
+                  <label className="text-xs font-bold text-gray-300">{t.clientLabel}</label>
                   {selectedClientId && (
                     <button type="button" onClick={() => { const c = clients.find(cl => cl.id === selectedClientId); if (c) handleOpenSheet("client", c); }} className="text-[10px] text-amber-400 font-bold hover:underline">
                       <i className="fa-solid fa-circle-info mr-1"></i>Vizitka
                     </button>
                   )}
                 </div>
-                <select value={selectedClientId} onChange={e => { setSelectedClientId(e.target.value); localStorage.setItem("pdr_last_client", e.target.value); }} className="w-full bg-gray-900 border border-gray-600 rounded p-1.5 text-xs text-white font-semibold">
+                <select value={selectedClientId} onChange={e => handleClientChange(e.target.value)} className="w-full bg-gray-900 border border-gray-600 rounded p-1.5 text-xs text-white font-semibold">
                   {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
 
                 <div className="flex justify-between items-center">
-                  <label className="text-xs font-bold text-gray-300">Miesto / Servis</label>
+                  <label className="text-xs font-bold text-gray-300">{t.projectLabel}</label>
                   {selectedProjectId && (
                     <button type="button" onClick={() => { const p = projects.find(pr => pr.id === selectedProjectId); if (p) handleOpenSheet("project", p); }} className="text-[10px] text-amber-400 font-bold hover:underline">
                       <i className="fa-solid fa-location-dot mr-1"></i>Detail servisu
                     </button>
                   )}
                 </div>
-                <select value={selectedProjectId} onChange={e => { setSelectedProjectId(e.target.value); localStorage.setItem("pdr_last_project", e.target.value); }} className="w-full bg-gray-900 border border-gray-600 rounded p-1.5 text-xs text-amber-400 font-bold">
+                <select value={selectedProjectId} onChange={e => handleProjectChange(e.target.value)} className="w-full bg-gray-900 border border-gray-600 rounded p-1.5 text-xs text-amber-400 font-bold">
                   {availableProjects.map(p => (
                     <option key={p.id} value={p.id}>{p.name} {p.address ? `— ${p.address}` : ""}</option>
                   ))}
                 </select>
 
-                <input type="text" value={clientCalcNo} onChange={e => setClientCalcNo(e.target.value)} placeholder="Číslo kalkulácie (Klient)" className="w-full bg-gray-900 border border-amber-500/60 rounded p-1.5 text-xs text-amber-300 font-mono font-bold" />
+                <input type="text" value={clientCalcNo} onChange={e => setClientCalcNo(e.target.value)} placeholder={t.calcNumberLabel} className="w-full bg-gray-900 border border-amber-500/60 rounded p-1.5 text-xs text-amber-300 font-mono font-bold" />
               </div>
 
               {/* FOTO SKEN */}
@@ -824,14 +1301,14 @@
                   className="w-full bg-amber-500 hover:bg-amber-400 text-black font-extrabold py-3.5 rounded-lg text-xs flex justify-center items-center gap-2 shadow tracking-wide uppercase"
                 >
                   <i className="fa-solid fa-camera text-base"></i>
-                  <span>Scan Car (VIN / Auto / Hárok)</span>
+                  <span>{t.scanBtn}</span>
                 </button>
 
                 {scanStep > 0 && (
                   <div className="bg-gray-900 p-2 rounded border border-amber-500/50 flex justify-between items-center text-[10px] font-bold">
-                    <span className={scanStep === 1 ? "text-amber-400 font-black" : "text-gray-500"}>1. VIN</span>
-                    <span className={scanStep === 2 ? "text-amber-400 font-black" : "text-gray-500"}>2. Auto</span>
-                    <span className={scanStep === 3 ? "text-amber-400 font-black" : "text-gray-500"}>3. Hárok</span>
+                    <span className={scanStep === 1 ? "text-amber-400 font-black" : "text-gray-500"}>{t.step1Label}</span>
+                    <span className={scanStep === 2 ? "text-amber-400 font-black" : "text-gray-500"}>{t.step2Label}</span>
+                    <span className={scanStep === 3 ? "text-amber-400 font-black" : "text-gray-500"}>{t.step3Label}</span>
                     {scanStep === 1 && vinPreview && <button type="button" onClick={() => { setScanStep(2); if (cameraInputRef.current) cameraInputRef.current.click(); }} className="bg-amber-500 text-black px-2 py-0.5 rounded text-[9px]">Dalej ➔</button>}
                     {scanStep === 2 && rearPreview && <button type="button" onClick={() => { setScanStep(3); if (cameraInputRef.current) cameraInputRef.current.click(); }} className="bg-amber-500 text-black px-2 py-0.5 rounded text-[9px]">Dalej ➔</button>}
                   </div>
@@ -847,15 +1324,15 @@
               {/* VOZIDLO A FARBA */}
               <div className="space-y-2">
                 <div className="grid grid-cols-2 gap-2">
-                  <input type="text" value={vin} onChange={e => setVin(e.target.value)} placeholder="VIN kód" className="w-full bg-gray-900 border border-gray-600 rounded p-1.5 text-xs text-amber-400 font-mono font-bold uppercase" />
-                  <input type="text" value={hasNoEcv ? "Bez ŠPZ" : ecv} disabled={hasNoEcv} onChange={e => setEcv(e.target.value)} placeholder="ŠPZ" className="w-full bg-gray-900 border border-gray-600 rounded p-1.5 text-xs uppercase text-amber-400 font-bold" />
+                  <input type="text" value={vin} onChange={e => setVin(e.target.value)} placeholder={t.vin} className="w-full bg-gray-900 border border-gray-600 rounded p-1.5 text-xs text-amber-400 font-mono font-bold uppercase" />
+                  <input type="text" value={hasNoEcv ? "Bez ŠPZ" : ecv} disabled={hasNoEcv} onChange={e => setEcv(e.target.value)} placeholder={t.ecv} className="w-full bg-gray-900 border border-gray-600 rounded p-1.5 text-xs uppercase text-amber-400 font-bold" />
                 </div>
                 <div className="grid grid-cols-2 gap-2">
-                  <input type="text" value={brand} onChange={e => setBrand(e.target.value)} placeholder="Značka" className="w-full bg-gray-900 border border-gray-600 rounded p-1.5 text-xs text-white" />
-                  <input type="text" value={model} onChange={e => setModel(e.target.value)} placeholder="Model" className="w-full bg-gray-900 border border-gray-600 rounded p-1.5 text-xs text-white" />
+                  <input type="text" value={brand} onChange={e => setBrand(e.target.value)} placeholder={t.brand} className="w-full bg-gray-900 border border-gray-600 rounded p-1.5 text-xs text-white" />
+                  <input type="text" value={model} onChange={e => setModel(e.target.value)} placeholder={t.model} className="w-full bg-gray-900 border border-gray-600 rounded p-1.5 text-xs text-white" />
                 </div>
                 <div className="flex gap-1 overflow-x-auto pb-1">
-                  {COLOR_OPTIONS.map(c => (
+                  {colorOptions.map(c => (
                     <button
                       key={c}
                       type="button"
@@ -872,19 +1349,18 @@
               <div className="p-2.5 bg-gray-900/80 rounded-xl border border-gray-700 space-y-2.5">
                 <div className="flex justify-between items-center">
                   <label className="text-xs font-bold text-gray-300">
-                    Cena opravy ({currSymbol})
+                    {t.priceLabel} ({currSymbol})
                     {currentSelectedProject?.pricing_mode === "fixed" && <span className="ml-1 text-[10px] text-amber-400 font-normal">(Fix)</span>}
                     {currentSelectedProject?.pricing_mode === "categories" && <span className="ml-1 text-[10px] text-amber-400 font-normal">(Výber Cat)</span>}
                   </label>
                   <label className="text-[10px] text-amber-400 flex items-center gap-1 font-bold cursor-pointer">
                     <input type="checkbox" checked={isPricePending} onChange={e => setIsPricePending(e.target.checked)} />
-                    Cena neznáma
+                    {t.pricePendingCheckbox}
                   </label>
                 </div>
 
                 {!isPricePending && (
                   <div>
-                    {/* REŽIM KATEGÓRIÍ */}
                     {currentSelectedProject?.pricing_mode === "categories" && currentSelectedProject.pricing_categories?.length > 0 ? (
                       <div className="space-y-1.5">
                         <div className="grid grid-cols-3 gap-1.5">
@@ -905,11 +1381,9 @@
                         </div>
                       </div>
                     ) : (
-                      /* REŽIM FREE ALEBO FIXED */
                       <div className="space-y-2">
                         {currentSelectedProject?.pricing_mode === "free" ? (
                           <div className="grid grid-cols-2 gap-2">
-                            {/* POLE CENA (€/$) */}
                             <div>
                               <label className="block text-[9px] text-gray-400 mb-0.5">PDR Cena ({currSymbol})</label>
                               <input 
@@ -927,7 +1401,6 @@
                               />
                             </div>
 
-                            {/* POLE AW S OŠETRENÍM CHÝBAJÚCEJ SADZBY */}
                             <div>
                               <div className="flex justify-between items-center mb-0.5">
                                 <label className="text-[9px] text-gray-400">Počet AW</label>
@@ -966,7 +1439,7 @@
                         {isAwRateMissing && (
                           <p className="text-[9px] text-amber-400 font-bold bg-amber-500/10 p-1.5 rounded border border-amber-500/30">
                             <i className="fa-solid fa-triangle-exclamation mr-1"></i>
-                            Chýba sadzba za 1 AW na karte Miesta. Doplnte sadzbu alebo označte „Cena neznáma“.
+                            Chýba sadzba za 1 AW na karte Miesta. Doplňte sadzbu alebo označte „Cena neznáma“.
                           </p>
                         )}
                       </div>
@@ -979,7 +1452,7 @@
                   inputMode="decimal"
                   value={riPrice} 
                   onChange={e => setRiPrice(e.target.value)} 
-                  placeholder={`R&I Cena (Demontáž ${currSymbol})`} 
+                  placeholder={`${t.riPriceLabel} (${currSymbol})`} 
                   className="w-full bg-gray-900 border border-gray-600 rounded p-1.5 text-xs text-amber-400 font-bold" 
                 />
 
@@ -1010,16 +1483,22 @@
                     : "bg-amber-500 hover:bg-amber-400 text-black"
                 }`}
               >
-                {isUploading ? "Nahrávam..." : (!canCloseRecord ? "Blokované (Doplňte sadzbu AW)" : "Uložiť vozidlo")}
+                {isUploading ? "Nahrávam..." : (!canCloseRecord ? "Blokované (Doplňte sadzbu AW)" : t.saveVehicle)}
               </button>
             </form>
           ) : activeTab === "projects" ? (
             /* 2. KARTA: KLIENTI & MIESTA */
             <div className="space-y-3">
-              <button onClick={() => setShowNewClientForm(!showNewClientForm)} className="w-full bg-amber-500 hover:bg-amber-400 text-black font-extrabold py-2 px-3 rounded-xl text-xs flex items-center justify-center gap-1.5 shadow">
-                <i className="fa-solid fa-plus"></i>
-                <span>+ Nový Klient</span>
-              </button>
+              <div className="flex gap-2">
+                <button onClick={() => setShowNewClientForm(!showNewClientForm)} className="flex-1 bg-amber-500 hover:bg-amber-400 text-black font-extrabold py-2 px-3 rounded-xl text-xs flex items-center justify-center gap-1.5 shadow">
+                  <i className="fa-solid fa-plus"></i>
+                  <span>{t.addClientBtn}</span>
+                </button>
+                <button onClick={() => { if (cardClientInputRef.current) cardClientInputRef.current.click(); }} className="bg-gray-800 border border-amber-500/40 text-amber-400 font-bold py-2 px-3 rounded-xl text-xs flex items-center justify-center gap-1.5">
+                  <i className="fa-solid fa-id-card"></i>
+                  <span>{t.scanCardBtn}</span>
+                </button>
+              </div>
 
               {showNewClientForm && (
                 <form onSubmit={async (e) => {
@@ -1035,8 +1514,11 @@
                   }]).select();
                   if (!error && data) {
                     setClients([...clients, data[0]]);
-                    setSelectedClientId(data[0].id);
+                    handleClientChange(data[0].id);
                     setNewClientName("");
+                    setNewClientPrefix("");
+                    setNewClientAddress("");
+                    setNewClientPhone("");
                     setShowNewClientForm(false);
                   }
                 }} className="bg-gray-800 p-3.5 rounded-xl border border-amber-500/50 space-y-2">
@@ -1045,21 +1527,37 @@
                     <input type="text" value={newClientPrefix} onChange={e => setNewClientPrefix(e.target.value)} placeholder="Predpona (DNK)" className="bg-gray-900 border border-gray-600 rounded p-1.5 text-xs text-amber-400 font-mono uppercase" />
                     <input type="text" value={newClientPhone} onChange={e => setNewClientPhone(e.target.value)} placeholder="Telefón" className="bg-gray-900 border border-gray-600 rounded p-1.5 text-xs text-white" />
                   </div>
+                  <input type="text" value={newClientAddress} onChange={e => setNewClientAddress(e.target.value)} placeholder="Adresa sídla" className="w-full bg-gray-900 border border-gray-700 rounded p-1.5 text-xs text-gray-200" />
                   <button type="submit" className="w-full bg-amber-500 text-black font-extrabold py-1.5 rounded text-xs shadow">Uložiť klienta</button>
                 </form>
               )}
+
+              <div className="flex justify-end px-1">
+                <button onClick={() => setShowArchivedProjects(!showArchivedProjects)} className="text-[10px] text-amber-400 font-bold underline">
+                  {showArchivedProjects ? "Skryť archivované miesta" : "Zobraziť archivované miesta"}
+                </button>
+              </div>
 
               <div className="space-y-2.5">
                 {clients.map(c => {
                   const clientProjects = projects.filter(p => p.client_id === c.id && (showArchivedProjects ? true : p.is_active !== false));
                   const isOpen = selectedClientDetailId === c.id;
 
+                  const filteredLocations = clientProjects.filter(p => {
+                    if (!locationSearchFilter.trim()) return true;
+                    const f = locationSearchFilter.toLowerCase();
+                    return (p.name && p.name.toLowerCase().includes(f)) || (p.address && p.address.toLowerCase().includes(f));
+                  });
+
                   return (
                     <div key={c.id} className="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden">
                       <div onClick={() => setSelectedClientDetailId(isOpen ? null : c.id)} className="p-3 flex justify-between items-center cursor-pointer hover:bg-gray-750">
                         <div>
-                          <h4 className="font-extrabold text-white text-sm">{c.name}</h4>
-                          <p className="text-[10px] text-gray-400">{clientProjects.length} miest</p>
+                          <div className="flex items-center gap-2">
+                            <h4 className="font-extrabold text-white text-sm">{c.name}</h4>
+                            {c.calc_prefix && <span className="text-[9px] bg-amber-500/20 text-amber-300 px-1 py-0.5 rounded font-mono font-bold">{c.calc_prefix}</span>}
+                          </div>
+                          <p className="text-[10px] text-gray-400 mt-0.5">{clientProjects.length} miest</p>
                         </div>
                         <div className="flex items-center gap-2">
                           <button type="button" onClick={(e) => { e.stopPropagation(); handleOpenSheet("client", c); }} className="text-xs px-2 py-1 rounded border bg-gray-900 text-amber-400 border-gray-700 font-bold">
@@ -1071,9 +1569,12 @@
 
                       {isOpen && (
                         <div className="p-3 bg-gray-900/70 border-t border-gray-700 space-y-2.5">
-                          <button onClick={() => { setAddingProjectClientId(addingProjectClientId === c.id ? null : c.id); setProjectCategoriesList([]); }} className="w-full bg-amber-500 text-black font-extrabold py-1.5 rounded text-xs shadow">
-                            + Pridať miesto pod {c.name}
-                          </button>
+                          <div className="flex justify-between items-center gap-2">
+                            <input type="text" value={locationSearchFilter} onChange={e => setLocationSearchFilter(e.target.value)} placeholder={t.searchLocationsPlaceholder} className="flex-1 bg-gray-950 border border-gray-700 rounded-lg px-2.5 py-1 text-xs text-white" />
+                            <button onClick={() => { setAddingProjectClientId(addingProjectClientId === c.id ? null : c.id); setProjectCategoriesList([]); }} className="bg-amber-500 hover:bg-amber-400 text-black font-extrabold px-2.5 py-1 rounded-lg text-xs shadow whitespace-nowrap">
+                              + Miesto
+                            </button>
+                          </div>
 
                           {addingProjectClientId === c.id && (
                             <div className="bg-gray-950 p-2.5 rounded-xl border border-amber-500/50 space-y-2">
@@ -1143,7 +1644,7 @@
 
                                 if (!error && data) {
                                   setProjects([...projects, data[0]]);
-                                  setSelectedProjectId(data[0].id);
+                                  handleProjectChange(data[0].id);
                                   setNewProjectName("");
                                   setProjectCategoriesList([]);
                                   setAddingProjectClientId(null);
@@ -1153,15 +1654,28 @@
                           )}
 
                           <div className="space-y-1">
-                            {clientProjects.map(p => (
-                              <div key={p.id} className="text-xs p-2 rounded border bg-gray-950 border-gray-800 flex justify-between items-center">
+                            {filteredLocations.map(p => (
+                              <div key={p.id} className={`text-xs p-2 rounded border flex justify-between items-center ${p.is_active === false ? "bg-red-950/20 border-red-900/40 opacity-70" : "bg-gray-950 border-gray-800"}`}>
                                 <div>
-                                  <span className="font-bold text-white">{p.name}</span>
-                                  <span className="ml-1 text-[8px] uppercase bg-gray-800 text-amber-400 px-1 rounded font-bold">{p.pricing_mode}</span>
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="font-bold text-white">{p.name}</span>
+                                    <span className="text-[8px] uppercase bg-gray-800 text-amber-400 px-1 py-0.2 rounded font-bold">{p.pricing_mode}</span>
+                                    {p.is_active === false && <span className="text-[8px] bg-red-900 text-red-200 px-1 py-0.2 rounded uppercase font-bold">Archivované</span>}
+                                  </div>
+                                  {p.address && <p className="text-[9px] text-gray-400 mt-0.5">{p.address}</p>}
                                 </div>
-                                <button type="button" onClick={() => handleOpenSheet("project", p)} className="text-[10px] px-2 py-1 bg-gray-900 border border-gray-700 rounded text-amber-400 font-bold">
-                                  Detail / Edit
-                                </button>
+                                <div className="flex items-center gap-1.5">
+                                  <button type="button" onClick={() => handleOpenSheet("project", p)} className="text-[10px] px-2 py-1 bg-gray-900 border border-gray-700 rounded text-amber-400 font-bold">
+                                    Detail / Edit
+                                  </button>
+                                  <button 
+                                    type="button" 
+                                    onClick={() => handleToggleArchiveProject(p.id, p.is_active !== false)}
+                                    className={`text-[9px] px-2 py-1 rounded font-bold border ${p.is_active === false ? "bg-gray-800 text-green-400 border-green-600/50" : "bg-gray-900 text-red-400 border-red-500/40"}`}
+                                  >
+                                    {p.is_active === false ? "Obnoviť" : "Archivovať"}
+                                  </button>
+                                </div>
                               </div>
                             ))}
                           </div>
@@ -1173,17 +1687,44 @@
               </div>
             </div>
           ) : (
-            /* 3. KARTA: REPORTY */
+            /* 3. KARTA: SÚPIS & REPORTY (PÁROVACÍ REPORT) */
             <div className="space-y-3">
-              <input 
-                type="text" 
-                value={repSearchQuery} 
-                onChange={e => setRepSearchQuery(e.target.value)} 
-                placeholder="Rýchle hľadanie (Audi Q5, VIN, ŠPZ)..." 
-                className="w-full bg-gray-800 border border-gray-700 rounded-lg p-1.5 text-xs text-white"
-              />
+              <div className="bg-gray-800 p-2.5 rounded-xl border border-gray-700 space-y-2">
+                <input 
+                  type="text" 
+                  value={repSearchQuery} 
+                  onChange={e => setRepSearchQuery(e.target.value)} 
+                  placeholder={t.searchPlaceholder} 
+                  className="w-full bg-gray-900 border border-gray-700 rounded-lg p-1.5 text-xs text-white"
+                />
 
-              <div className="grid grid-cols-2 gap-2 text-center">
+                <div className="grid grid-cols-3 gap-1.5 text-[10px]">
+                  <select value={repClientFilter} onChange={e => { setRepClientFilter(e.target.value); setRepProjectFilter("all"); }} className="bg-gray-900 border border-gray-700 rounded p-1 text-white">
+                    <option value="all">Všetci klienti</option>
+                    {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </select>
+
+                  <select value={repProjectFilter} onChange={e => setRepProjectFilter(e.target.value)} className="bg-gray-900 border border-gray-700 rounded p-1 text-amber-400">
+                    <option value="all">Všetky miesta</option>
+                    {projects.filter(p => repClientFilter === "all" || p.client_id === repClientFilter).map(p => (
+                      <option key={p.id} value={p.id}>{p.name}</option>
+                    ))}
+                  </select>
+
+                  <select value={repDateRange} onChange={e => setRepDateRange(e.target.value)} className="bg-gray-900 border border-gray-700 rounded p-1 text-white">
+                    <option value="all">Všetky dátumy</option>
+                    <option value="month">Posledných 30 dní</option>
+                    <option value="week">Posledných 7 dní</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* SÚČTOVÉ KARTY */}
+              <div className="grid grid-cols-3 gap-1.5 text-center">
+                <div className="bg-gray-800 p-2 rounded-xl border border-gray-700">
+                  <span className="text-[9px] text-gray-400 uppercase font-bold">Vozidlá</span>
+                  <p className="text-sm font-black text-white">{reportTotals.count} ks</p>
+                </div>
                 <div className="bg-gray-800 p-2 rounded-xl border border-gray-700">
                   <span className="text-[9px] text-gray-400 uppercase font-bold">Fakturované</span>
                   <p className="text-sm font-black text-amber-400">{reportTotals.gross} {currSymbol}</p>
@@ -1194,29 +1735,50 @@
                 </div>
               </div>
 
+              {/* EXPORT TLAČIDLÁ */}
+              <div className="flex gap-2">
+                <button onClick={exportPDF} className="flex-1 bg-amber-500 hover:bg-amber-400 text-black font-extrabold py-2 px-3 rounded-xl text-xs flex items-center justify-center gap-1.5 shadow">
+                  <i className="fa-solid fa-file-pdf"></i>
+                  <span>Stiahnuť PDF súpis (A4)</span>
+                </button>
+                <button onClick={exportCSV} className="bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-300 font-bold py-2 px-3 rounded-xl text-xs flex items-center justify-center gap-1.5">
+                  <i className="fa-solid fa-file-csv"></i>
+                  <span>CSV</span>
+                </button>
+              </div>
+
+              {/* ŽIVÝ ZOZNAM S PÁROVANÍM */}
               <div className="space-y-1.5">
-                {reportVehicles.map(v => (
-                  <div key={v.id} onClick={() => { setSelectedVehicleDetail(v); setLatePriceInput(""); }} className="bg-gray-800 p-2.5 rounded-xl border border-gray-700 flex justify-between items-center cursor-pointer hover:border-amber-500/50">
-                    <div>
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-xs font-bold text-amber-400 font-mono">{v.client_calc_no || "Bez kalkulácie"}</span>
-                        <span className="text-xs font-bold text-white">{v.brand} {v.model}</span>
+                {reportVehicles.length === 0 ? (
+                  <p className="p-6 text-center text-xs text-gray-500">{t.noVehicles}</p>
+                ) : (
+                  reportVehicles.map(v => (
+                    <div key={v.id} onClick={() => { setSelectedVehicleDetail(v); setLatePriceInput(""); }} className="bg-gray-800 p-2.5 rounded-xl border border-gray-700 flex justify-between items-center cursor-pointer hover:border-amber-500/50">
+                      <div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs font-bold text-amber-400 font-mono">{v.client_calc_no || "Bez kalkulácie"}</span>
+                          <span className="text-xs font-bold text-white">{v.brand} {v.model}</span>
+                        </div>
+                        <p className="text-[9px] text-gray-400 font-mono">VIN: {v.vin} | ŠPZ: {v.ecv}</p>
+                        {v.note && <p className="text-[9px] text-yellow-400 truncate max-w-[200px]"><i className="fa-solid fa-shield-halved mr-1"></i>{v.note}</p>}
                       </div>
-                      <p className="text-[9px] text-gray-400 font-mono">VIN: {v.vin} | {v.ecv}</p>
+                      <div className="text-right">
+                        {v.is_price_pending ? (
+                          <span className="text-[10px] bg-yellow-500/20 text-yellow-300 font-bold px-2 py-0.5 rounded border border-yellow-500/30">
+                            {v.aw_count ? `${v.aw_count} AW` : "Cena neznáma"}
+                          </span>
+                        ) : (
+                          <div>
+                            <span className="text-xs bg-amber-500/20 text-amber-300 font-bold px-2 py-0.5 rounded">
+                              {(Number(v.price) + Number(v.ri_price || 0)).toFixed(2)} {currSymbol}
+                            </span>
+                            <p className="text-[8px] text-gray-400 mt-0.5">Podiel: ~{((Number(v.price) * (v.tech_pdr_percent/100)) + (Number(v.ri_price || 0) * (v.tech_ri_percent/100))).toFixed(2)} {currSymbol}</p>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                    <div className="text-right">
-                      {v.is_price_pending ? (
-                        <span className="text-[10px] bg-yellow-500/20 text-yellow-300 font-bold px-2 py-0.5 rounded border border-yellow-500/30">
-                          {v.aw_count ? `${v.aw_count} AW` : "Cena neznáma"}
-                        </span>
-                      ) : (
-                        <span className="text-xs bg-amber-500/20 text-amber-300 font-bold px-2 py-0.5 rounded">
-                          {(Number(v.price) + Number(v.ri_price || 0)).toFixed(2)} {currSymbol}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
             </div>
           )}
