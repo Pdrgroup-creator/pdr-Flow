@@ -42,7 +42,7 @@
     const SUPABASE_KEY = "sb_publishable_5lQPiP19Qy2xwDq6eUXDmQ_MB5IYkHQ";
     const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    // Zoznam štátov Európy s vlajočkami a predvoľbami
+    // Zoznam štátov Európy s vlajočkami a predvoľbami (bez medzery)
     const EUROPEAN_COUNTRIES = [
       { code: "DE", flag: "🇩🇪", name: { EN: "Germany", DE: "Deutschland", SK: "Nemecko" }, dial: "+49" },
       { code: "AT", flag: "🇦🇹", name: { EN: "Austria", DE: "Österreich", SK: "Rakúsko" }, dial: "+43" },
@@ -233,7 +233,7 @@
         countryPlaceholder: "Search Country (Type 1-2 letters)...",
         contactPersonPlaceholder: "Contact person",
         phonePlaceholder: "Phone (+49...)",
-        icoPlaceholder: "Company ID / VAT ID (Optional)",
+        icoPlaceholder: "Company ID / VAT ID",
         defaultPdrPercentLabel: "Default % PDR",
         defaultRiPercentLabel: "Default % R&I",
         partnerBadge: "Partner",
@@ -349,7 +349,7 @@
         countryPlaceholder: "Land suchen (1-2 Buchstaben tippen)...",
         contactPersonPlaceholder: "Ansprechpartner",
         phonePlaceholder: "Telefon (+49...)",
-        icoPlaceholder: "USt-IdNr. / Steuernummer (Optional)",
+        icoPlaceholder: "USt-IdNr. / Steuernummer",
         defaultPdrPercentLabel: "Standard % Dellenreparatur",
         defaultRiPercentLabel: "Standard % Demontage",
         partnerBadge: "Partner",
@@ -381,7 +381,7 @@
         pricePendingCheckbox: "Cena neznáma",
         riPriceLabel: "R&I Cena (Demontáž)",
         saveVehicle: "Uložiť vozidlo",
-        addClientBtn: "Priraď klienta",
+        addClientBtn: "Pridať klienta",
         addLocationBtn: "Pridať lokáciu",
         noVehicles: "Zatiaľ nie sú zaevidované žiadne vozidlá.",
         loginTitle: "Prihlásenie",
@@ -465,11 +465,11 @@
         countryPlaceholder: "Hľadať štát (napíš 1-2 písmená)...",
         contactPersonPlaceholder: "Meno kontaktu",
         phonePlaceholder: "Telefón (+421...)",
-        icoPlaceholder: "IČO / UID (voliteľné)",
+        icoPlaceholder: "IČO / UID",
         defaultPdrPercentLabel: "Predvolené % PDR",
         defaultRiPercentLabel: "Predvolené % R&I",
         partnerBadge: "Partner",
-        addCatBtn: "+ Prídat Cat"
+        addCatBtn: "+ Pridať Cat"
       }
     };
 
@@ -479,24 +479,24 @@
       SK: ["Január", "Február", "Marec", "Apríl", "Máj", "Jún", "Júl", "August", "September", "Október", "November", "December"]
     };
 
-    // Tiché filtre znakov (Silent Sanitization)
+    // Tiché filtre znakov bez medzier a s tvrdým orezaním dĺžky
     const sanitizePhone = (val) => {
       if (!val) return "";
-      let cleaned = val.replace(/[^\d+\s]/g, "");
+      let cleaned = val.replace(/[^\d+]/g, ""); // Nulové medzery
       if (cleaned.indexOf("+") > 0) {
         cleaned = cleaned.charAt(0) === "+" ? "+" + cleaned.slice(1).replace(/\+/g, "") : cleaned.replace(/\+/g, "");
       }
-      return cleaned;
+      return cleaned.slice(0, 16); // Max 16 znakov
     };
 
     const sanitizePostalCode = (val) => {
       if (!val) return "";
-      return val.toUpperCase().replace(/[^A-Z0-9\s]/g, "").slice(0, 10);
+      return val.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 8); // Bez medzier, max 8 znakov
     };
 
     const sanitizeIco = (val) => {
       if (!val) return "";
-      return val.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 16);
+      return val.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 14); // Bez medzier, max 14 znakov
     };
 
     // Pomocná komponenta pre výber Štátu s bleskovým filtrom (Typeahead)
@@ -758,7 +758,7 @@
       const [newClientCity, setNewClientCity] = useState("");
       const [newClientPostalCode, setNewClientPostalCode] = useState("");
       const [newClientContactPerson, setNewClientContactPerson] = useState("");
-      const [newClientPhone, setNewClientPhone] = useState("+49 ");
+      const [newClientPhone, setNewClientPhone] = useState("+49");
       const [newClientIco, setNewClientIco] = useState("");
       const [newClientDefaultPdr, setNewClientDefaultPdr] = useState("");
       const [newClientDefaultRi, setNewClientDefaultRi] = useState("");
@@ -774,7 +774,7 @@
       const [newProjectCity, setNewProjectCity] = useState("");
       const [newProjectPostalCode, setNewProjectPostalCode] = useState("");
       const [newProjectContactPerson, setNewProjectContactPerson] = useState("");
-      const [newProjectPhone, setNewProjectPhone] = useState("+49 ");
+      const [newProjectPhone, setNewProjectPhone] = useState("+49");
       const [newProjectPricingMode, setNewProjectPricingMode] = useState("free");
       const [newProjectFixedPrice, setNewProjectFixedPrice] = useState("");
       const [projectCategoriesList, setProjectCategoriesList] = useState([]);
@@ -1974,9 +1974,7 @@
                       <CountryPicker 
                         selectedCode={sheetEditData.country_code || "DE"} 
                         onSelect={(c) => {
-                          let ph = sheetEditData.phone || "";
-                          if (!ph || ph.startsWith("+")) ph = c.dial + " ";
-                          setSheetEditData({ ...sheetEditData, country_code: c.code, phone: ph });
+                          setSheetEditData({ ...sheetEditData, country_code: c.code, phone: c.dial });
                         }} 
                         lang={lang} 
                         placeholder={t.countryPlaceholder} 
@@ -1996,7 +1994,7 @@
                     <div className="grid grid-cols-3 gap-2">
                       <div>
                         <label className="text-[9px] text-gray-400 uppercase">{t.postalCodePlaceholder}</label>
-                        <input type="text" value={sheetEditData.postal_code || ""} onChange={e => setSheetEditData({ ...sheetEditData, postal_code: sanitizePostalCode(e.target.value) })} className="w-full bg-gray-950 border border-gray-700 rounded p-1.5 text-white uppercase font-mono" />
+                        <input type="text" maxLength={8} value={sheetEditData.postal_code || ""} onChange={e => setSheetEditData({ ...sheetEditData, postal_code: sanitizePostalCode(e.target.value) })} className="w-full bg-gray-950 border border-gray-700 rounded p-1.5 text-white uppercase font-mono" />
                       </div>
                       <div className="col-span-2">
                         <label className="text-[9px] text-gray-400 uppercase">{t.cityPlaceholder}</label>
@@ -2011,7 +2009,7 @@
                       </div>
                       <div>
                         <label className="text-[9px] text-gray-400 uppercase">{t.phonePlaceholder}</label>
-                        <input type="tel" value={sheetEditData.phone || ""} onChange={e => setSheetEditData({ ...sheetEditData, phone: sanitizePhone(e.target.value) })} className="w-full bg-gray-950 border border-gray-700 rounded p-1.5 text-white font-mono" />
+                        <input type="tel" maxLength={16} value={sheetEditData.phone || ""} onChange={e => setSheetEditData({ ...sheetEditData, phone: sanitizePhone(e.target.value) })} className="w-full bg-gray-950 border border-gray-700 rounded p-1.5 text-white font-mono" />
                       </div>
                     </div>
 
@@ -2133,7 +2131,7 @@
                     )}
 
                     {activeBottomSheet.data.phone && (
-                      <a href={`tel:${activeBottomSheet.data.phone.replace(/\s+/g, "")}`} className="flex items-center gap-2.5 p-2.5 bg-gray-800 rounded-xl border border-gray-700">
+                      <a href={`tel:${activeBottomSheet.data.phone}`} className="flex items-center gap-2.5 p-2.5 bg-gray-800 rounded-xl border border-gray-700">
                         <i className="fa-solid fa-phone text-green-400"></i>
                         <span className="text-white font-bold">{activeBottomSheet.data.phone}</span>
                         <span className="ml-auto bg-green-500/20 text-green-300 text-[9px] font-bold px-2 py-0.5 rounded">{t.callBtn}</span>
@@ -2145,7 +2143,7 @@
             </div>
           )}
 
-          {/* HLAVIČKA APLIKÁCIE (ROLE TECHNICIAN / TECHNIK) */}
+          {/* HLAVIČKA APLIKÁCIE */}
           <header className="flex justify-between items-center mb-2.5 border-b border-gray-800 pb-2">
             <div>
               <h1 className="text-base font-black tracking-tight">
@@ -2500,7 +2498,7 @@
                 <span>{t.addClientBtn}</span>
               </button>
 
-              {/* FORMULÁR NOVÉHO KLIENTA SO ŠTÁTOM, PSČ A MESTOM */}
+              {/* FORMULÁR NOVÉHO KLIENTA */}
               {showNewClientForm && (
                 <form onSubmit={async (e) => {
                   e.preventDefault();
@@ -2531,7 +2529,7 @@
                     setNewClientCity("");
                     setNewClientPostalCode("");
                     setNewClientContactPerson("");
-                    setNewClientPhone("+49 ");
+                    setNewClientPhone("+49");
                     setNewClientIco("");
                     setNewClientDefaultPdr("");
                     setNewClientDefaultRi("");
@@ -2565,7 +2563,7 @@
                       selectedCode={newClientCountry} 
                       onSelect={(c) => {
                         setNewClientCountry(c.code);
-                        setNewClientPhone(c.dial + " ");
+                        setNewClientPhone(c.dial);
                       }} 
                       lang={lang} 
                       placeholder={t.countryPlaceholder} 
@@ -2577,7 +2575,7 @@
                   
                   <div className="grid grid-cols-3 gap-2">
                     <div>
-                      <input type="text" value={newClientPostalCode} onChange={e => setNewClientPostalCode(sanitizePostalCode(e.target.value))} placeholder={t.postalCodePlaceholder} className="w-full bg-gray-900 border border-gray-700 rounded p-1.5 text-xs text-gray-200 uppercase font-mono" />
+                      <input type="text" maxLength={8} value={newClientPostalCode} onChange={e => setNewClientPostalCode(sanitizePostalCode(e.target.value))} placeholder={t.postalCodePlaceholder} className="w-full bg-gray-900 border border-gray-700 rounded p-1.5 text-xs text-gray-200 uppercase font-mono" />
                     </div>
                     <div className="col-span-2">
                       <input type="text" value={newClientCity} onChange={e => setNewClientCity(e.target.value)} placeholder={t.cityPlaceholder} className="w-full bg-gray-900 border border-gray-700 rounded p-1.5 text-xs text-gray-200 font-semibold" />
@@ -2586,9 +2584,9 @@
                   
                   <div className="grid grid-cols-2 gap-2">
                     <input type="text" value={newClientContactPerson} onChange={e => setNewClientContactPerson(e.target.value)} placeholder={t.contactPersonPlaceholder} className="bg-gray-900 border border-gray-700 rounded p-1.5 text-xs text-gray-200" />
-                    <input type="tel" value={newClientPhone} onChange={e => setNewClientPhone(sanitizePhone(e.target.value))} placeholder={t.phonePlaceholder} className="bg-gray-900 border border-gray-700 rounded p-1.5 text-xs text-gray-200 font-mono" />
+                    <input type="tel" maxLength={16} value={newClientPhone} onChange={e => setNewClientPhone(sanitizePhone(e.target.value))} placeholder={t.phonePlaceholder} className="bg-gray-900 border border-gray-700 rounded p-1.5 text-xs text-gray-200 font-mono" />
                   </div>
-                  <input type="text" value={newClientIco} onChange={e => setNewClientIco(sanitizeIco(e.target.value))} placeholder={t.icoPlaceholder} className="w-full bg-gray-900 border border-gray-700 rounded p-1.5 text-xs text-gray-200 uppercase font-mono" />
+                  <input type="text" maxLength={14} value={newClientIco} onChange={e => setNewClientIco(sanitizeIco(e.target.value))} placeholder={t.icoPlaceholder} className="w-full bg-gray-900 border border-gray-700 rounded p-1.5 text-xs text-gray-200 uppercase font-mono" />
 
                   <div className="grid grid-cols-2 gap-2 pt-1 border-t border-gray-700">
                     <div>
@@ -2698,7 +2696,7 @@
                                   selectedCode={newProjectCountry} 
                                   onSelect={(cou) => {
                                     setNewProjectCountry(cou.code);
-                                    setNewProjectPhone(cou.dial + " ");
+                                    setNewProjectPhone(cou.dial);
                                   }} 
                                   lang={lang} 
                                   placeholder={t.countryPlaceholder} 
@@ -2710,7 +2708,7 @@
                               
                               <div className="grid grid-cols-3 gap-1.5">
                                 <div>
-                                  <input type="text" value={newProjectPostalCode} onChange={e => setNewProjectPostalCode(sanitizePostalCode(e.target.value))} placeholder={t.postalCodePlaceholder} className="w-full bg-gray-900 border border-gray-700 rounded p-1 text-xs text-gray-200 uppercase font-mono" />
+                                  <input type="text" maxLength={8} value={newProjectPostalCode} onChange={e => setNewProjectPostalCode(sanitizePostalCode(e.target.value))} placeholder={t.postalCodePlaceholder} className="w-full bg-gray-900 border border-gray-700 rounded p-1 text-xs text-gray-200 uppercase font-mono" />
                                 </div>
                                 <div className="col-span-2">
                                   <input type="text" value={newProjectCity} onChange={e => setNewProjectCity(e.target.value)} placeholder={t.cityPlaceholder} className="w-full bg-gray-900 border border-gray-700 rounded p-1 text-xs text-gray-200 font-semibold" />
@@ -2719,7 +2717,7 @@
 
                               <div className="grid grid-cols-2 gap-1.5">
                                 <input type="text" value={newProjectContactPerson} onChange={e => setNewProjectContactPerson(e.target.value)} placeholder={t.contactPersonPlaceholder} className="bg-gray-900 border border-gray-700 rounded p-1 text-xs text-gray-200" />
-                                <input type="tel" value={newProjectPhone} onChange={e => setNewProjectPhone(sanitizePhone(e.target.value))} placeholder={t.phonePlaceholder} className="bg-gray-900 border border-gray-700 rounded p-1 text-xs text-gray-200 font-mono" />
+                                <input type="tel" maxLength={16} value={newProjectPhone} onChange={e => setNewProjectPhone(sanitizePhone(e.target.value))} placeholder={t.phonePlaceholder} className="bg-gray-900 border border-gray-700 rounded p-1 text-xs text-gray-200 font-mono" />
                               </div>
 
                               <div className="grid grid-cols-3 gap-1 pt-1">
@@ -2811,7 +2809,7 @@
                                   setNewProjectCity("");
                                   setNewProjectPostalCode("");
                                   setNewProjectContactPerson("");
-                                  setNewProjectPhone("+49 ");
+                                  setNewProjectPhone("+49");
                                   setProjectCategoriesList([]);
                                   setAddingProjectClientId(null);
                                 } else {
