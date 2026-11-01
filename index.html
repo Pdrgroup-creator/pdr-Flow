@@ -44,46 +44,46 @@
 
     // Zoznam štátov Európy s vlajočkami a predvoľbami
     const EUROPEAN_COUNTRIES = [
-      { code: "DE", flag: "🇩🇪", name: { EN: "Germany", DE: "Deutschland", SK: "Nemecko" }, dial: "+49", zipLen: 5 },
-      { code: "AT", flag: "🇦🇹", name: { EN: "Austria", DE: "Österreich", SK: "Rakúsko" }, dial: "+43", zipLen: 4 },
-      { code: "SK", flag: "🇸🇰", name: { EN: "Slovakia", DE: "Slowakei", SK: "Slovensko" }, dial: "+421", zipLen: 5 },
-      { code: "CZ", flag: "🇨🇿", name: { EN: "Czech Republic", DE: "Tschechien", SK: "Česko" }, dial: "+420", zipLen: 5 },
-      { code: "NL", flag: "🇳🇱", name: { EN: "Netherlands", DE: "Niederlande", SK: "Holandsko" }, dial: "+31", zipLen: 6 },
-      { code: "BE", flag: "🇧🇪", name: { EN: "Belgium", DE: "Belgien", SK: "Belgicko" }, dial: "+32", zipLen: 4 },
-      { code: "FR", flag: "🇫🇷", name: { EN: "France", DE: "Frankreich", SK: "Francúzsko" }, dial: "+33", zipLen: 5 },
-      { code: "IT", flag: "🇮🇹", name: { EN: "Italy", DE: "Italien", SK: "Taliansko" }, dial: "+39", zipLen: 5 },
-      { code: "CH", flag: "🇨🇭", name: { EN: "Switzerland", DE: "Schweiz", SK: "Švajčiarsko" }, dial: "+41", zipLen: 4 },
-      { code: "PL", flag: "🇵🇱", name: { EN: "Poland", DE: "Polen", SK: "Poľsko" }, dial: "+48", zipLen: 5 },
-      { code: "HU", flag: "🇭🇺", name: { EN: "Hungary", DE: "Ungarn", SK: "Maďarsko" }, dial: "+36", zipLen: 4 },
-      { code: "ES", flag: "🇪🇸", name: { EN: "Spain", DE: "Spanien", SK: "Španielsko" }, dial: "+34", zipLen: 5 },
-      { code: "PT", flag: "🇵🇹", name: { EN: "Portugal", DE: "Portugal", SK: "Portugalsko" }, dial: "+351", zipLen: 7 },
-      { code: "SE", flag: "🇸🇪", name: { EN: "Sweden", DE: "Schweden", SK: "Švédsko" }, dial: "+46", zipLen: 5 },
-      { code: "NO", flag: "🇳🇴", name: { EN: "Norway", DE: "Norwegen", SK: "Nórsko" }, dial: "+47", zipLen: 4 },
-      { code: "DK", flag: "🇩🇰", name: { EN: "Denmark", DE: "Dänemark", SK: "Dánsko" }, dial: "+45", zipLen: 4 },
-      { code: "FI", flag: "🇫🇮", name: { EN: "Finland", DE: "Finnland", SK: "Fínsko" }, dial: "+358", zipLen: 5 },
-      { code: "GB", flag: "🇬🇧", name: { EN: "United Kingdom", DE: "Großbritannien", SK: "Veľká Británia" }, dial: "+44", zipLen: 7 },
-      { code: "IE", flag: "🇮🇪", name: { EN: "Ireland", DE: "Irland", SK: "Írsko" }, dial: "+353", zipLen: 7 },
-      { code: "HR", flag: "🇭🇷", name: { EN: "Croatia", DE: "Kroatien", SK: "Chorvátsko" }, dial: "+385", zipLen: 5 },
-      { code: "SI", flag: "🇸🇮", name: { EN: "Slovenia", DE: "Slowenien", SK: "Slovinsko" }, dial: "+386", zipLen: 4 },
-      { code: "RO", flag: "🇷🇴", name: { EN: "Romania", DE: "Rumänien", SK: "Rumunsko" }, dial: "+40", zipLen: 6 },
-      { code: "BG", flag: "🇧🇬", name: { EN: "Bulgaria", DE: "Bulgarien", SK: "Bulharsko" }, dial: "+359", zipLen: 4 },
-      { code: "GR", flag: "🇬🇷", name: { EN: "Greece", DE: "Griechenland", SK: "Grécko" }, dial: "+30", zipLen: 5 },
-      { code: "LU", flag: "🇱🇺", name: { EN: "Luxembourg", DE: "Luxemburg", SK: "Luxembursko" }, dial: "+352", zipLen: 4 },
-      { code: "LI", flag: "🇱🇮", name: { EN: "Liechtenstein", DE: "Liechtenstein", SK: "Lichtenštajnsko" }, dial: "+423", zipLen: 4 },
-      { code: "EE", flag: "🇪🇪", name: { EN: "Estonia", DE: "Estland", SK: "Estónsko" }, dial: "+372", zipLen: 5 },
-      { code: "LV", flag: "🇱🇻", name: { EN: "Latvia", DE: "Lettland", SK: "Lotyšsko" }, dial: "+371", zipLen: 4 },
-      { code: "LT", flag: "🇱🇹", name: { EN: "Lithuania", DE: "Litauen", SK: "Litva" }, dial: "+370", zipLen: 5 },
-      { code: "RS", flag: "🇷🇸", name: { EN: "Serbia", DE: "Serbien", SK: "Srbsko" }, dial: "+381", zipLen: 5 },
-      { code: "BA", flag: "🇧🇦", name: { EN: "Bosnia & Herz.", DE: "Bosnien & Herz.", SK: "Bosna a Herc." }, dial: "+387", zipLen: 5 },
-      { code: "ME", flag: "🇲🇪", name: { EN: "Montenegro", DE: "Montenegro", SK: "Čierna Hora" }, dial: "+382", zipLen: 5 },
-      { code: "MK", flag: "🇲🇰", name: { EN: "North Macedonia", DE: "Nordmazedonien", SK: "Sev. Macedónsko" }, dial: "+389", zipLen: 4 },
-      { code: "AL", flag: "🇦🇱", name: { EN: "Albania", DE: "Albanien", SK: "Albánsko" }, dial: "+355", zipLen: 4 },
-      { code: "IS", flag: "🇮🇸", name: { EN: "Iceland", DE: "Island", SK: "Island" }, dial: "+354", zipLen: 3 },
-      { code: "CY", flag: "🇨🇾", name: { EN: "Cyprus", DE: "Zypern", SK: "Cyprus" }, dial: "+357", zipLen: 4 },
-      { code: "MT", flag: "🇲🇹", name: { EN: "Malta", DE: "Malta", SK: "Malta" }, dial: "+356", zipLen: 4 },
-      { code: "MC", flag: "🇲🇨", name: { EN: "Monaco", DE: "Monaco", SK: "Monako" }, dial: "+377", zipLen: 5 },
-      { code: "SM", flag: "🇸🇲", name: { EN: "San Marino", DE: "San Marino", SK: "San Maríno" }, dial: "+378", zipLen: 5 },
-      { code: "UA", flag: "🇺🇦", name: { EN: "Ukraine", DE: "Ukraine", SK: "Ukrajina" }, dial: "+380", zipLen: 5 }
+      { code: "DE", flag: "🇩🇪", name: { EN: "Germany", DE: "Deutschland", SK: "Nemecko" }, dial: "+49" },
+      { code: "AT", flag: "🇦🇹", name: { EN: "Austria", DE: "Österreich", SK: "Rakúsko" }, dial: "+43" },
+      { code: "SK", flag: "🇸🇰", name: { EN: "Slovakia", DE: "Slowakei", SK: "Slovensko" }, dial: "+421" },
+      { code: "CZ", flag: "🇨🇿", name: { EN: "Czech Republic", DE: "Tschechien", SK: "Česko" }, dial: "+420" },
+      { code: "NL", flag: "🇳🇱", name: { EN: "Netherlands", DE: "Niederlande", SK: "Holandsko" }, dial: "+31" },
+      { code: "BE", flag: "🇧🇪", name: { EN: "Belgium", DE: "Belgien", SK: "Belgicko" }, dial: "+32" },
+      { code: "FR", flag: "🇫🇷", name: { EN: "France", DE: "Frankreich", SK: "Francúzsko" }, dial: "+33" },
+      { code: "IT", flag: "🇮🇹", name: { EN: "Italy", DE: "Italien", SK: "Taliansko" }, dial: "+39" },
+      { code: "CH", flag: "🇨🇭", name: { EN: "Switzerland", DE: "Schweiz", SK: "Švajčiarsko" }, dial: "+41" },
+      { code: "PL", flag: "🇵🇱", name: { EN: "Poland", DE: "Polen", SK: "Poľsko" }, dial: "+48" },
+      { code: "HU", flag: "🇭🇺", name: { EN: "Hungary", DE: "Ungarn", SK: "Maďarsko" }, dial: "+36" },
+      { code: "ES", flag: "🇪🇸", name: { EN: "Spain", DE: "Spanien", SK: "Španielsko" }, dial: "+34" },
+      { code: "PT", flag: "🇵🇹", name: { EN: "Portugal", DE: "Portugal", SK: "Portugalsko" }, dial: "+351" },
+      { code: "SE", flag: "🇸🇪", name: { EN: "Sweden", DE: "Schweden", SK: "Švédsko" }, dial: "+46" },
+      { code: "NO", flag: "🇳🇴", name: { EN: "Norway", DE: "Norwegen", SK: "Nórsko" }, dial: "+47" },
+      { code: "DK", flag: "🇩🇰", name: { EN: "Denmark", DE: "Dänemark", SK: "Dánsko" }, dial: "+45" },
+      { code: "FI", flag: "🇫🇮", name: { EN: "Finland", DE: "Finnland", SK: "Fínsko" }, dial: "+358" },
+      { code: "GB", flag: "🇬🇧", name: { EN: "United Kingdom", DE: "Großbritannien", SK: "Veľká Británia" }, dial: "+44" },
+      { code: "IE", flag: "🇮🇪", name: { EN: "Ireland", DE: "Irland", SK: "Írsko" }, dial: "+353" },
+      { code: "HR", flag: "🇭🇷", name: { EN: "Croatia", DE: "Kroatien", SK: "Chorvátsko" }, dial: "+385" },
+      { code: "SI", flag: "🇸🇮", name: { EN: "Slovenia", DE: "Slowenien", SK: "Slovinsko" }, dial: "+386" },
+      { code: "RO", flag: "🇷🇴", name: { EN: "Romania", DE: "Rumänien", SK: "Rumunsko" }, dial: "+40" },
+      { code: "BG", flag: "🇧🇬", name: { EN: "Bulgaria", DE: "Bulgarien", SK: "Bulharsko" }, dial: "+359" },
+      { code: "GR", flag: "🇬🇷", name: { EN: "Greece", DE: "Griechenland", SK: "Grécko" }, dial: "+30" },
+      { code: "LU", flag: "🇱🇺", name: { EN: "Luxembourg", DE: "Luxemburg", SK: "Luxembursko" }, dial: "+352" },
+      { code: "LI", flag: "🇱🇮", name: { EN: "Liechtenstein", DE: "Liechtenstein", SK: "Lichtenštajnsko" }, dial: "+423" },
+      { code: "EE", flag: "🇪🇪", name: { EN: "Estonia", DE: "Estland", SK: "Estónsko" }, dial: "+372" },
+      { code: "LV", flag: "🇱🇻", name: { EN: "Latvia", DE: "Lettland", SK: "Lotyšsko" }, dial: "+371" },
+      { code: "LT", flag: "🇱🇹", name: { EN: "Lithuania", DE: "Litauen", SK: "Litva" }, dial: "+370" },
+      { code: "RS", flag: "🇷🇸", name: { EN: "Serbia", DE: "Serbien", SK: "Srbsko" }, dial: "+381" },
+      { code: "BA", flag: "🇧🇦", name: { EN: "Bosnia & Herz.", DE: "Bosnien & Herz.", SK: "Bosna a Herc." }, dial: "+387" },
+      { code: "ME", flag: "🇲🇪", name: { EN: "Montenegro", DE: "Montenegro", SK: "Čierna Hora" }, dial: "+382" },
+      { code: "MK", flag: "🇲🇰", name: { EN: "North Macedonia", DE: "Nordmazedonien", SK: "Sev. Macedónsko" }, dial: "+389" },
+      { code: "AL", flag: "🇦🇱", name: { EN: "Albania", DE: "Albanien", SK: "Albánsko" }, dial: "+355" },
+      { code: "IS", flag: "🇮🇸", name: { EN: "Iceland", DE: "Island", SK: "Island" }, dial: "+354" },
+      { code: "CY", flag: "🇨🇾", name: { EN: "Cyprus", DE: "Zypern", SK: "Cyprus" }, dial: "+357" },
+      { code: "MT", flag: "🇲🇹", name: { EN: "Malta", DE: "Malta", SK: "Malta" }, dial: "+356" },
+      { code: "MC", flag: "🇲🇨", name: { EN: "Monaco", DE: "Monaco", SK: "Monako" }, dial: "+377" },
+      { code: "SM", flag: "🇸🇲", name: { EN: "San Marino", DE: "San Marino", SK: "San Maríno" }, dial: "+378" },
+      { code: "UA", flag: "🇺🇦", name: { EN: "Ukraine", DE: "Ukraine", SK: "Ukrajina" }, dial: "+380" }
     ];
 
     const WMI_MAP = {
@@ -124,6 +124,8 @@
 
     const TRANSLATIONS = {
       EN: {
+        roleTechLabel: "Technician",
+        roleManagerLabel: "Manager",
         tabVehicles1: "Intake",
         tabVehicles2: "Vehicles",
         tabProjects1: "Clients &",
@@ -147,8 +149,8 @@
         pricePendingCheckbox: "Price unknown",
         riPriceLabel: "R&I Price (Disassembly)",
         saveVehicle: "Save Vehicle",
-        addClientBtn: "+ Add Client",
-        addLocationBtn: "+ Add Location",
+        addClientBtn: "Add Client",
+        addLocationBtn: "Add Location",
         noVehicles: "No vehicles recorded yet.",
         loginTitle: "Sign In",
         registerTitle: "Register",
@@ -160,7 +162,7 @@
         loginBtn: "Sign In",
         registerBtn: "Register",
         accountType: "Account Type",
-        soloTech: "Solo Tech",
+        soloTech: "Technician",
         companyTeam: "Company / Team",
         roleLabel: "Role",
         roleManager: "Manager",
@@ -226,6 +228,7 @@
         seqStartPart: "Start Counter",
         clientNamePlaceholder: "Company name",
         clientAddressPlaceholder: "Street and number",
+        cityPlaceholder: "City",
         postalCodePlaceholder: "Postal Code (ZIP)",
         countryPlaceholder: "Search Country (Type 1-2 letters)...",
         contactPersonPlaceholder: "Contact person",
@@ -237,6 +240,8 @@
         addCatBtn: "+ Add Cat"
       },
       DE: {
+        roleTechLabel: "Techniker",
+        roleManagerLabel: "Manager",
         tabVehicles1: "Erfassung",
         tabVehicles2: "Fahrzeuge",
         tabProjects1: "Kunden &",
@@ -260,8 +265,8 @@
         pricePendingCheckbox: "Preis unbekannt",
         riPriceLabel: "R&I Demontage",
         saveVehicle: "Fahrzeug speichern",
-        addClientBtn: "+ Kunde hinzufügen",
-        addLocationBtn: "+ Standort hinzufügen",
+        addClientBtn: "Kunde hinzufügen",
+        addLocationBtn: "Standort hinzufügen",
         noVehicles: "Keine Fahrzeuge erfasst.",
         loginTitle: "Anmeldung",
         registerTitle: "Registrierung",
@@ -273,7 +278,7 @@
         loginBtn: "Anmelden",
         registerBtn: "Registrieren",
         accountType: "Kontotyp",
-        soloTech: "Solo-Techniker",
+        soloTech: "Techniker",
         companyTeam: "Unternehmen / Team",
         roleLabel: "Rolle",
         roleManager: "Manager",
@@ -339,6 +344,7 @@
         seqStartPart: "Startzähler",
         clientNamePlaceholder: "Firmenname",
         clientAddressPlaceholder: "Straße und Hausnummer",
+        cityPlaceholder: "Stadt",
         postalCodePlaceholder: "Postleitzahl (PLZ)",
         countryPlaceholder: "Land suchen (1-2 Buchstaben tippen)...",
         contactPersonPlaceholder: "Ansprechpartner",
@@ -350,6 +356,8 @@
         addCatBtn: "+ Cat"
       },
       SK: {
+        roleTechLabel: "Technik",
+        roleManagerLabel: "Manažér",
         tabVehicles1: "Evidencia",
         tabVehicles2: "Vozidlá",
         tabProjects1: "Klienti &",
@@ -373,8 +381,8 @@
         pricePendingCheckbox: "Cena neznáma",
         riPriceLabel: "R&I Cena (Demontáž)",
         saveVehicle: "Uložiť vozidlo",
-        addClientBtn: "+ Pridať klienta",
-        addLocationBtn: "+ Pridať lokáciu",
+        addClientBtn: "Priraď klienta",
+        addLocationBtn: "Pridať lokáciu",
         noVehicles: "Zatiaľ nie sú zaevidované žiadne vozidlá.",
         loginTitle: "Prihlásenie",
         registerTitle: "Registrácia",
@@ -386,7 +394,7 @@
         loginBtn: "Prihlásiť sa",
         registerBtn: "Zaregistrovať sa",
         accountType: "Typ účtu",
-        soloTech: "Solo Technik",
+        soloTech: "Technik",
         companyTeam: "Firma / Tím",
         roleLabel: "Moja rola",
         roleManager: "Manažér",
@@ -452,6 +460,7 @@
         seqStartPart: "Počiatočné číslo",
         clientNamePlaceholder: "Názov firmy",
         clientAddressPlaceholder: "Ulica a číslo",
+        cityPlaceholder: "Mesto",
         postalCodePlaceholder: "PSČ",
         countryPlaceholder: "Hľadať štát (napíš 1-2 písmená)...",
         contactPersonPlaceholder: "Meno kontaktu",
@@ -460,7 +469,7 @@
         defaultPdrPercentLabel: "Predvolené % PDR",
         defaultRiPercentLabel: "Predvolené % R&I",
         partnerBadge: "Partner",
-        addCatBtn: "+ Pridať Cat"
+        addCatBtn: "+ Prídat Cat"
       }
     };
 
@@ -468,6 +477,26 @@
       EN: ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"],
       DE: ["Januar", "Februar", "März", "April", "Mai", "Juni", "Juli", "August", "September", "Oktober", "November", "Dezember"],
       SK: ["Január", "Február", "Marec", "Apríl", "Máj", "Jún", "Júl", "August", "September", "Október", "November", "December"]
+    };
+
+    // Tiché filtre znakov (Silent Sanitization)
+    const sanitizePhone = (val) => {
+      if (!val) return "";
+      let cleaned = val.replace(/[^\d+\s]/g, "");
+      if (cleaned.indexOf("+") > 0) {
+        cleaned = cleaned.charAt(0) === "+" ? "+" + cleaned.slice(1).replace(/\+/g, "") : cleaned.replace(/\+/g, "");
+      }
+      return cleaned;
+    };
+
+    const sanitizePostalCode = (val) => {
+      if (!val) return "";
+      return val.toUpperCase().replace(/[^A-Z0-9\s]/g, "").slice(0, 10);
+    };
+
+    const sanitizeIco = (val) => {
+      if (!val) return "";
+      return val.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 16);
     };
 
     // Pomocná komponenta pre výber Štátu s bleskovým filtrom (Typeahead)
@@ -669,7 +698,6 @@
       clean = clean.replace(/O/g, "0").replace(/I/g, "1").replace(/Q/g, "0");
       return clean.substring(0, 17);
     };
-
     function App() {
       const [lang, setLang] = useState(() => localStorage.getItem("pdr_lang") || "EN");
       const [currency, setCurrency] = useState(() => localStorage.getItem("pdr_curr") || "EUR");
@@ -727,9 +755,10 @@
       const [newClientCountry, setNewClientCountry] = useState("DE");
       const [newClientName, setNewClientName] = useState("");
       const [newClientAddress, setNewClientAddress] = useState("");
+      const [newClientCity, setNewClientCity] = useState("");
       const [newClientPostalCode, setNewClientPostalCode] = useState("");
       const [newClientContactPerson, setNewClientContactPerson] = useState("");
-      const [newClientPhone, setNewClientPhone] = useState("+49");
+      const [newClientPhone, setNewClientPhone] = useState("+49 ");
       const [newClientIco, setNewClientIco] = useState("");
       const [newClientDefaultPdr, setNewClientDefaultPdr] = useState("");
       const [newClientDefaultRi, setNewClientDefaultRi] = useState("");
@@ -742,9 +771,10 @@
       const [newProjectCountry, setNewProjectCountry] = useState("DE");
       const [newProjectName, setNewProjectName] = useState("");
       const [newProjectAddress, setNewProjectAddress] = useState("");
+      const [newProjectCity, setNewProjectCity] = useState("");
       const [newProjectPostalCode, setNewProjectPostalCode] = useState("");
       const [newProjectContactPerson, setNewProjectContactPerson] = useState("");
-      const [newProjectPhone, setNewProjectPhone] = useState("+49");
+      const [newProjectPhone, setNewProjectPhone] = useState("+49 ");
       const [newProjectPricingMode, setNewProjectPricingMode] = useState("free");
       const [newProjectFixedPrice, setNewProjectFixedPrice] = useState("");
       const [projectCategoriesList, setProjectCategoriesList] = useState([]);
@@ -1705,6 +1735,10 @@
       }
 
       // HLAVNÁ OBRAZOVKA
+      const userDisplayRole = currentUser.accountType === "company" 
+        ? (currentUser.role === "manager" ? t.roleManagerLabel : t.roleTechLabel)
+        : t.roleTechLabel;
+
       return (
         <div className="max-w-md mx-auto w-full p-2 pb-24">
           <input type="file" accept="image/*" ref={cameraInputRef} onChange={handlePhotoCapture} className="hidden" />
@@ -1719,7 +1753,7 @@
             </div>
           )}
 
-          {/* DETAIL KARTA VOZIDLA (OPRAVENÁ ŠÍRKA NA PC) */}
+          {/* DETAIL KARTA VOZIDLA */}
           {selectedVehicleDetail && (
             <div className="fixed inset-0 bg-black/85 z-50 flex flex-col justify-end">
               <div className="fixed inset-0" onClick={() => setSelectedVehicleDetail(null)}></div>
@@ -1910,7 +1944,7 @@
             </div>
           )}
 
-          {/* BOTTOM SHEET DETAIL & PLNÁ EDITÁCIA (OPRAVENÁ ŠÍRKA NA PC) */}
+          {/* BOTTOM SHEET DETAIL & PLNÁ EDITÁCIA */}
           {activeBottomSheet && (
             <div className="fixed inset-0 bg-black/80 z-50 flex flex-col justify-end">
               <div className="fixed inset-0" onClick={() => { setActiveBottomSheet(null); setIsEditingSheet(false); }}></div>
@@ -1935,7 +1969,6 @@
 
                 {isEditingSheet ? (
                   <div className="space-y-2.5 text-xs">
-                    {/* Výber štátu v editácii */}
                     <div>
                       <label className="text-[9px] text-gray-400 uppercase">Country</label>
                       <CountryPicker 
@@ -1955,14 +1988,19 @@
                       <input type="text" value={sheetEditData.name || ""} onChange={e => setSheetEditData({ ...sheetEditData, name: e.target.value })} className="w-full bg-gray-950 border border-gray-700 rounded p-1.5 text-white" />
                     </div>
 
+                    <div>
+                      <label className="text-[9px] text-gray-400 uppercase">{t.clientAddressPlaceholder}</label>
+                      <input type="text" value={sheetEditData.address || ""} onChange={e => setSheetEditData({ ...sheetEditData, address: e.target.value })} className="w-full bg-gray-950 border border-gray-700 rounded p-1.5 text-white" />
+                    </div>
+
                     <div className="grid grid-cols-3 gap-2">
-                      <div className="col-span-2">
-                        <label className="text-[9px] text-gray-400 uppercase">{t.clientAddressPlaceholder}</label>
-                        <input type="text" value={sheetEditData.address || ""} onChange={e => setSheetEditData({ ...sheetEditData, address: e.target.value })} className="w-full bg-gray-950 border border-gray-700 rounded p-1.5 text-white" />
-                      </div>
                       <div>
                         <label className="text-[9px] text-gray-400 uppercase">{t.postalCodePlaceholder}</label>
-                        <input type="text" value={sheetEditData.postal_code || ""} onChange={e => setSheetEditData({ ...sheetEditData, postal_code: e.target.value })} className="w-full bg-gray-950 border border-gray-700 rounded p-1.5 text-white uppercase font-mono" />
+                        <input type="text" value={sheetEditData.postal_code || ""} onChange={e => setSheetEditData({ ...sheetEditData, postal_code: sanitizePostalCode(e.target.value) })} className="w-full bg-gray-950 border border-gray-700 rounded p-1.5 text-white uppercase font-mono" />
+                      </div>
+                      <div className="col-span-2">
+                        <label className="text-[9px] text-gray-400 uppercase">{t.cityPlaceholder}</label>
+                        <input type="text" value={sheetEditData.city || ""} onChange={e => setSheetEditData({ ...sheetEditData, city: e.target.value })} className="w-full bg-gray-950 border border-gray-700 rounded p-1.5 text-white" />
                       </div>
                     </div>
 
@@ -1973,7 +2011,7 @@
                       </div>
                       <div>
                         <label className="text-[9px] text-gray-400 uppercase">{t.phonePlaceholder}</label>
-                        <input type="text" value={sheetEditData.phone || ""} onChange={e => setSheetEditData({ ...sheetEditData, phone: e.target.value })} className="w-full bg-gray-950 border border-gray-700 rounded p-1.5 text-white font-mono" />
+                        <input type="tel" value={sheetEditData.phone || ""} onChange={e => setSheetEditData({ ...sheetEditData, phone: sanitizePhone(e.target.value) })} className="w-full bg-gray-950 border border-gray-700 rounded p-1.5 text-white font-mono" />
                       </div>
                     </div>
 
@@ -2070,7 +2108,7 @@
                     
                     {activeBottomSheet.data.address ? (
                       <a 
-                        href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${activeBottomSheet.data.address} ${activeBottomSheet.data.postal_code || ""} ${activeBottomSheet.data.country_code || ""}`)}`} 
+                        href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${activeBottomSheet.data.address || ""}, ${activeBottomSheet.data.postal_code || ""} ${activeBottomSheet.data.city || ""}, ${activeBottomSheet.data.country_code || ""}`)}`} 
                         target="_blank" 
                         rel="noopener noreferrer" 
                         className="flex items-start gap-2.5 p-2.5 bg-gray-800 rounded-xl border border-gray-700 hover:border-amber-500/50"
@@ -2078,7 +2116,10 @@
                         <i className="fa-solid fa-location-dot text-amber-400 mt-0.5"></i>
                         <div>
                           <p className="text-[9px] text-gray-400 font-bold uppercase">{t.clientAddressPlaceholder}</p>
-                          <p className="text-white font-medium">{activeBottomSheet.data.address} {activeBottomSheet.data.postal_code ? `(${activeBottomSheet.data.postal_code})` : ""}</p>
+                          <p className="text-white font-medium">
+                            {activeBottomSheet.data.address}
+                            {activeBottomSheet.data.postal_code || activeBottomSheet.data.city ? ` — ${activeBottomSheet.data.postal_code || ""} ${activeBottomSheet.data.city || ""}` : ""}
+                          </p>
                           <span className="text-[9px] text-amber-400 underline mt-0.5 inline-block">{t.navigateBtn}</span>
                         </div>
                       </a>
@@ -2104,14 +2145,14 @@
             </div>
           )}
 
-          {/* HLAVIČKA APLIKÁCIE */}
+          {/* HLAVIČKA APLIKÁCIE (ROLE TECHNICIAN / TECHNIK) */}
           <header className="flex justify-between items-center mb-2.5 border-b border-gray-800 pb-2">
             <div>
               <h1 className="text-base font-black tracking-tight">
                 <span className="text-amber-500">PDR</span> <span className="text-gray-200">FlowBoard</span>
               </h1>
               <p className="text-[10px] text-gray-400">
-                {currentUser.accountType === "company" ? `Team (${currentUser.role})` : "Solo"} | {currentUser.email}
+                {userDisplayRole} | {currentUser.email}
               </p>
             </div>
             
@@ -2183,7 +2224,7 @@
                 </div>
                 <select value={selectedProjectId} onChange={e => handleProjectChange(e.target.value)} className="w-full bg-gray-900 border border-gray-600 rounded p-1.5 text-xs text-amber-400 font-bold">
                   {availableProjects.map(p => (
-                    <option key={p.id} value={p.id}>{p.name} {p.address ? `— ${p.address}` : ""}</option>
+                    <option key={p.id} value={p.id}>{p.name} {p.city ? `(${p.city})` : ""}</option>
                   ))}
                 </select>
 
@@ -2459,7 +2500,7 @@
                 <span>{t.addClientBtn}</span>
               </button>
 
-              {/* FORMULÁR NOVÉHO KLIENTA SO ŠTÁTOM */}
+              {/* FORMULÁR NOVÉHO KLIENTA SO ŠTÁTOM, PSČ A MESTOM */}
               {showNewClientForm && (
                 <form onSubmit={async (e) => {
                   e.preventDefault();
@@ -2469,6 +2510,7 @@
                     name: newClientName.trim(), 
                     country_code: newClientCountry,
                     address: newClientAddress.trim() || null,
+                    city: newClientCity.trim() || null,
                     postal_code: newClientPostalCode.trim() || null,
                     contact_person: newClientContactPerson.trim() || null,
                     phone: newClientPhone.trim() || null,
@@ -2486,9 +2528,10 @@
                     handleClientChange(data[0].id);
                     setNewClientName("");
                     setNewClientAddress("");
+                    setNewClientCity("");
                     setNewClientPostalCode("");
                     setNewClientContactPerson("");
-                    setNewClientPhone("+49");
+                    setNewClientPhone("+49 ");
                     setNewClientIco("");
                     setNewClientDefaultPdr("");
                     setNewClientDefaultRi("");
@@ -2530,17 +2573,22 @@
                   </div>
 
                   <input type="text" value={newClientName} onChange={e => setNewClientName(e.target.value)} placeholder={t.clientNamePlaceholder} className="w-full bg-gray-900 border border-gray-600 rounded p-1.5 text-xs text-white font-bold" required />
+                  <input type="text" value={newClientAddress} onChange={e => setNewClientAddress(e.target.value)} placeholder={t.clientAddressPlaceholder} className="w-full bg-gray-900 border border-gray-700 rounded p-1.5 text-xs text-gray-200" />
                   
                   <div className="grid grid-cols-3 gap-2">
-                    <input type="text" value={newClientAddress} onChange={e => setNewClientAddress(e.target.value)} placeholder={t.clientAddressPlaceholder} className="col-span-2 bg-gray-900 border border-gray-700 rounded p-1.5 text-xs text-gray-200" />
-                    <input type="text" value={newClientPostalCode} onChange={e => setNewClientPostalCode(e.target.value)} placeholder={t.postalCodePlaceholder} className="bg-gray-900 border border-gray-700 rounded p-1.5 text-xs text-gray-200 uppercase font-mono" />
+                    <div>
+                      <input type="text" value={newClientPostalCode} onChange={e => setNewClientPostalCode(sanitizePostalCode(e.target.value))} placeholder={t.postalCodePlaceholder} className="w-full bg-gray-900 border border-gray-700 rounded p-1.5 text-xs text-gray-200 uppercase font-mono" />
+                    </div>
+                    <div className="col-span-2">
+                      <input type="text" value={newClientCity} onChange={e => setNewClientCity(e.target.value)} placeholder={t.cityPlaceholder} className="w-full bg-gray-900 border border-gray-700 rounded p-1.5 text-xs text-gray-200 font-semibold" />
+                    </div>
                   </div>
                   
                   <div className="grid grid-cols-2 gap-2">
                     <input type="text" value={newClientContactPerson} onChange={e => setNewClientContactPerson(e.target.value)} placeholder={t.contactPersonPlaceholder} className="bg-gray-900 border border-gray-700 rounded p-1.5 text-xs text-gray-200" />
-                    <input type="text" value={newClientPhone} onChange={e => setNewClientPhone(e.target.value)} placeholder={t.phonePlaceholder} className="bg-gray-900 border border-gray-700 rounded p-1.5 text-xs text-gray-200 font-mono" />
+                    <input type="tel" value={newClientPhone} onChange={e => setNewClientPhone(sanitizePhone(e.target.value))} placeholder={t.phonePlaceholder} className="bg-gray-900 border border-gray-700 rounded p-1.5 text-xs text-gray-200 font-mono" />
                   </div>
-                  <input type="text" value={newClientIco} onChange={e => setNewClientIco(e.target.value)} placeholder={t.icoPlaceholder} className="w-full bg-gray-900 border border-gray-700 rounded p-1.5 text-xs text-gray-200" />
+                  <input type="text" value={newClientIco} onChange={e => setNewClientIco(sanitizeIco(e.target.value))} placeholder={t.icoPlaceholder} className="w-full bg-gray-900 border border-gray-700 rounded p-1.5 text-xs text-gray-200 uppercase font-mono" />
 
                   <div className="grid grid-cols-2 gap-2 pt-1 border-t border-gray-700">
                     <div>
@@ -2594,6 +2642,7 @@
                     const f = locationSearchFilter.toLowerCase();
                     return (
                       (p.name && p.name.toLowerCase().includes(f)) || 
+                      (p.city && p.city.toLowerCase().includes(f)) ||
                       (p.address && p.address.toLowerCase().includes(f)) ||
                       (p.postal_code && p.postal_code.toLowerCase().includes(f))
                     );
@@ -2606,6 +2655,7 @@
                           <div className="flex items-center gap-2">
                             <span className="text-base">{EUROPEAN_COUNTRIES.find(cou => cou.code === c.country_code)?.flag || "🇪🇺"}</span>
                             <h4 className="font-extrabold text-white text-sm">{c.name}</h4>
+                            {c.city && <span className="text-[11px] text-gray-300">({c.city})</span>}
                             {c.fixed_seq_prefix && <span className="text-[9px] bg-amber-500/20 text-amber-300 px-1 py-0.5 rounded font-mono font-bold">{c.fixed_seq_prefix}</span>}
                           </div>
                           <p className="text-[10px] text-gray-400 mt-0.5">{clientProjects.length} {t.tabProjects2.toLowerCase()}</p>
@@ -2623,11 +2673,11 @@
                           <div className="flex justify-between items-center gap-2">
                             <input type="text" value={locationSearchFilter} onChange={e => setLocationSearchFilter(e.target.value)} placeholder={t.searchLocationsPlaceholder} className="flex-1 bg-gray-950 border border-gray-700 rounded-lg px-2.5 py-1 text-xs text-white" />
                             <button onClick={() => { setAddingProjectClientId(addingProjectClientId === c.id ? null : c.id); setProjectCategoriesList([]); }} className="bg-amber-500 hover:bg-amber-400 text-black font-extrabold px-2.5 py-1 rounded-lg text-xs shadow whitespace-nowrap">
-                              {t.addLocationBtn}
+                              <i className="fa-solid fa-plus mr-1"></i>{t.addLocationBtn}
                             </button>
                           </div>
 
-                          {/* FORMULÁR NOVEJ LOKÁCIE (S OPRAVENÝM UKLADANÍM A ŠTÁTOM) */}
+                          {/* FORMULÁR NOVEJ LOKÁCIE */}
                           {addingProjectClientId === c.id && (
                             <div className="bg-gray-950 p-2.5 rounded-xl border border-amber-500/50 space-y-2">
                               <div className="flex justify-between items-center">
@@ -2656,15 +2706,20 @@
                               </div>
 
                               <input type="text" value={newProjectName} onChange={e => setNewProjectName(e.target.value)} placeholder="Location name" className="w-full bg-gray-900 border border-gray-700 rounded p-1 text-xs text-white font-bold" />
+                              <input type="text" value={newProjectAddress} onChange={e => setNewProjectAddress(e.target.value)} placeholder={t.clientAddressPlaceholder} className="w-full bg-gray-900 border border-gray-700 rounded p-1 text-xs text-gray-200" />
                               
                               <div className="grid grid-cols-3 gap-1.5">
-                                <input type="text" value={newProjectAddress} onChange={e => setNewProjectAddress(e.target.value)} placeholder={t.clientAddressPlaceholder} className="col-span-2 bg-gray-900 border border-gray-700 rounded p-1 text-xs text-gray-200" />
-                                <input type="text" value={newProjectPostalCode} onChange={e => setNewProjectPostalCode(e.target.value)} placeholder={t.postalCodePlaceholder} className="bg-gray-900 border border-gray-700 rounded p-1 text-xs text-gray-200 uppercase font-mono" />
+                                <div>
+                                  <input type="text" value={newProjectPostalCode} onChange={e => setNewProjectPostalCode(sanitizePostalCode(e.target.value))} placeholder={t.postalCodePlaceholder} className="w-full bg-gray-900 border border-gray-700 rounded p-1 text-xs text-gray-200 uppercase font-mono" />
+                                </div>
+                                <div className="col-span-2">
+                                  <input type="text" value={newProjectCity} onChange={e => setNewProjectCity(e.target.value)} placeholder={t.cityPlaceholder} className="w-full bg-gray-900 border border-gray-700 rounded p-1 text-xs text-gray-200 font-semibold" />
+                                </div>
                               </div>
 
                               <div className="grid grid-cols-2 gap-1.5">
                                 <input type="text" value={newProjectContactPerson} onChange={e => setNewProjectContactPerson(e.target.value)} placeholder={t.contactPersonPlaceholder} className="bg-gray-900 border border-gray-700 rounded p-1 text-xs text-gray-200" />
-                                <input type="text" value={newProjectPhone} onChange={e => setNewProjectPhone(e.target.value)} placeholder={t.phonePlaceholder} className="bg-gray-900 border border-gray-700 rounded p-1 text-xs text-gray-200 font-mono" />
+                                <input type="tel" value={newProjectPhone} onChange={e => setNewProjectPhone(sanitizePhone(e.target.value))} placeholder={t.phonePlaceholder} className="bg-gray-900 border border-gray-700 rounded p-1 text-xs text-gray-200 font-mono" />
                               </div>
 
                               <div className="grid grid-cols-3 gap-1 pt-1">
@@ -2717,7 +2772,6 @@
                                 </div>
                               </div>
 
-                              {/* ZOBRAZENIE AW RATE IBA PRE FREE */}
                               {newProjectPricingMode === "free" && (
                                 <input type="number" inputMode="decimal" value={newProjectAwRate} onChange={e => setNewProjectAwRate(e.target.value)} placeholder={`${t.awRateLabel} (${currSymbol})`} className="w-full bg-gray-900 border border-gray-700 rounded p-1 text-xs text-amber-400 font-bold" />
                               )}
@@ -2725,7 +2779,6 @@
                               <button type="button" onClick={async () => {
                                 if (!newProjectName.trim()) return;
 
-                                // Správna sanitizácia hodnôt na null pre SQL
                                 const parsedFixed = newProjectPricingMode === "fixed" && newProjectFixedPrice ? parseFloat(newProjectFixedPrice) : null;
                                 const parsedAw = newProjectPricingMode === "free" && newProjectAwRate ? parseFloat(newProjectAwRate) : null;
                                 const parsedPdr = newProjectTechPdrPercent !== "" ? parseFloat(newProjectTechPdrPercent) : null;
@@ -2736,6 +2789,7 @@
                                   name: newProjectName.trim(), 
                                   country_code: newProjectCountry,
                                   address: newProjectAddress.trim() || null,
+                                  city: newProjectCity.trim() || null,
                                   postal_code: newProjectPostalCode.trim() || null,
                                   contact_person: newProjectContactPerson.trim() || null,
                                   phone: newProjectPhone.trim() || null,
@@ -2754,9 +2808,10 @@
                                   handleProjectChange(data[0].id);
                                   setNewProjectName("");
                                   setNewProjectAddress("");
+                                  setNewProjectCity("");
                                   setNewProjectPostalCode("");
                                   setNewProjectContactPerson("");
-                                  setNewProjectPhone("+49");
+                                  setNewProjectPhone("+49 ");
                                   setProjectCategoriesList([]);
                                   setAddingProjectClientId(null);
                                 } else {
@@ -2775,7 +2830,11 @@
                                     <span className="font-bold text-white">{p.name}</span>
                                     <span className="text-[8px] uppercase bg-gray-800 text-amber-400 px-1 rounded font-bold">{p.pricing_mode}</span>
                                   </div>
-                                  {p.address && <p className="text-[9px] text-gray-400">{p.address} {p.postal_code ? `(${p.postal_code})` : ""}</p>}
+                                  <p className="text-[9px] text-gray-400">
+                                    {p.city ? `${p.city} (${p.country_code || "DE"})` : (p.country_code || "DE")} 
+                                    {p.address ? ` — ${p.address}` : ""}
+                                    {p.postal_code ? ` [${p.postal_code}]` : ""}
+                                  </p>
                                 </div>
                                 <div className="flex items-center gap-1.5">
                                   <button type="button" onClick={() => handleOpenSheet("project", p)} className="text-[10px] px-2 py-1 bg-gray-900 border border-gray-700 rounded text-amber-400 font-bold">
@@ -2820,7 +2879,7 @@
                   <select value={repProjectFilter} onChange={e => setRepProjectFilter(e.target.value)} className="bg-gray-900 border border-gray-700 rounded p-1 text-amber-400">
                     <option value="all">{t.allLocations}</option>
                     {projects.filter(p => repClientFilter === "all" || p.client_id === repClientFilter).map(p => (
-                      <option key={p.id} value={p.id}>{p.name}</option>
+                      <option key={p.id} value={p.id}>{p.name} {p.city ? `(${p.city})` : ""}</option>
                     ))}
                   </select>
 
