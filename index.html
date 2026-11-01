@@ -207,7 +207,6 @@
       }
     };
 
-    // Canvas kompresia (max 1600 px, JPEG 0.78)
     const compressImage = (file) => {
       return new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -276,17 +275,14 @@
       const [projects, setProjects] = useState([]);
       const [vehicles, setVehicles] = useState([]);
 
-      // Pamäť posledného výberu
       const [selectedClientId, setSelectedClientId] = useState(() => localStorage.getItem("pdr_last_client") || "");
       const [selectedProjectId, setSelectedProjectId] = useState(() => localStorage.getItem("pdr_last_project") || "");
 
-      // Modálne okná
       const [activeBottomSheet, setActiveBottomSheet] = useState(null);
       const [selectedVehicleDetail, setSelectedVehicleDetail] = useState(null);
       const [isUploading, setIsUploading] = useState(false);
       const [uploadStatusText, setUploadStatusText] = useState("");
 
-      // Správa na karte Klienti & Miesta
       const [selectedClientDetailId, setSelectedClientDetailId] = useState(null);
       const [locationSearchFilter, setLocationSearchFilter] = useState("");
       const [showArchivedProjects, setShowArchivedProjects] = useState(false);
@@ -300,7 +296,6 @@
       const [newClientPhone, setNewClientPhone] = useState("");
       const [newClientContactPerson, setNewClientContactPerson] = useState("");
 
-      // Nové miesto
       const [addingProjectClientId, setAddingProjectClientId] = useState(null);
       const [newProjectName, setNewProjectName] = useState("");
       const [newProjectAddress, setNewProjectAddress] = useState("");
@@ -313,13 +308,11 @@
       const [newProjectTechRiPercent, setNewProjectTechRiPercent] = useState("100");
       const [newProjectAwRate, setNewProjectAwRate] = useState("");
 
-      // Filtre v reporte
       const [repClientFilter, setRepClientFilter] = useState("all");
       const [repProjectFilter, setRepProjectFilter] = useState("all");
       const [repDateRange, setRepDateRange] = useState("all");
       const [repSearchQuery, setRepSearchQuery] = useState("");
 
-      // Vstupné polia vozidla
       const cameraInputRef = useRef(null);
       const cardClientInputRef = useRef(null);
       const cardProjectInputRef = useRef(null);
@@ -352,43 +345,60 @@
       const [isPricePending, setIsPricePending] = useState(false);
       const [damageNote, setDamageNote] = useState("");
 
-      // Načítanie používateľa a profilu
+      // Bezpečné načítanie používateľa bez zaseknutia
       useEffect(() => {
-        const fetchUserProfile = async (session) => {
-          if (!session?.user) {
-            setCurrentUser(null);
-            setLoadingUser(false);
-            return;
-          }
+        let mounted = true;
 
+        const initAuth = async () => {
           try {
-            const { data: profile } = await supabase
-              .from("profiles")
-              .select("*")
-              .eq("id", session.user.id)
-              .maybeSingle();
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!mounted) return;
 
-            setCurrentUser({
-              id: session.user.id,
-              email: session.user.email,
-              accountType: profile?.account_type || "solo",
-              role: profile?.role || "solo"
-            });
-          } catch (err) {
-            setCurrentUser({
-              id: session.user.id,
-              email: session.user.email,
-              accountType: "solo",
-              role: "solo"
-            });
+            if (session?.user) {
+              setCurrentUser({
+                id: session.user.id,
+                email: session.user.email,
+                accountType: session.user.user_metadata?.account_type || "solo",
+                role: session.user.user_metadata?.role || "solo"
+              });
+            } else {
+              setCurrentUser(null);
+            }
+          } catch (e) {
+            console.warn("Auth check warn:", e);
+            if (mounted) setCurrentUser(null);
           } finally {
-            setLoadingUser(false);
+            if (mounted) setLoadingUser(false);
           }
         };
 
-        supabase.auth.getSession().then(({ data: { session } }) => fetchUserProfile(session));
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => fetchUserProfile(session));
-        return () => subscription.unsubscribe();
+        initAuth();
+
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+          if (!mounted) return;
+          if (session?.user) {
+            setCurrentUser({
+              id: session.user.id,
+              email: session.user.email,
+              accountType: session.user.user_metadata?.account_type || "solo",
+              role: session.user.user_metadata?.role || "solo"
+            });
+          } else {
+            setCurrentUser(null);
+          }
+          setLoadingUser(false);
+        });
+
+        // Poistný timeout (max 1.5s) proti nekonečnému spinneru
+        const safetyTimer = setTimeout(() => {
+          if (mounted && loadingUser) setLoadingUser(false);
+        }, 1500);
+
+        return () => {
+          mounted = false;
+          clearTimeout(safetyTimer);
+          subscription.unsubscribe();
+        };
       }, []);
 
       const loadData = async () => {
@@ -445,7 +455,6 @@
         return projects.find(p => p.id === selectedProjectId);
       }, [projects, selectedProjectId]);
 
-      // Adaptácia cien podľa zvoleného miesta
       useEffect(() => {
         if (!currentSelectedProject) return;
 
@@ -463,7 +472,6 @@
         }
       }, [currentSelectedProject]);
 
-      // Prepočet pri zmene AW
       const handleAwChange = (val) => {
         setAwCount(val);
         const count = parseFloat(val);
@@ -476,7 +484,6 @@
         }
       };
 
-      // Diskrétny náhľad zárobku technika
       const techEarned = useMemo(() => {
         const pdrP = parseFloat(currentSelectedProject?.tech_pdr_percent ?? 100) / 100;
         const riP = parseFloat(currentSelectedProject?.tech_ri_percent ?? 100) / 100;
@@ -485,7 +492,6 @@
         return (pdrVal * pdrP + riVal * riP).toFixed(2);
       }, [price, riPrice, currentSelectedProject]);
 
-      // Inteligentné číslovanie kalkulácie (neporuší sa pri manuálnom prepise)
       useEffect(() => {
         if (!selectedClientId) return;
         const client = clients.find(c => c.id === selectedClientId);
@@ -509,7 +515,6 @@
         }
       }, [selectedClientId, clients, projects, vehicles]);
 
-      // Autentifikácia
       const handleAuthSubmit = async (e) => {
         e.preventDefault();
         setAuthError("");
@@ -546,7 +551,6 @@
         }
       };
 
-      // 3-Krokový foto záchyt
       const startScanning = () => {
         setScanStep(1);
         if (cameraInputRef.current) cameraInputRef.current.click();
@@ -598,7 +602,6 @@
         return data.publicUrl;
       };
 
-      // Uloženie vozidla
       const handleSaveVehicle = async (e) => {
         e.preventDefault();
         if (!selectedProjectId) return alert("Vyberte najprv platného Klienta a Miesto.");
@@ -674,7 +677,6 @@
           setVehicles([data[0], ...vehicles]);
           alert("Vozidlo a fotky boli úspešne uložené!");
 
-          // Reset formulára
           setVin("");
           setEcv("");
           setBrand("");
@@ -699,7 +701,6 @@
         }
       };
 
-      // Vytvorenie klienta a miesta
       const handleCreateClient = async (e) => {
         e.preventDefault();
         if (!newClientName.trim()) return;
@@ -775,7 +776,6 @@
         }
       };
 
-      // Archivácia / Obnovenie miesta (Soft-Delete)
       const handleToggleArchiveProject = async (pId, currentStatus) => {
         const nextStatus = !currentStatus;
         const msg = nextStatus ? "Obnoviť toto miesto do aktívnych?" : "Naozaj archivovať toto miesto? Zmizne z ponuky pri skenovaní, no autá v histórii zostanú zachované.";
@@ -789,7 +789,6 @@
         }
       };
 
-      // Filtrované vozidlá pre Súpis & Reporty
       const reportVehicles = useMemo(() => {
         return vehicles.filter(v => {
           if (repClientFilter !== "all") {
@@ -933,7 +932,6 @@
         );
       }
 
-      // PRIHLASOVACIA OBRAZOVKA
       if (!currentUser) {
         return (
           <div className="max-w-md w-full p-3">
@@ -1068,7 +1066,6 @@
         );
       }
 
-      // HLAVNÁ APLIKÁCIA PRE PRIHLÁSENÉHO POUŽÍVATEĽA
       return (
         <div className="max-w-md mx-auto w-full p-2 pb-24">
           <input type="file" accept="image/*" capture="environment" ref={cameraInputRef} onChange={handlePhotoCapture} className="hidden" />
@@ -1076,7 +1073,6 @@
           <input type="file" accept="image/*" capture="environment" ref={cardClientInputRef} onChange={() => {}} className="hidden" />
           <input type="file" accept="image/*" capture="environment" ref={cardProjectInputRef} onChange={() => {}} className="hidden" />
 
-          {/* OVERLAY NAHRÁVANIA */}
           {isUploading && (
             <div className="fixed inset-0 bg-black/90 z-50 flex flex-col justify-center items-center p-6 space-y-3 text-center">
               <i className="fa-solid fa-cloud-arrow-up text-amber-500 text-4xl animate-bounce"></i>
@@ -1085,7 +1081,6 @@
             </div>
           )}
 
-          {/* BOTTOM SHEET PRE VIZITKY */}
           {activeBottomSheet && (
             <div className="fixed inset-0 bg-black/80 z-50 flex flex-col justify-end">
               <div className="fixed inset-0" onClick={() => setActiveBottomSheet(null)}></div>
@@ -1137,7 +1132,6 @@
             </div>
           )}
 
-          {/* DETAIL KARTA VOZIDLA SO VŠETKÝMI FOTKAMI */}
           {selectedVehicleDetail && (
             <div className="fixed inset-0 bg-black/85 z-50 flex flex-col justify-end">
               <div className="fixed inset-0" onClick={() => setSelectedVehicleDetail(null)}></div>
@@ -1206,7 +1200,6 @@
             </div>
           )}
 
-          {/* NASTAVENIA HESLA */}
           {showSettingsModal && (
             <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50">
               <div className="bg-gray-800 border border-gray-700 rounded-xl p-5 w-full max-w-sm space-y-3">
@@ -1234,7 +1227,6 @@
             </div>
           )}
 
-          {/* HLAVIČKA APP */}
           <header className="flex justify-between items-center mb-2.5 border-b border-gray-800 pb-2">
             <div>
               <h1 className="text-base font-black tracking-tight">
@@ -1255,7 +1247,6 @@
             </div>
           </header>
 
-          {/* TAB BAR */}
           <div className="flex bg-gray-800 p-1 rounded-xl mb-3 border border-gray-700">
             <button onClick={() => setActiveTab("vehicles")} className={`flex-1 py-2 text-xs font-bold rounded-lg ${activeTab === "vehicles" ? "bg-amber-500 text-black" : "text-gray-400"}`}>
               <i className="fa-solid fa-car mr-1"></i>{t.tabVehicles}
@@ -1268,11 +1259,9 @@
             </button>
           </div>
 
-          {/* 1. KARTA: VOZIDLÁ */}
           {activeTab === "vehicles" ? (
             <form onSubmit={handleSaveVehicle} className="bg-gray-800 p-3.5 rounded-xl border border-gray-700 space-y-3.5">
               
-              {/* KLIENT A MIESTO S VIZITKAMI */}
               <div className="space-y-2 bg-gray-900/60 p-2.5 rounded-lg border border-gray-700">
                 <div>
                   <div className="flex justify-between items-center mb-1">
@@ -1321,7 +1310,6 @@
                 </div>
               </div>
 
-              {/* 3-KROKOVÝ FOTO SKEN */}
               <div className="bg-amber-500/10 border border-amber-500/30 p-2.5 rounded-lg text-center space-y-2.5">
                 <button 
                   type="button" 
@@ -1361,7 +1349,6 @@
                 </div>
               </div>
 
-              {/* ÚDAJE O VOZIDLE A FARBA */}
               <div className="space-y-2">
                 <div className="grid grid-cols-2 gap-2">
                   <div>
@@ -1391,7 +1378,6 @@
                   </div>
                 </div>
 
-                {/* VÝBER FARBY VOZIDLA */}
                 <div>
                   <label className="block text-[10px] text-gray-400 mb-1">{t.color}</label>
                   <div className="flex gap-1 overflow-x-auto pb-1">
@@ -1409,7 +1395,6 @@
                 </div>
               </div>
 
-              {/* CENOVÁ ČASŤ (FREE / FIXED / CATEGORIES / AW) */}
               <div className="p-2.5 bg-gray-900/80 rounded-xl border border-gray-700 space-y-2">
                 <div className="flex justify-between items-center">
                   <label className="text-xs font-bold text-gray-300">
@@ -1481,7 +1466,6 @@
                 </div>
               </div>
 
-              {/* OCHRANNÁ POZNÁMKA A FOTO POŠKODENIA */}
               <div className="p-2.5 bg-gray-900/60 rounded-xl border border-gray-700 space-y-2">
                 <input type="text" value={damageNote} onChange={e => setDamageNote(e.target.value)} placeholder="Poznámka / Vstupné poškodenie (časová pečiatka)" className="w-full bg-gray-900 border border-gray-700 rounded p-1.5 text-xs text-gray-200" />
                 <div className="flex justify-between items-center">
@@ -1498,7 +1482,6 @@
               </button>
             </form>
           ) : activeTab === "projects" ? (
-            /* 2. KARTA: KLIENTI & MIESTA */
             <div className="space-y-3">
               <div className="flex gap-2">
                 <button onClick={() => setShowNewClientForm(!showNewClientForm)} className="flex-1 bg-amber-500 hover:bg-amber-400 text-black font-extrabold py-2 px-3 rounded-xl text-xs flex items-center justify-center gap-1.5 shadow">
@@ -1511,7 +1494,6 @@
                 </button>
               </div>
 
-              {/* FORMULÁR NOVÉHO KLIENTA */}
               {showNewClientForm && (
                 <form onSubmit={handleCreateClient} className="bg-gray-800 p-3.5 rounded-xl border border-amber-500/50 space-y-2.5">
                   <div className="flex justify-between items-center border-b border-gray-700 pb-1.5">
@@ -1537,14 +1519,12 @@
                 </form>
               )}
 
-              {/* PREPÍNAČ ARCHIVOVANÝCH MIEST */}
               <div className="flex justify-end px-1">
                 <button onClick={() => setShowArchivedProjects(!showArchivedProjects)} className="text-[10px] text-amber-400 font-bold underline">
                   {showArchivedProjects ? "Skryť archivované miesta" : "Zobraziť archivované miesta"}
                 </button>
               </div>
 
-              {/* ZOZNAM KLIENTOV A ICH MIEST */}
               <div className="space-y-2.5">
                 {clients.map(c => {
                   const clientProjects = projects.filter(p => p.client_id === c.id && (showArchivedProjects ? true : p.is_active !== false));
@@ -1657,7 +1637,6 @@
               </div>
             </div>
           ) : (
-            /* 3. KARTA: SÚPIS & REPORTY (PÁROVACÍ REPORT) */
             <div className="space-y-3">
               <div className="bg-gray-800 p-2.5 rounded-xl border border-gray-700 space-y-2">
                 <input 
@@ -1689,7 +1668,6 @@
                 </div>
               </div>
 
-              {/* SÚČTOVÉ KARTY */}
               <div className="grid grid-cols-3 gap-1.5 text-center">
                 <div className="bg-gray-800 p-2 rounded-xl border border-gray-700">
                   <span className="text-[9px] text-gray-400 uppercase font-bold">Vozidlá</span>
@@ -1705,7 +1683,6 @@
                 </div>
               </div>
 
-              {/* EXPORT TLAČIDLÁ */}
               <div className="flex gap-2">
                 <button onClick={exportPDF} className="flex-1 bg-amber-500 hover:bg-amber-400 text-black font-extrabold py-2 px-3 rounded-xl text-xs flex items-center justify-center gap-1.5 shadow">
                   <i className="fa-solid fa-file-pdf"></i>
@@ -1717,7 +1694,6 @@
                 </button>
               </div>
 
-              {/* TABUĽKA SÚPISU */}
               <div className="space-y-1.5">
                 {reportVehicles.length === 0 ? (
                   <p className="p-6 text-center text-xs text-gray-500">{t.noVehicles}</p>
