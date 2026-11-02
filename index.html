@@ -707,7 +707,14 @@
         reader.onerror = (err) => reject(err);
       });
     };
-
+const fileToBase64 = (file) => {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = () => resolve(reader.result.split(",")[1]);
+        reader.onerror = (err) => reject(err);
+      });
+    };
     // Detekcia dominantnej farby z lakovanej zóny kufra (vynechá sklo hore a nárazník dole)
     const detectDominantColor = (file) => {
       return new Promise((resolve) => {
@@ -2004,7 +2011,31 @@
           alert("Error: " + err.message);
         }
       };
+// Správa kategórií pri tvorbe novej lokácie
+      const handleAddCategoryItem = () => {
+        const p = parseFloat(tempCategoryPrice);
+        if (isNaN(p) || p <= 0) return alert(lang === "SK" ? "Zadajte platnú cenu kategórie." : "Enter valid price.");
+        const nextIndex = projectCategoriesList.length + 1;
+        setProjectCategoriesList([...projectCategoriesList, { label: `Cat ${nextIndex}`, price: p }]);
+        setTempCategoryPrice("");
+      };
 
+      const handleRemoveCategoryItem = (idx) => {
+        setProjectCategoriesList(projectCategoriesList.filter((_, i) => i !== idx));
+      };
+
+      // Správa kategórií pri editácii existujúcej lokácie v Bottom Sheete
+      const handleAddSheetEditCategory = () => {
+        const p = parseFloat(sheetEditTempCatPrice);
+        if (isNaN(p) || p <= 0) return alert(lang === "SK" ? "Zadajte platnú cenu kategórie." : "Enter valid price.");
+        const nextIndex = sheetEditCategories.length + 1;
+        setSheetEditCategories([...sheetEditCategories, { label: `Cat ${nextIndex}`, price: p }]);
+        setSheetEditTempCatPrice("");
+      };
+
+      const handleRemoveSheetEditCategory = (idx) => {
+        setSheetEditCategories(sheetEditCategories.filter((_, i) => i !== idx));
+      };
       if (loadingUser) {
         return (
           <div className="flex flex-col items-center justify-center p-8 space-y-3">
