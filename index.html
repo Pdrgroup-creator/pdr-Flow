@@ -1615,7 +1615,7 @@
 
         doc.save(`pdr_summary_${Date.now()}.pdf`);
       };
-     // Spustenie jednotlivých krokov skenovania
+      // Spustenie jednotlivých krokov skenovania
       const triggerScanStep = (stepNumber) => {
         setScanStep(stepNumber);
         if (cameraInputRef.current) {
