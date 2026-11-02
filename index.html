@@ -42,7 +42,7 @@
     const SUPABASE_KEY = "sb_publishable_5lQPiP19Qy2xwDq6eUXDmQ_MB5IYkHQ";
     const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    // Zoznam štátov Európy s vlajočkami a predvoľbami (bez medzery)
+    // Zoznam 40 štátov Európy s vlajkami a predvoľbami
     const EUROPEAN_COUNTRIES = [
       { code: "DE", flag: "🇩🇪", name: { EN: "Germany", DE: "Deutschland", SK: "Nemecko" }, dial: "+49" },
       { code: "AT", flag: "🇦🇹", name: { EN: "Austria", DE: "Österreich", SK: "Rakúsko" }, dial: "+43" },
@@ -243,7 +243,14 @@
         defaultPdrPercentLabel: "Default % PDR",
         defaultRiPercentLabel: "Default % R&I",
         partnerBadge: "Partner",
-        addCatBtn: "+ Add Cat"
+        addCatBtn: "+ Add Cat",
+        ocrModalTitleVin: "Check VIN & Make",
+        ocrModalTitleRear: "Check Plate & Body Color",
+        ocrModalTitleSheet: "Check Calculation Sheet",
+        ocrModalAnalyzing: "Scanning via Google Vision...",
+        ocrModalRetake: "Retake Photo",
+        ocrModalConfirmNext: "Confirm & Next Step",
+        ocrModalConfirmFinish: "Confirm & Finish Scan"
       },
       DE: {
         roleTechLabel: "Techniker",
@@ -365,7 +372,14 @@
         defaultPdrPercentLabel: "Standard % Dellenreparatur",
         defaultRiPercentLabel: "Standard % Demontage",
         partnerBadge: "Partner",
-        addCatBtn: "+ Cat"
+        addCatBtn: "+ Cat",
+        ocrModalTitleVin: "FIN & Marke prüfen",
+        ocrModalTitleRear: "Kennzeichen & Farbe prüfen",
+        ocrModalTitleSheet: "Kalkulationsblatt prüfen",
+        ocrModalAnalyzing: "Google Vision Scan läuft...",
+        ocrModalRetake: "Foto wiederholen",
+        ocrModalConfirmNext: "Bestätigen & Weiter",
+        ocrModalConfirmFinish: "Bestätigen & Fertigstellen"
       },
       SK: {
         roleTechLabel: "Technik",
@@ -487,7 +501,14 @@
         defaultPdrPercentLabel: "Predvolené % PDR",
         defaultRiPercentLabel: "Predvolené % R&I",
         partnerBadge: "Partner",
-        addCatBtn: "+ Pridať Cat"
+        addCatBtn: "+ Pridať Cat",
+        ocrModalTitleVin: "Kontrola VIN a Značky",
+        ocrModalTitleRear: "Kontrola ŠPZ a Farby karosérie",
+        ocrModalTitleSheet: "Kontrola Hárku kalkulácie",
+        ocrModalAnalyzing: "Google Vision skenuje fotku...",
+        ocrModalRetake: "Znova odfotiť",
+        ocrModalConfirmNext: "Potvrdiť a Ďalší krok",
+        ocrModalConfirmFinish: "Potvrdiť a Dokončiť sken"
       }
     };
 
@@ -497,27 +518,26 @@
       SK: ["Január", "Február", "Marec", "Apríl", "Máj", "Jún", "Júl", "August", "September", "Október", "November", "December"]
     };
 
-    // Tiché filtre znakov bez medzier a s tvrdým orezaním dĺžky
+    // Filtre reťazcov bez medzier s presným orezaním dĺžky
     const sanitizePhone = (val) => {
       if (!val) return "";
-      let cleaned = val.replace(/[^\d+]/g, ""); // Nulové medzery
+      let cleaned = val.replace(/[^\d+]/g, "");
       if (cleaned.indexOf("+") > 0) {
         cleaned = cleaned.charAt(0) === "+" ? "+" + cleaned.slice(1).replace(/\+/g, "") : cleaned.replace(/\+/g, "");
       }
-      return cleaned.slice(0, 16); // Max 16 znakov
+      return cleaned.slice(0, 16);
     };
 
     const sanitizePostalCode = (val) => {
       if (!val) return "";
-      return val.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 8); // Bez medzier, max 8 znakov
+      return val.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 8);
     };
 
     const sanitizeIco = (val) => {
       if (!val) return "";
-      return val.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 14); // Bez medzier, max 14 znakov
+      return val.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 14);
     };
 
-    // Pomocná komponenta pre výber Štátu s bleskovým filtrom (Typeahead)
     function CountryPicker({ selectedCode, onSelect, lang, placeholder }) {
       const [isOpen, setIsOpen] = useState(false);
       const [searchQuery, setSearchQuery] = useState("");
@@ -639,7 +659,12 @@
         reader.onerror = (err) => reject(err);
       });
     };
+    const sanitizeVin = (val) => {
+      if (!val) return "";
+      return val.toUpperCase().replace(/[^A-HJ-NPR-Z0-9]/g, "").slice(0, 17);
+    };
 
+    // Detekcia dominantnej farby z lakovanej zóny kufra (vynechá sklo hore a nárazník dole)
     const detectDominantColor = (file) => {
       return new Promise((resolve) => {
         const reader = new FileReader();
@@ -650,59 +675,63 @@
           img.onload = () => {
             const canvas = document.createElement("canvas");
             const ctx = canvas.getContext("2d");
-            canvas.width = 100;
-            canvas.height = 100;
+            canvas.width = 120;
+            canvas.height = 120;
 
-            const sx = img.width * 0.35;
+            // Zameranie na stred karosérie (35% až 65% výšky, 30% až 70% šírky)
+            const sx = img.width * 0.30;
             const sy = img.height * 0.35;
-            const sw = img.width * 0.30;
+            const sw = img.width * 0.40;
             const sh = img.height * 0.30;
 
-            ctx.drawImage(img, sx, sy, sw, sh, 0, 0, 100, 100);
-            const imgData = ctx.getImageData(0, 0, 100, 100).data;
+            ctx.drawImage(img, sx, sy, sw, sh, 0, 0, 120, 120);
+            const imgData = ctx.getImageData(0, 0, 120, 120).data;
 
-            let rTot = 0, gTot = 0, bTot = 0, count = 0;
-            for (let i = 0; i < imgData.length; i += 16) {
-              rTot += imgData[i];
-              gTot += imgData[i + 1];
-              bTot += imgData[i + 2];
+            let totalR = 0, totalG = 0, totalB = 0, count = 0;
+            for (let i = 0; i < imgData.length; i += 4) {
+              const r = imgData[i];
+              const g = imgData[i + 1];
+              const b = imgData[i + 2];
+
+              // Odfiltrovanie červených brzdových svetiel
+              if (r > 160 && g < 70 && b < 70) continue;
+
+              totalR += r;
+              totalG += g;
+              totalB += b;
               count++;
             }
 
-            const r = rTot / count;
-            const g = gTot / count;
-            const b = bTot / count;
+            if (count === 0) return resolve("grey");
 
-            const max = Math.max(r, g, b), min = Math.min(r, g, b);
-            const d = max - min;
-            let h = 0;
-            const s = max === 0 ? 0 : d / max;
-            const v = max / 255;
+            const avgR = totalR / count;
+            const avgG = totalG / count;
+            const avgB = totalB / count;
 
-            if (max !== min) {
-              if (max === r) h = (g - b) / d + (g < b ? 6 : 0);
-              else if (max === g) h = (b - r) / d + 2;
-              else if (max === b) h = (r - g) / d + 4;
-              h /= 6;
+            const maxC = Math.max(avgR, avgG, avgB);
+            const minC = Math.min(avgR, avgG, avgB);
+            const diff = maxC - minC;
+            const brightness = (avgR + avgG + avgB) / 3;
+
+            // Neutrálne odtiene (biela, strieborná, sivá, čierna)
+            if (diff < 22) {
+              if (brightness > 200) return resolve("white");
+              if (brightness > 140) return resolve("silver");
+              if (brightness > 60) return resolve("grey");
+              return resolve("black");
             }
 
-            const deg = h * 360;
-            let matchedId = "grey";
-
-            if (v < 0.16) matchedId = "black";
-            else if (s < 0.12 && v > 0.82) matchedId = "white";
-            else if (s < 0.20 && v > 0.50) matchedId = "silver";
-            else if (s < 0.20) matchedId = "grey";
-            else {
-              if (deg >= 345 || deg < 12) matchedId = "red";
-              else if (deg >= 12 && deg < 38) matchedId = "orange";
-              else if (deg >= 38 && deg < 65) matchedId = "gold_bronze";
-              else if (deg >= 65 && deg < 165) matchedId = "green";
-              else if (deg >= 165 && deg < 265) matchedId = "blue";
-              else if (deg >= 265 && deg < 345) matchedId = "burgundy";
+            // Farebné odtiene
+            if (avgB > avgR && avgB > avgG) return resolve("blue");
+            if (avgR > avgG && avgR > avgB) {
+              if (avgG > 120) return resolve("orange");
+              if (brightness < 80) return resolve("burgundy");
+              return resolve("red");
             }
+            if (avgG > avgR && avgG > avgB) return resolve("green");
+            if (avgR > 140 && avgG > 140 && avgB < 100) return resolve("yellow");
 
-            resolve(matchedId);
+            return resolve("grey");
           };
           img.onerror = () => resolve("grey");
         };
@@ -710,23 +739,57 @@
       });
     };
 
-    const sanitizeVin = (raw) => {
-      if (!raw) return "";
-      let clean = raw.toUpperCase().replace(/[^A-Z0-9]/g, "");
-      clean = clean.replace(/O/g, "0").replace(/I/g, "1").replace(/Q/g, "0");
-      return clean.substring(0, 17);
+    // Google Cloud Vision API - Skutočné OCR rozpoznávanie textu
+    const GOOGLE_VISION_KEY = "SemVlozSvojApiKeyZGoogleConsole";
+
+    const analyzeImageWithGoogleVision = async (file) => {
+      const base64Data = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = () => resolve(reader.result.split(",")[1]);
+        reader.onerror = (err) => reject(err);
+      });
+
+      const response = await fetch(`https://vision.googleapis.com/v1/images:annotate?key=${GOOGLE_VISION_KEY}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          requests: [
+            {
+              image: { content: base64Data },
+              features: [{ type: "TEXT_DETECTION", maxResults: 1 }]
+            }
+          ]
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error("Google Vision API error: " + response.statusText);
+      }
+
+      const result = await response.json();
+      return result.responses?.[0]?.fullTextAnnotation?.text || "";
     };
 
     function App() {
-      const [lang, setLang] = useState(() => localStorage.getItem("pdr_lang") || "EN");
+      const [lang, setLang] = useState(() => localStorage.getItem("pdr_lang") || "SK");
       const [currency, setCurrency] = useState(() => localStorage.getItem("pdr_curr") || "EUR");
-      const [activeTab, setActiveTab] = useState("vehicles");
-      const t = TRANSLATIONS[lang] || TRANSLATIONS.EN;
       const currSymbol = currency === "EUR" ? "€" : "$";
+      const t = TRANSLATIONS[lang] || TRANSLATIONS.SK;
 
       const [currentUser, setCurrentUser] = useState(null);
       const [loadingUser, setLoadingUser] = useState(true);
+
+      const [isRegistering, setIsRegistering] = useState(false);
+      const [isResetMode, setIsResetMode] = useState(false);
+      const [authEmail, setAuthEmail] = useState("");
+      const [authPassword, setAuthPassword] = useState("");
+      const [authConfirmPassword, setAuthConfirmPassword] = useState("");
+      const [authAccountType, setAuthAccountType] = useState("solo");
+      const [authRole, setAuthRole] = useState("manager");
       const [authError, setAuthError] = useState("");
+      const [resetSuccessMsg, setResetSuccessMsg] = useState("");
+      const [failedAttempts, setFailedAttempts] = useState(0);
 
       const [showSettingsModal, setShowSettingsModal] = useState(false);
       const [newAccountPassword, setNewAccountPassword] = useState("");
@@ -739,21 +802,12 @@
       const [coopMsg, setCoopMsg] = useState("");
       const [selectedCoopPartners, setSelectedCoopPartners] = useState([]);
 
-      const [isRegistering, setIsRegistering] = useState(false);
-      const [isResetMode, setIsResetMode] = useState(false);
-      const [failedAttempts, setFailedAttempts] = useState(0);
-      const [resetSuccessMsg, setResetSuccessMsg] = useState("");
-
-      const [authEmail, setAuthEmail] = useState("");
-      const [authPassword, setAuthPassword] = useState("");
-      const [authConfirmPassword, setAuthConfirmPassword] = useState("");
-      const [authAccountType, setAuthAccountType] = useState("solo");
-      const [authRole, setAuthRole] = useState("manager");
-
+      const [activeTab, setActiveTab] = useState("vehicles");
       const [clients, setClients] = useState([]);
       const [projects, setProjects] = useState([]);
       const [vehicles, setVehicles] = useState([]);
       const [coopRecords, setCoopRecords] = useState([]);
+
       const [selectedClientId, setSelectedClientId] = useState(() => localStorage.getItem("pdr_last_client") || "");
       const [selectedProjectId, setSelectedProjectId] = useState(() => localStorage.getItem("pdr_last_project") || "");
 
@@ -818,7 +872,17 @@
       const clientCardInputRef = useRef(null);
       const locationCardInputRef = useRef(null);
 
+      // Stavy skenovania a overovania
       const [scanStep, setScanStep] = useState(0);
+      const [activeOcrModal, setActiveOcrModal] = useState(null); // 'vin', 'rear', 'sheet'
+      const [isAnalyzingOcr, setIsAnalyzingOcr] = useState(false);
+
+      const [tempOcrVin, setTempOcrVin] = useState("");
+      const [tempOcrBrand, setTempOcrBrand] = useState("");
+      const [tempOcrEcv, setTempOcrEcv] = useState("");
+      const [tempOcrHasNoEcv, setTempOcrHasNoEcv] = useState(false);
+      const [tempOcrColorId, setTempOcrColorId] = useState("grey");
+
       const [vinFile, setVinFile] = useState(null);
       const [rearFile, setRearFile] = useState(null);
       const [sheetFile, setSheetFile] = useState(null);
@@ -827,7 +891,6 @@
       const [vinPreview, setVinPreview] = useState(null);
       const [rearPreview, setRearPreview] = useState(null);
       const [sheetPreview, setSheetPreview] = useState(null);
-      const [isAnalyzing, setIsAnalyzing] = useState(false);
 
       const [clientCalcNo, setClientCalcNo] = useState("");
       const [vin, setVin] = useState("");
@@ -1248,6 +1311,16 @@
         }
       };
 
+      // Spustenie jednotlivých krokov skenovania
+      const triggerScanStep = (stepNumber) => {
+        setScanStep(stepNumber);
+        if (cameraInputRef.current) {
+          cameraInputRef.current.value = "";
+          cameraInputRef.current.click();
+        }
+      };
+
+      // Spracovanie odfoteného obrázka cez Google Vision
       const handlePhotoCapture = async (e) => {
         const file = e.target.files[0];
         if (!file) return;
@@ -1255,43 +1328,83 @@
         if (scanStep === 1) {
           setVinFile(file);
           setVinPreview(URL.createObjectURL(file));
-          setIsAnalyzing(true);
+          setActiveOcrModal("vin");
+          setIsAnalyzingOcr(true);
 
           try {
-            const extractedVin = sanitizeVin("WVWZZZ3CZWE987654");
-            setVin(extractedVin);
+            const rawText = await analyzeImageWithGoogleVision(file);
+            const cleanedText = rawText.toUpperCase().replace(/\s+/g, "");
+            const vinMatch = cleanedText.match(/[A-HJ-NPR-Z0-9]{17}/);
 
-            const wmi = extractedVin.substring(0, 3);
-            if (WMI_MAP[wmi]) {
-              setBrand(WMI_MAP[wmi]);
+            const detectedVin = vinMatch ? vinMatch[0] : sanitizeVin(cleanedText.slice(0, 17));
+            setTempOcrVin(detectedVin);
+
+            if (detectedVin.length >= 3) {
+              const wmi = detectedVin.substring(0, 3);
+              setTempOcrBrand(WMI_MAP[wmi] || brand || "");
             }
           } catch (err) {
             console.warn(err);
+            setTempOcrVin("");
           } finally {
-            setIsAnalyzing(false);
+            setIsAnalyzingOcr(false);
           }
         } else if (scanStep === 2) {
           setRearFile(file);
           setRearPreview(URL.createObjectURL(file));
-          setIsAnalyzing(true);
+          setActiveOcrModal("rear");
+          setIsAnalyzingOcr(true);
 
           try {
-            setEcv("BL-555YY");
-            if (!brand) setBrand("Volkswagen");
-            if (!model) setModel("Passat");
+            const rawText = await analyzeImageWithGoogleVision(file);
+            const plateClean = rawText.toUpperCase().replace(/[^A-Z0-9]/g, "");
 
-            const guessedColorId = await detectDominantColor(file);
-            if (guessedColorId) setSelectedColorId(guessedColorId);
+            // Hľadanie vzoru ŠPZ (5 až 8 znakov)
+            const plateMatch = plateClean.match(/[A-Z0-9]{5,8}/);
+            if (plateMatch) {
+              setTempOcrEcv(plateMatch[0]);
+              setTempOcrHasNoEcv(false);
+            } else {
+              setTempOcrEcv("");
+              setTempOcrHasNoEcv(true);
+            }
+
+            const detectedColor = await detectDominantColor(file);
+            setTempOcrColorId(detectedColor);
           } catch (err) {
-            console.error(err);
+            console.warn(err);
+            setTempOcrHasNoEcv(true);
           } finally {
-            setIsAnalyzing(false);
+            setIsAnalyzingOcr(false);
           }
         } else if (scanStep === 3) {
           setSheetFile(file);
           setSheetPreview(URL.createObjectURL(file));
-          setScanStep(0);
+          setActiveOcrModal("sheet");
         }
+      };
+
+      // Potvrdenie hodnôt z modálneho okna priamo pri aute
+      const confirmVinModal = () => {
+        setVin(tempOcrVin);
+        if (tempOcrBrand) setBrand(tempOcrBrand);
+        setActiveOcrModal(null);
+        // Po schválení VIN štítku okamžite štartuje krok 2 (Zadok auta)
+        triggerScanStep(2);
+      };
+
+      const confirmRearModal = () => {
+        setEcv(tempOcrEcv);
+        setHasNoEcv(tempOcrHasNoEcv);
+        setSelectedColorId(tempOcrColorId);
+        setActiveOcrModal(null);
+        // Po schválení zadku auta okamžite štartuje krok 3 (Hárok)
+        triggerScanStep(3);
+      };
+
+      const confirmSheetModal = () => {
+        setActiveOcrModal(null);
+        setScanStep(0);
       };
 
       const handleDamagePhotoAdd = (e) => {
@@ -1430,1681 +1543,1289 @@
           setUploadStatusText("");
         }
       };
+      const handleAddClient = async (e) => {
+        e.preventDefault();
+        if (!newClientName.trim()) return;
+
+        const newClient = {
+          name: newClientName.trim(),
+          address: newClientAddress.trim() || null,
+          city: newClientCity.trim() || null,
+          postal_code: sanitizePostalCode(newClientPostalCode),
+          country: newClientCountry,
+          contact_person: newClientContactPerson.trim() || null,
+          phone: sanitizePhone(newClientPhone),
+          ico: sanitizeIco(newClientIco),
+          default_pdr_percent: newClientDefaultPdr ? parseFloat(newClientDefaultPdr) : 100,
+          default_ri_percent: newClientDefaultRi ? parseFloat(newClientDefaultRi) : 100,
+          auto_numbering: hasSeqConfig,
+          fixed_seq_prefix: hasSeqConfig ? newClientSeqPrefix.trim() : null,
+          initial_seq_number: hasSeqConfig ? parseInt(newClientInitialSeq, 10) || 1 : null
+        };
+
+        const { data, error } = await supabase.from("clients").insert([newClient]).select();
+        if (error) {
+          alert(error.message);
+        } else {
+          setClients([...clients, data[0]]);
+          setSelectedClientId(data[0].id);
+          localStorage.setItem("pdr_last_client", data[0].id);
+          setShowNewClientForm(false);
+          setNewClientName("");
+          setNewClientAddress("");
+          setNewClientCity("");
+          setNewClientPostalCode("");
+          setNewClientContactPerson("");
+          setNewClientPhone("+49");
+          setNewClientIco("");
+          setNewClientDefaultPdr("");
+          setNewClientDefaultRi("");
+          setHasSeqConfig(false);
+          setNewClientSeqPrefix("");
+          setNewClientInitialSeq("1");
+        }
+      };
+
+      const handleAddProject = async (e) => {
+        e.preventDefault();
+        if (!newProjectName.trim() || !addingProjectClientId) return;
+
+        let pricingObj = {
+          pricing_mode: newProjectPricingMode,
+          fixed_price: newProjectPricingMode === "fixed" ? parseFloat(newProjectFixedPrice) || 0 : null,
+          pricing_categories: newProjectPricingMode === "categories" ? projectCategoriesList : null,
+          aw_rate: newProjectPricingMode === "free" && newProjectAwRate ? parseFloat(newProjectAwRate) : null
+        };
+
+        const newProject = {
+          client_id: addingProjectClientId,
+          name: newProjectName.trim(),
+          address: newProjectAddress.trim() || null,
+          city: newProjectCity.trim() || null,
+          postal_code: sanitizePostalCode(newProjectPostalCode),
+          country: newProjectCountry,
+          contact_person: newProjectContactPerson.trim() || null,
+          phone: sanitizePhone(newProjectPhone),
+          tech_pdr_percent: newProjectTechPdrPercent ? parseFloat(newProjectTechPdrPercent) : null,
+          tech_ri_percent: newProjectTechRiPercent ? parseFloat(newProjectTechRiPercent) : null,
+          is_active: true,
+          ...pricingObj
+        };
+
+        const { data, error } = await supabase.from("projects").insert([newProject]).select();
+        if (error) {
+          alert(error.message);
+        } else {
+          setProjects([...projects, data[0]]);
+          if (addingProjectClientId === selectedClientId) {
+            setSelectedProjectId(data[0].id);
+            localStorage.setItem("pdr_last_project", data[0].id);
+          }
+          setAddingProjectClientId(null);
+          setNewProjectName("");
+          setNewProjectAddress("");
+          setNewProjectCity("");
+          setNewProjectPostalCode("");
+          setNewProjectContactPerson("");
+          setNewProjectPhone("+49");
+          setNewProjectPricingMode("free");
+          setNewProjectFixedPrice("");
+          setProjectCategoriesList([]);
+          setNewProjectTechPdrPercent("");
+          setNewProjectTechRiPercent("");
+          setNewProjectAwRate("");
+        }
+      };
+
+      const handleUpdateSheetData = async (e) => {
+        e.preventDefault();
+        if (!activeBottomSheet) return;
+
+        if (activeBottomSheet.type === "client") {
+          const updated = {
+            name: sheetEditData.name.trim(),
+            address: sheetEditData.address?.trim() || null,
+            city: sheetEditData.city?.trim() || null,
+            postal_code: sanitizePostalCode(sheetEditData.postal_code),
+            country: sheetEditData.country,
+            contact_person: sheetEditData.contact_person?.trim() || null,
+            phone: sanitizePhone(sheetEditData.phone),
+            ico: sanitizeIco(sheetEditData.ico),
+            default_pdr_percent: sheetEditData.default_pdr_percent ? parseFloat(sheetEditData.default_pdr_percent) : 100,
+            default_ri_percent: sheetEditData.default_ri_percent ? parseFloat(sheetEditData.default_ri_percent) : 100
+          };
+
+          const { error } = await supabase.from("clients").update(updated).eq("id", activeBottomSheet.id);
+          if (error) return alert(error.message);
+
+          setClients(clients.map(c => c.id === activeBottomSheet.id ? { ...c, ...updated } : c));
+          setActiveBottomSheet({ type: "client", id: activeBottomSheet.id, data: { ...activeBottomSheet.data, ...updated } });
+          setIsEditingSheet(false);
+        } else if (activeBottomSheet.type === "project") {
+          const updated = {
+            name: sheetEditData.name.trim(),
+            address: sheetEditData.address?.trim() || null,
+            city: sheetEditData.city?.trim() || null,
+            postal_code: sanitizePostalCode(sheetEditData.postal_code),
+            country: sheetEditData.country,
+            contact_person: sheetEditData.contact_person?.trim() || null,
+            phone: sanitizePhone(sheetEditData.phone),
+            tech_pdr_percent: sheetEditData.tech_pdr_percent ? parseFloat(sheetEditData.tech_pdr_percent) : null,
+            tech_ri_percent: sheetEditData.tech_ri_percent ? parseFloat(sheetEditData.tech_ri_percent) : null,
+            pricing_mode: sheetEditData.pricing_mode,
+            fixed_price: sheetEditData.pricing_mode === "fixed" ? parseFloat(sheetEditData.fixed_price) || 0 : null,
+            pricing_categories: sheetEditData.pricing_mode === "categories" ? sheetEditCategories : null,
+            aw_rate: sheetEditData.pricing_mode === "free" && sheetEditData.aw_rate ? parseFloat(sheetEditData.aw_rate) : null
+          };
+
+          const { error } = await supabase.from("projects").update(updated).eq("id", activeBottomSheet.id);
+          if (error) return alert(error.message);
+
+          setProjects(projects.map(p => p.id === activeBottomSheet.id ? { ...p, ...updated } : p));
+          setActiveBottomSheet({ type: "project", id: activeBottomSheet.id, data: { ...activeBottomSheet.data, ...updated } });
+          setIsEditingSheet(false);
+        }
+      };
+
+      const handleToggleArchiveProject = async (proj) => {
+        const nextState = proj.is_active === false ? true : false;
+        const confirmMsg = nextState ? t.restoreConfirm : t.archiveConfirm;
+        if (!confirm(confirmMsg)) return;
+
+        const { error } = await supabase.from("projects").update({ is_active: nextState }).eq("id", proj.id);
+        if (error) return alert(error.message);
+
+        setProjects(projects.map(p => p.id === proj.id ? { ...p, is_active: nextState } : p));
+        if (activeBottomSheet?.type === "project" && activeBottomSheet.id === proj.id) {
+          setActiveBottomSheet(null);
+        }
+      };
+
       const handleSaveLatePrice = async (vehicleId) => {
         const val = parseFloat(latePriceInput);
         if (isNaN(val) || val <= 0) return alert("Enter valid price.");
 
-        const { error } = await supabase.from("vehicles").update({
-          price: val,
-          is_price_pending: false,
-          status: "completed"
-        }).eq("id", vehicleId);
+        const { error } = await supabase
+          .from("vehicles")
+          .update({ price: val, is_price_pending: false, status: "completed" })
+          .eq("id", vehicleId);
 
-        if (!error) {
+        if (error) {
+          alert(error.message);
+        } else {
           setVehicles(vehicles.map(v => v.id === vehicleId ? { ...v, price: val, is_price_pending: false, status: "completed" } : v));
           setSelectedVehicleDetail(prev => prev ? { ...prev, price: val, is_price_pending: false, status: "completed" } : null);
           setLatePriceInput("");
-          alert(t.passwordUpdated);
-        } else {
-          alert("Error: " + error.message);
         }
       };
 
-      const handleOpenSheet = (type, data) => {
-        setActiveBottomSheet({ type, data });
-        setSheetEditData({ ...data });
-        if (type === "project") {
-          setSheetEditCategories(data.pricing_categories || []);
-        }
-        setIsEditingSheet(false);
-      };
+      // Filtrovanie reportov a kalkulácie
+      const filteredVehicles = useMemo(() => {
+        let list = [...vehicles];
 
-      const handleSaveSheetEdit = async () => {
-        const isClient = activeBottomSheet.type === "client";
-        const table = isClient ? "clients" : "projects";
-
-        const updatePayload = { ...sheetEditData };
-
-        if (!isClient) {
-          updatePayload.pricing_categories = updatePayload.pricing_mode === "categories" ? sheetEditCategories : null;
-          updatePayload.fixed_price = updatePayload.pricing_mode === "fixed" ? (sheetEditData.fixed_price ? parseFloat(sheetEditData.fixed_price) : null) : null;
-          updatePayload.aw_rate = updatePayload.pricing_mode === "free" ? (sheetEditData.aw_rate ? parseFloat(sheetEditData.aw_rate) : null) : null;
-          updatePayload.tech_pdr_percent = sheetEditData.tech_pdr_percent !== "" && sheetEditData.tech_pdr_percent !== null ? parseFloat(sheetEditData.tech_pdr_percent) : null;
-          updatePayload.tech_ri_percent = sheetEditData.tech_ri_percent !== "" && sheetEditData.tech_ri_percent !== null ? parseFloat(sheetEditData.tech_ri_percent) : null;
-        } else {
-          updatePayload.default_pdr_percent = sheetEditData.default_pdr_percent !== "" && sheetEditData.default_pdr_percent !== null ? parseFloat(sheetEditData.default_pdr_percent) : null;
-          updatePayload.default_ri_percent = sheetEditData.default_ri_percent !== "" && sheetEditData.default_ri_percent !== null ? parseFloat(sheetEditData.default_ri_percent) : null;
+        if (repClientFilter !== "all") {
+          const clientProjIds = projects.filter(p => p.client_id === repClientFilter).map(p => p.id);
+          list = list.filter(v => clientProjIds.includes(v.project_id));
         }
 
-        const { error } = await supabase.from(table).update(updatePayload).eq("id", sheetEditData.id);
-        if (!error) {
-          if (isClient) {
-            setClients(clients.map(c => c.id === sheetEditData.id ? updatePayload : c));
-          } else {
-            setProjects(projects.map(p => p.id === sheetEditData.id ? updatePayload : p));
-          }
-          setActiveBottomSheet({ type: activeBottomSheet.type, data: updatePayload });
-          setIsEditingSheet(false);
-          alert(t.passwordUpdated);
-        } else {
-          alert("Error: " + error.message);
+        if (repProjectFilter !== "all") {
+          list = list.filter(v => v.project_id === repProjectFilter);
         }
-      };
 
-      const handleToggleArchiveProject = async (pId, currentStatus) => {
-        const nextStatus = !currentStatus;
-        if (!confirm(nextStatus ? t.restoreConfirm : t.archiveConfirm)) return;
-
-        const { error } = await supabase.from("projects").update({ is_active: nextStatus }).eq("id", pId);
-        if (!error) {
-          setProjects(projects.map(p => p.id === pId ? { ...p, is_active: nextStatus } : p));
-        } else {
-          alert("Error: " + error.message);
-        }
-      };
-
-      const availableYears = useMemo(() => {
-        const yearsSet = new Set([new Date().getFullYear()]);
-        vehicles.forEach(v => {
-          if (v.created_at) yearsSet.add(new Date(v.created_at).getFullYear());
-        });
-        return Array.from(yearsSet).sort((a, b) => b - a);
-      }, [vehicles]);
-
-      const reportVehicles = useMemo(() => {
-        return vehicles.filter(v => {
-          const isCreator = v.created_by === currentUser.id;
-          const isCoopMember = coopRecords.some(c => c.vehicle_id === v.id && c.technician_id === currentUser.id);
-          if (!isCreator && !isCoopMember) return false;
-
-          if (repClientFilter !== "all") {
-            const project = projects.find(p => p.id === v.project_id);
-            if (!project || project.client_id !== repClientFilter) return false;
-          }
-          if (repProjectFilter !== "all" && v.project_id !== repProjectFilter) return false;
-
-          const vDate = new Date(v.created_at);
+        if (repDateRange === "7days") {
+          const limit = new Date();
+          limit.setDate(limit.getDate() - 7);
+          list = list.filter(v => new Date(v.created_at) >= limit);
+        } else if (repDateRange === "thisMonth") {
           const now = new Date();
+          list = list.filter(v => {
+            const d = new Date(v.created_at);
+            return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+          });
+        } else if (repDateRange === "lastMonth") {
+          const now = new Date();
+          const target = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+          list = list.filter(v => {
+            const d = new Date(v.created_at);
+            return d.getFullYear() === target.getFullYear() && d.getMonth() === target.getMonth();
+          });
+        } else if (repDateRange === "customMonth") {
+          list = list.filter(v => {
+            const d = new Date(v.created_at);
+            return d.getFullYear() === parseInt(repSelectedYear, 10) && d.getMonth() === parseInt(repSelectedMonth, 10);
+          });
+        }
 
-          if (repDateRange === "7days") {
-            const d = new Date(); d.setDate(d.getDate() - 7);
-            if (vDate < d) return false;
-          } else if (repDateRange === "this_month") {
-            if (vDate.getMonth() !== now.getMonth() || vDate.getFullYear() !== now.getFullYear()) return false;
-          } else if (repDateRange === "last_month") {
-            const lastM = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-            if (vDate.getMonth() !== lastM.getMonth() || vDate.getFullYear() !== lastM.getFullYear()) return false;
-          } else if (repDateRange === "custom_month") {
-            if (vDate.getMonth() !== parseInt(repSelectedMonth, 10) || vDate.getFullYear() !== parseInt(repSelectedYear, 10)) return false;
-          }
+        if (repSearchQuery.trim()) {
+          const q = repSearchQuery.toLowerCase().trim();
+          list = list.filter(v =>
+            (v.vin && v.vin.toLowerCase().includes(q)) ||
+            (v.ecv && v.ecv.toLowerCase().includes(q)) ||
+            (v.model && v.model.toLowerCase().includes(q)) ||
+            (v.brand && v.brand.toLowerCase().includes(q)) ||
+            (v.internal_record_no && v.internal_record_no.toLowerCase().includes(q))
+          );
+        }
 
-          if (repSearchQuery.trim()) {
-            const q = repSearchQuery.toLowerCase();
-            return (
-              (v.client_calc_no && v.client_calc_no.toLowerCase().includes(q)) ||
-              (v.vin && v.vin.toLowerCase().includes(q)) ||
-              (v.ecv && v.ecv.toLowerCase().includes(q)) ||
-              (v.brand && v.brand.toLowerCase().includes(q)) ||
-              (v.model && v.model.toLowerCase().includes(q))
-            );
-          }
-          return true;
+        return list;
+      }, [vehicles, projects, repClientFilter, repProjectFilter, repDateRange, repSelectedMonth, repSelectedYear, repSearchQuery]);
+
+      const kpiStats = useMemo(() => {
+        let gross = 0;
+        let myShare = 0;
+
+        filteredVehicles.forEach(v => {
+          const pdr = parseFloat(v.price) || 0;
+          const ri = parseFloat(v.ri_price) || 0;
+          gross += (pdr + ri);
+
+          const coop = coopRecords.find(c => c.vehicle_id === v.id && c.technician_id === currentUser?.id);
+          const fraction = coop ? coop.split_fraction : 1;
+
+          const pdrShare = pdr * ((v.tech_pdr_percent || 100) / 100) * fraction;
+          const riShare = ri * ((v.tech_ri_percent || 100) / 100) * fraction;
+          myShare += (pdrShare + riShare);
         });
-      }, [vehicles, projects, repClientFilter, repProjectFilter, repDateRange, repSelectedMonth, repSelectedYear, repSearchQuery, coopRecords, currentUser]);
 
-      const reportTotals = useMemo(() => {
-        let pdrTotal = 0, riTotal = 0, techTotal = 0;
-        reportVehicles.forEach(v => {
-          const p = Number(v.price) || 0;
-          const r = Number(v.ri_price) || 0;
-          pdrTotal += p;
-          riTotal += r;
+        return { count: filteredVehicles.length, gross: gross.toFixed(2), myShare: myShare.toFixed(2) };
+      }, [filteredVehicles, coopRecords, currentUser]);
 
-          const myCoop = coopRecords.find(c => c.vehicle_id === v.id && c.technician_id === currentUser.id);
-          const fraction = myCoop ? Number(myCoop.split_fraction) : 1;
-
-          techTotal += (p * ((v.tech_pdr_percent ?? 100) / 100) * fraction) + (r * ((v.tech_ri_percent ?? 100) / 100) * fraction);
-        });
-        return {
-          count: reportVehicles.length,
-          pdr: pdrTotal.toFixed(2),
-          ri: riTotal.toFixed(2),
-          gross: (pdrTotal + riTotal).toFixed(2),
-          tech: techTotal.toFixed(2)
-        };
-      }, [reportVehicles, coopRecords, currentUser]);
-
-      const exportCSV = () => {
-        if (reportVehicles.length === 0) return alert(t.noVehicles);
-
-        const headers = ["Date", "Internal No", "Calculation No", "VIN", "Plate", "Vehicle", "AW / Cat", "R&I", "PDR", "Gross", "My Share", "Note"];
-        const rows = reportVehicles.map(v => {
-          const myCoop = coopRecords.find(c => c.vehicle_id === v.id && c.technician_id === currentUser.id);
-          const fraction = myCoop ? Number(myCoop.split_fraction) : 1;
-          const myEarned = (((Number(v.price) * (v.tech_pdr_percent/100)) + (Number(v.ri_price || 0) * (v.tech_ri_percent/100))) * fraction).toFixed(2);
+      const exportCsv = () => {
+        const headers = ["Internal No", "Client Calc No", "Date", "VIN", "Plate", "Make", "Model", "Color", "PDR Price", "R&I Price", "My Share", "Currency", "Status"];
+        const rows = filteredVehicles.map(v => {
+          const coop = coopRecords.find(c => c.vehicle_id === v.id && c.technician_id === currentUser?.id);
+          const fraction = coop ? coop.split_fraction : 1;
+          const pdr = parseFloat(v.price) || 0;
+          const ri = parseFloat(v.ri_price) || 0;
+          const share = (pdr * ((v.tech_pdr_percent || 100) / 100) * fraction + ri * ((v.tech_ri_percent || 100) / 100) * fraction).toFixed(2);
 
           return [
-            new Date(v.created_at).toLocaleDateString(),
-            v.internal_record_no || "",
-            v.client_calc_no || "",
-            v.vin || "",
-            v.ecv || "",
-            `${v.brand} ${v.model}`,
-            v.aw_count ? `${v.aw_count} AW` : (v.price_category || ""),
-            v.ri_price || 0,
-            v.price || 0,
-            (Number(v.price) + Number(v.ri_price || 0)).toFixed(2),
-            `${myEarned} ${currSymbol}`,
-            `"${(v.note || "").replace(/"/g, '""')}"`
-          ];
+            `"${v.internal_record_no || ''}"`,
+            `"${v.client_calc_no || ''}"`,
+            `"${new Date(v.created_at).toLocaleDateString()}"`,
+            `"${v.vin}"`,
+            `"${v.ecv}"`,
+            `"${v.brand}"`,
+            `"${v.model}"`,
+            `"${v.color}"`,
+            v.price,
+            v.ri_price,
+            share,
+            v.currency,
+            v.status
+          ].join(",");
         });
 
-        const csvContent = "\uFEFF" + [headers.join(";"), ...rows.map(r => r.join(";"))].join("\n");
-        const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+        const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows].join("\n");
+        const encodedUri = encodeURI(csvContent);
         const link = document.createElement("a");
-        link.href = URL.createObjectURL(blob);
-        link.download = `PDR_Export_${new Date().toISOString().slice(0, 10)}.csv`;
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", `pdr_report_${Date.now()}.csv`);
+        document.body.appendChild(link);
         link.click();
+        document.body.removeChild(link);
       };
 
-      const exportPDF = () => {
-        if (reportVehicles.length === 0) return alert(t.noVehicles);
-
+      const exportPdf = () => {
         const { jsPDF } = window.jspdf;
-        const doc = new jsPDF("landscape", "mm", "a4");
+        const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
 
-        const clientObj = clients.find(c => c.id === repClientFilter);
-        const projectObj = projects.find(p => p.id === repProjectFilter);
-        const clientName = clientObj ? clientObj.name : t.allClients;
-        const locationName = projectObj ? projectObj.name : t.allLocations;
-
-        doc.setFontSize(15);
-        doc.setTextColor(30, 41, 59);
-        doc.text(t.pdfTitle, 14, 15);
+        doc.setFontSize(14);
+        doc.setFont("helvetica", "bold");
+        doc.text("PDR FlowBoard Pro - Work Summary", 14, 15);
 
         doc.setFontSize(9);
-        doc.setTextColor(100, 116, 139);
-        doc.text(`${t.clientLabel}: ${clientName} | ${t.locationLabel}: ${locationName} | Tech: ${currentUser.email} | ${t.pdfGenerated}: ${new Date().toLocaleDateString()}`, 14, 21);
-        doc.text(`${t.kpiVehicles}: ${reportTotals.count} | ${t.kpiGross}: ${reportTotals.gross} ${currSymbol} | ${t.pdfNetMyShare}: ${reportTotals.tech} ${currSymbol}`, 14, 26);
+        doc.setFont("helvetica", "normal");
+        doc.text(`Technician: ${currentUser?.email} | ${t.pdfGenerated}: ${new Date().toLocaleDateString()}`, 14, 21);
+        doc.text(`Vehicles: ${kpiStats.count} | Total Gross: ${currSymbol}${kpiStats.gross} | My Share: ${currSymbol}${kpiStats.myShare}`, 14, 26);
 
-        const tableRows = reportVehicles.map((v, index) => {
-          const myCoop = coopRecords.find(c => c.vehicle_id === v.id && c.technician_id === currentUser.id);
-          const fraction = myCoop ? Number(myCoop.split_fraction) : 1;
-          const myEarned = (((Number(v.price) * (v.tech_pdr_percent/100)) + (Number(v.ri_price || 0) * (v.tech_ri_percent/100))) * fraction).toFixed(2);
-          const coopBadge = fraction < 1 ? ` (Co-op ${Math.round(fraction*100)}%)` : "";
+        const tableRows = filteredVehicles.map(v => {
+          const coop = coopRecords.find(c => c.vehicle_id === v.id && c.technician_id === currentUser?.id);
+          const fraction = coop ? coop.split_fraction : 1;
+          const pdr = parseFloat(v.price) || 0;
+          const ri = parseFloat(v.ri_price) || 0;
+          const share = (pdr * ((v.tech_pdr_percent || 100) / 100) * fraction + ri * ((v.tech_ri_percent || 100) / 100) * fraction).toFixed(2);
 
           return [
-            index + 1,
-            v.client_calc_no || "-",
-            v.internal_record_no || "-",
-            v.vin || "-",
-            v.ecv || "-",
-            `${v.brand} ${v.model}`,
-            v.aw_count ? `${v.aw_count} AW` : (v.price_category || "-"),
-            `${Number(v.ri_price || 0).toFixed(2)} ${currSymbol}`,
-            `${Number(v.price || 0).toFixed(2)} ${currSymbol}`,
-            `${myEarned} ${currSymbol}${coopBadge}`
+            v.internal_record_no || "",
+            new Date(v.created_at).toLocaleDateString(),
+            `${v.brand} ${v.model}\n${v.vin}\n${v.ecv}`,
+            v.price_category ? `${v.price_category}\n(${currSymbol}${v.price})` : `${currSymbol}${v.price}`,
+            `${currSymbol}${v.ri_price}`,
+            `${currSymbol}${share}`
           ];
         });
 
         doc.autoTable({
           startY: 30,
-          head: [["#", t.calcNumberLabel, "Internal No", t.vin, t.ecv, t.tabVehicles2, "AW / Cat", `R&I (${currSymbol})`, `PDR (${currSymbol})`, `${t.kpiMyShare} (${currSymbol})`]],
+          head: [["ID", "Date", "Vehicle / VIN / Plate", "PDR", "R&I", "My Share"]],
           body: tableRows,
           theme: "grid",
-          headStyles: { fillColor: [245, 158, 11], textColor: [0, 0, 0], fontStyle: "bold", fontSize: 8 },
-          styles: { fontSize: 8, cellPadding: 1.8 },
-          columnStyles: {
-            0: { cellWidth: 8 },
-            1: { cellWidth: 32, fontStyle: "bold" },
-            3: { cellWidth: 38, font: "courier" },
-            9: { halign: "right", fontStyle: "bold" }
-          }
+          styles: { fontSize: 8, cellPadding: 2, textColor: [30, 41, 59] },
+          headStyles: { fillColor: [245, 158, 11], textColor: [17, 24, 39], fontStyle: "bold" },
+          margin: { left: 14, right: 14 }
         });
 
-        doc.save(`PDR_Summary_${clientName.replace(/\s+/g, "_")}_${new Date().toISOString().slice(0, 10)}.pdf`);
-      };
-
-      const toggleCurrency = () => {
-        const next = currency === "EUR" ? "USD" : "EUR";
-        setCurrency(next);
-        localStorage.setItem("pdr_curr", next);
-      };
-
-      const handleSetLanguage = (newLang) => {
-        setLang(newLang);
-        localStorage.setItem("pdr_lang", newLang);
+        doc.save(`pdr_summary_${Date.now()}.pdf`);
       };
 
       if (loadingUser) {
         return (
           <div className="flex flex-col items-center justify-center p-8 space-y-3">
-            <i className="fa-solid fa-spinner fa-spin text-amber-500 text-3xl"></i>
-            <p className="text-xs text-gray-400">Loading system...</p>
+            <i className="fa-solid fa-circle-notch fa-spin text-3xl text-amber-500"></i>
+            <span className="text-xs text-gray-400">Loading PDR FlowBoard...</span>
           </div>
         );
       }
 
-      // PRIHLÁSENIE / REGISTRÁCIA / RESET HESLA
       if (!currentUser) {
         return (
-          <div className="max-w-md w-full p-3">
-            <div className="text-center mb-6 space-y-2">
-              <h1 className="text-3xl font-black tracking-tight">
-                <span className="text-amber-500">PDR</span> <span className="text-gray-200">FlowBoard</span>
-              </h1>
-              <div className="inline-block border border-amber-500/40 px-3 py-0.5 rounded-md bg-amber-500/10">
-                <span className="text-[10px] text-amber-400 font-bold uppercase tracking-[0.2em]">HAIL HAPPENS</span>
-              </div>
+          <div className="w-full max-w-sm bg-gray-950 border border-gray-800 rounded-2xl p-5 shadow-2xl space-y-4">
+            <div className="text-center space-y-1">
+              <h1 className="text-xl font-black text-amber-500 tracking-wider">PDR FLOWBOARD</h1>
+              <p className="text-xs text-gray-400">{isResetMode ? t.forgotPasswordLink : (isRegistering ? t.registerTitle : t.loginTitle)}</p>
             </div>
 
-            <div className="bg-gray-800/95 border border-gray-700 rounded-2xl p-5 space-y-4 shadow-2xl">
-              <div className="flex justify-between items-center border-b border-gray-700 pb-3">
-                <h2 className="text-sm font-bold text-amber-400">
-                  {isResetMode ? t.forgotPasswordTitle : (isRegistering ? t.registerTitle : t.loginTitle)}
-                </h2>
-                
-                <div className="flex bg-gray-900 border border-gray-700 rounded-lg p-0.5 gap-0.5">
-                  {["EN", "DE", "SK"].map(l => (
-                    <button
-                      key={l}
-                      type="button"
-                      onClick={() => handleSetLanguage(l)}
-                      className={`px-2 py-0.5 text-[10px] font-bold rounded ${lang === l ? "bg-amber-500 text-black" : "text-gray-400 hover:text-white"}`}
-                    >
-                      {l}
-                    </button>
-                  ))}
-                </div>
+            {authError && (
+              <div className="bg-red-900/40 border border-red-700/60 p-2 rounded text-red-200 text-xs text-center font-medium">
+                {authError}
               </div>
+            )}
 
-              {!isRegistering && !isResetMode && (
-                <div className="space-y-3">
-                  <button
-                    type="button"
-                    onClick={handleGoogleSignIn}
-                    className="w-full bg-white hover:bg-gray-100 text-gray-900 font-bold py-2.5 px-4 rounded-xl text-xs flex items-center justify-center gap-2.5 shadow transition-colors"
-                  >
-                    <svg className="w-4 h-4" viewBox="0 0 24 24">
-                      <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-                      <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-                      <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
-                      <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
-                    </svg>
-                    <span>{t.googleSignInBtn}</span>
-                  </button>
+            {resetSuccessMsg && (
+              <div className="bg-emerald-900/40 border border-emerald-700/60 p-2 rounded text-emerald-200 text-xs text-center font-medium">
+                {resetSuccessMsg}
+              </div>
+            )}
 
-                  <div className="relative flex py-1 items-center">
-                    <div className="flex-grow border-t border-gray-700"></div>
-                    <span className="flex-shrink mx-3 text-[10px] text-gray-500 uppercase font-semibold">{t.orDivider}</span>
-                    <div className="flex-grow border-t border-gray-700"></div>
-                  </div>
-                </div>
+            <button
+              type="button"
+              onClick={handleGoogleSignIn}
+              className="w-full bg-white hover:bg-gray-100 text-gray-900 font-bold py-2 rounded-xl text-xs flex items-center justify-center gap-2 shadow-md transition-all active:scale-95"
+            >
+              <svg className="w-4 h-4" viewBox="0 0 24 24">
+                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
+                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
+              </svg>
+              <span>{t.googleSignInBtn}</span>
+            </button>
+
+            <div className="flex items-center gap-2">
+              <hr className="flex-1 border-gray-800" />
+              <span className="text-[10px] text-gray-500 uppercase">{t.orDivider}</span>
+              <hr className="flex-1 border-gray-800" />
+            </div>
+
+            <form onSubmit={handleAuthSubmit} className="space-y-3">
+              <input
+                type="email"
+                required
+                value={authEmail}
+                onChange={e => setAuthEmail(e.target.value)}
+                placeholder={t.emailPlaceholder}
+                className="w-full bg-gray-900 border border-gray-700 rounded-lg p-2 text-xs text-white"
+              />
+
+              {!isResetMode && (
+                <input
+                  type="password"
+                  required
+                  value={authPassword}
+                  onChange={e => setAuthPassword(e.target.value)}
+                  placeholder={t.passwordPlaceholder}
+                  className="w-full bg-gray-900 border border-gray-700 rounded-lg p-2 text-xs text-white"
+                />
               )}
 
-              {authError && (
-                <div className="bg-red-900/40 border border-red-500/50 text-red-200 text-xs p-2.5 rounded-lg text-center font-medium">
-                  {authError}
-                </div>
-              )}
-
-              {resetSuccessMsg && (
-                <div className="bg-green-900/40 border border-green-500/50 text-green-200 text-xs p-2.5 rounded-lg text-center font-medium">
-                  {resetSuccessMsg}
-                </div>
-              )}
-
-              <form onSubmit={handleAuthSubmit} className="space-y-3.5">
-                {isRegistering && (
-                  <div>
-                    <label className="block text-[10px] text-gray-400 mb-1">{t.accountType}</label>
+              {isRegistering && !isResetMode && (
+                <>
+                  <input
+                    type="password"
+                    required
+                    value={authConfirmPassword}
+                    onChange={e => setAuthConfirmPassword(e.target.value)}
+                    placeholder={t.confirmPasswordPlaceholder}
+                    className="w-full bg-gray-900 border border-gray-700 rounded-lg p-2 text-xs text-white"
+                  />
+                  <div className="space-y-1">
+                    <label className="text-[10px] text-gray-400 font-bold uppercase">{t.accountType}</label>
                     <div className="grid grid-cols-2 gap-2">
                       <button
                         type="button"
                         onClick={() => setAuthAccountType("solo")}
-                        className={`py-2 px-2 text-[11px] font-bold rounded-lg border ${authAccountType === "solo" ? "bg-amber-500 border-amber-400 text-black" : "bg-gray-900 border-gray-700 text-gray-300"}`}
+                        className={`p-1.5 rounded text-xs font-bold border ${authAccountType === "solo" ? "bg-amber-500/20 border-amber-500 text-amber-300" : "bg-gray-900 border-gray-700 text-gray-400"}`}
                       >
                         {t.soloTech}
                       </button>
                       <button
                         type="button"
                         onClick={() => setAuthAccountType("company")}
-                        className={`py-2 px-2 text-[11px] font-bold rounded-lg border ${authAccountType === "company" ? "bg-amber-500 border-amber-400 text-black" : "bg-gray-900 border-gray-700 text-gray-300"}`}
+                        className={`p-1.5 rounded text-xs font-bold border ${authAccountType === "company" ? "bg-amber-500/20 border-amber-500 text-amber-300" : "bg-gray-900 border-gray-700 text-gray-400"}`}
                       >
                         {t.companyTeam}
                       </button>
                     </div>
                   </div>
-                )}
-
-                {isRegistering && authAccountType === "company" && (
-                  <div>
-                    <label className="block text-[10px] text-gray-400 mb-1">{t.roleLabel}</label>
-                    <select 
-                      value={authRole} 
-                      onChange={e => setAuthRole(e.target.value)}
-                      className="w-full bg-gray-900 border border-gray-600 rounded-lg p-2 text-xs text-amber-400 font-bold"
-                    >
-                      <option value="manager">{t.roleManager}</option>
-                      <option value="employee">{t.roleEmployee}</option>
-                    </select>
-                  </div>
-                )}
-
-                <div>
-                  <label className="block text-[10px] text-gray-400 mb-1">Email</label>
-                  <input type="email" value={authEmail} onChange={e => setAuthEmail(e.target.value)} placeholder={t.emailPlaceholder} className="w-full bg-gray-900 border border-gray-600 rounded-lg p-2 text-xs text-white" required />
-                </div>
-
-                {!isResetMode && (
-                  <div>
-                    <label className="block text-[10px] text-gray-400 mb-1">{lang === "SK" ? "Heslo" : (lang === "DE" ? "Passwort" : "Password")}</label>
-                    <input type="password" value={authPassword} onChange={e => setAuthPassword(e.target.value)} placeholder={t.passwordPlaceholder} className="w-full bg-gray-900 border border-gray-600 rounded-lg p-2 text-xs text-white" required />
-                  </div>
-                )}
-
-                {isRegistering && (
-                  <div>
-                    <label className="block text-[10px] text-gray-400 mb-1">{t.confirmPasswordPlaceholder}</label>
-                    <input type="password" value={authConfirmPassword} onChange={e => setAuthConfirmPassword(e.target.value)} placeholder={t.confirmPasswordPlaceholder} className="w-full bg-gray-900 border border-gray-600 rounded-lg p-2 text-xs text-white" required />
-                  </div>
-                )}
-
-                <button type="submit" className="w-full bg-amber-500 hover:bg-amber-400 text-black font-extrabold py-3 rounded-xl text-sm shadow">
-                  {isResetMode ? t.sendResetLinkBtn : (isRegistering ? t.registerBtn : t.loginBtn)}
-                </button>
-
-                {!isRegistering && !isResetMode && failedAttempts >= 2 && (
-                  <div className="text-center pt-1">
-                    <button
-                      type="button"
-                      onClick={() => { setIsResetMode(true); setAuthError(""); setResetSuccessMsg(""); }}
-                      className="text-xs text-amber-400 hover:underline font-bold"
-                    >
-                      {t.forgotPasswordLink}
-                    </button>
-                  </div>
-                )}
-
-                <div className="text-center pt-1">
-                  {isResetMode ? (
-                    <button
-                      type="button"
-                      onClick={() => { setIsResetMode(false); setAuthError(""); setResetSuccessMsg(""); }}
-                      className="text-xs text-gray-400 hover:text-white"
-                    >
-                      {t.backToLoginBtn}
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => { setIsRegistering(!isRegistering); setAuthError(""); }}
-                      className="text-xs text-amber-400 hover:underline"
-                    >
-                      {isRegistering ? t.switchToLogin : t.switchToReg}
-                    </button>
+                  {authAccountType === "company" && (
+                    <div className="space-y-1">
+                      <label className="text-[10px] text-gray-400 font-bold uppercase">{t.roleLabel}</label>
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setAuthRole("manager")}
+                          className={`p-1.5 rounded text-xs font-bold border ${authRole === "manager" ? "bg-amber-500/20 border-amber-500 text-amber-300" : "bg-gray-900 border-gray-700 text-gray-400"}`}
+                        >
+                          {t.roleManager}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setAuthRole("employee")}
+                          className={`p-1.5 rounded text-xs font-bold border ${authRole === "employee" ? "bg-amber-500/20 border-amber-500 text-amber-300" : "bg-gray-900 border-gray-700 text-gray-400"}`}
+                        >
+                          {t.roleEmployee}
+                        </button>
+                      </div>
+                    </div>
                   )}
+                </>
+              )}
+
+              <button
+                type="submit"
+                className="w-full bg-amber-500 hover:bg-amber-600 text-gray-950 font-bold py-2 rounded-xl text-xs shadow transition-all active:scale-95"
+              >
+                {isResetMode ? t.sendResetLinkBtn : (isRegistering ? t.registerBtn : t.loginBtn)}
+              </button>
+            </form>
+
+            <div className="text-center space-y-1 pt-1">
+              {failedAttempts >= 2 && !isResetMode && (
+                <div>
+                  <button
+                    type="button"
+                    onClick={() => { setIsResetMode(true); setAuthError(""); }}
+                    className="text-[11px] text-amber-400 underline font-bold"
+                  >
+                    {t.forgotPasswordLink}
+                  </button>
                 </div>
-              </form>
+              )}
+
+              {isResetMode ? (
+                <button
+                  type="button"
+                  onClick={() => { setIsResetMode(false); setAuthError(""); setResetSuccessMsg(""); }}
+                  className="text-xs text-gray-400 hover:text-white"
+                >
+                  {t.backToLoginBtn}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => { setIsRegistering(!isRegistering); setAuthError(""); }}
+                  className="text-xs text-gray-400 hover:text-white"
+                >
+                  {isRegistering ? t.switchToLogin : t.switchToReg}
+                </button>
+              )}
             </div>
           </div>
         );
       }
 
-      // HLAVNÁ OBRAZOVKA
-      const userDisplayRole = currentUser.accountType === "company" 
-        ? (currentUser.role === "manager" ? t.roleManagerLabel : t.roleTechLabel)
-        : t.roleTechLabel;
-
       return (
-        <div className="max-w-md mx-auto w-full p-2 pb-24">
-          <input type="file" accept="image/*" ref={cameraInputRef} onChange={handlePhotoCapture} className="hidden" />
-          <input type="file" accept="image/*" ref={damagePhotoInputRef} onChange={handleDamagePhotoAdd} className="hidden" />
-          <input type="file" accept="image/*" ref={clientCardInputRef} onChange={() => {}} className="hidden" />
-          <input type="file" accept="image/*" ref={locationCardInputRef} onChange={() => {}} className="hidden" />
-
-          {isUploading && (
-            <div className="fixed inset-0 bg-black/90 z-50 flex flex-col justify-center items-center p-6 space-y-3 text-center">
-              <i className="fa-solid fa-cloud-arrow-up text-amber-500 text-4xl animate-bounce"></i>
-              <p className="text-white font-extrabold text-sm">{uploadStatusText}</p>
+        <div className="w-full max-w-md bg-gray-950 border border-gray-800 rounded-2xl shadow-2xl flex flex-col overflow-hidden text-xs">
+          {/* Header */}
+          <div className="bg-gray-900/80 border-b border-gray-800 p-2.5 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="font-black text-amber-500 tracking-wider">PDR FLOWBOARD</span>
+              <span className="bg-amber-500/20 text-amber-400 font-bold px-1.5 py-0.5 rounded text-[10px]">
+                {currentUser.role === "manager" ? t.roleManagerLabel : t.roleTechLabel}
+              </span>
             </div>
-          )}
-
-          {/* DETAIL KARTA VOZIDLA */}
-          {selectedVehicleDetail && (
-            <div className="fixed inset-0 bg-black/85 z-50 flex flex-col justify-end">
-              <div className="fixed inset-0" onClick={() => setSelectedVehicleDetail(null)}></div>
-              <div className="relative max-w-md mx-auto left-0 right-0 w-full bg-gray-900 border-t border-amber-500/60 rounded-t-2xl p-4 shadow-2xl z-10 bottom-sheet max-h-[92vh] overflow-y-auto space-y-3">
-                <div className="w-12 h-1 bg-gray-700 rounded-full mx-auto"></div>
-                <div className="flex justify-between items-start border-b border-gray-800 pb-2">
-                  <div>
-                    <span className="text-[10px] font-bold text-amber-400 font-mono">{selectedVehicleDetail.client_calc_no || "-"}</span>
-                    <h3 className="text-base font-black text-white">{selectedVehicleDetail.brand} {selectedVehicleDetail.model} ({selectedVehicleDetail.ecv})</h3>
-                    <p className="text-[10px] text-gray-400 font-mono">VIN: {selectedVehicleDetail.vin}</p>
-                  </div>
-                  <button onClick={() => setSelectedVehicleDetail(null)} className="text-gray-400 hover:text-white p-1">
-                    <i className="fa-solid fa-circle-xmark text-xl"></i>
-                  </button>
-                </div>
-
-                {selectedVehicleDetail.is_price_pending && (
-                  <div className="p-3 bg-amber-500/15 border border-amber-500/50 rounded-xl space-y-2">
-                    <div className="flex justify-between items-center text-[10px] font-bold text-amber-400">
-                      <span><i className="fa-solid fa-lock-open mr-1"></i> {t.pricePendingCheckbox.toUpperCase()}</span>
-                      <span>{selectedVehicleDetail.aw_count ? `${selectedVehicleDetail.aw_count} AW` : ""}</span>
-                    </div>
-                    <div className="flex gap-2">
-                      <input 
-                        type="number" 
-                        inputMode="decimal"
-                        value={latePriceInput} 
-                        onChange={e => setLatePriceInput(e.target.value)} 
-                        placeholder={`${t.latePricePlaceholder} ${currSymbol}`}
-                        className="flex-1 bg-gray-950 border border-amber-500 rounded p-1.5 text-xs text-amber-300 font-bold"
-                      />
-                      <button 
-                        type="button" 
-                        onClick={() => handleSaveLatePrice(selectedVehicleDetail.id)}
-                        className="bg-amber-500 text-black font-extrabold px-3 rounded text-xs shadow"
-                      >
-                        {t.savePriceBtn}
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                {selectedVehicleDetail.note && (
-                  <div className="p-2.5 bg-gray-800 rounded-xl border border-gray-700 space-y-1">
-                    <div className="flex justify-between items-center text-[9px] font-bold text-amber-400">
-                      <span><i className="fa-solid fa-shield-halved mr-1"></i> {t.damageNoteLabel.toUpperCase()}</span>
-                      <span>{selectedVehicleDetail.note_created_at ? new Date(selectedVehicleDetail.note_created_at).toLocaleString() : ""}</span>
-                    </div>
-                    <p className="text-xs text-gray-200">{selectedVehicleDetail.note}</p>
-                  </div>
-                )}
-
-                <div className="space-y-1.5">
-                  <p className="text-[10px] font-bold text-gray-400 uppercase">{t.scanBtn}</p>
-                  <div className="grid grid-cols-3 gap-1.5">
-                    {selectedVehicleDetail.photo_vin_url && <a href={selectedVehicleDetail.photo_vin_url} target="_blank"><img src={selectedVehicleDetail.photo_vin_url} className="h-20 w-full object-cover rounded border border-gray-700" /></a>}
-                    {selectedVehicleDetail.photo_rear_url && <a href={selectedVehicleDetail.photo_rear_url} target="_blank"><img src={selectedVehicleDetail.photo_rear_url} className="h-20 w-full object-cover rounded border border-gray-700" /></a>}
-                    {selectedVehicleDetail.photo_sheet_url && <a href={selectedVehicleDetail.photo_sheet_url} target="_blank"><img src={selectedVehicleDetail.photo_sheet_url} className="h-20 w-full object-cover rounded border border-gray-700" /></a>}
-                  </div>
-                </div>
-
-                {selectedVehicleDetail.damage_photos?.length > 0 && (
-                  <div className="space-y-1.5 pt-1 border-t border-gray-800">
-                    <p className="text-[10px] font-bold text-amber-400 uppercase">{t.damagePhotosCount} ({selectedVehicleDetail.damage_photos.length})</p>
-                    <div className="grid grid-cols-3 gap-1.5">
-                      {selectedVehicleDetail.damage_photos.map((url, i) => (
-                        <a key={i} href={url} target="_blank"><img src={url} className="h-20 w-full object-cover rounded border border-amber-500/60" /></a>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* MODÁL PRE KOOPERÁCIE */}
-          {showCoopModal && (
-            <div className="fixed inset-0 bg-black/85 z-50 flex items-center justify-center p-3">
-              <div className="bg-gray-800 border border-amber-500/50 rounded-2xl p-4 w-full max-w-sm space-y-3.5 shadow-2xl">
-                <div className="flex justify-between items-center border-b border-gray-700 pb-2">
-                  <div className="flex items-center gap-2">
-                    <i className="fa-solid fa-handshake text-amber-400 text-base"></i>
-                    <h3 className="text-sm font-black text-white">{t.coopTitle}</h3>
-                  </div>
-                  <button onClick={() => { setShowCoopModal(false); setCoopMsg(""); }} className="text-gray-400 hover:text-white">
-                    <i className="fa-solid fa-circle-xmark text-lg"></i>
-                  </button>
-                </div>
-
-                {coopMsg && (
-                  <p className="text-xs text-center text-amber-300 bg-amber-500/10 p-2 rounded border border-amber-500/30">
-                    {coopMsg}
-                  </p>
-                )}
-
-                {pendingCoopInvites.length > 0 && (
-                  <div className="space-y-1.5 bg-amber-500/10 p-2.5 rounded-xl border border-amber-500/40">
-                    <span className="text-[10px] font-bold text-amber-400 uppercase block">{t.pendingPartnersLabel}</span>
-                    {pendingCoopInvites.map(inv => (
-                      <div key={inv.id} className="flex justify-between items-center bg-gray-900 p-2 rounded border border-gray-700 text-xs">
-                        <span className="text-gray-200 truncate max-w-[170px]">{inv.recipient_email}</span>
-                        <button 
-                          onClick={() => handleAcceptCoopInvite(inv.id)}
-                          className="bg-amber-500 hover:bg-amber-400 text-black font-extrabold px-2.5 py-1 rounded text-[10px] shadow"
-                        >
-                          {lang === "SK" ? "Prijať" : (lang === "DE" ? "Annehmen" : "Accept")}
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                <form onSubmit={handleSendCoopInvite} className="space-y-2">
-                  <label className="text-[10px] text-gray-400 font-bold uppercase">{t.invitePartnerBtn}</label>
-                  <div className="flex gap-1.5">
-                    <input 
-                      type="email" 
-                      value={newPartnerEmail} 
-                      onChange={e => setNewPartnerEmail(e.target.value)} 
-                      placeholder="colleague@domain.com"
-                      className="flex-1 bg-gray-900 border border-gray-600 rounded p-1.5 text-xs text-white" 
-                      required 
-                    />
-                    <button type="submit" className="bg-amber-500 text-black font-black px-3 py-1.5 rounded text-xs shadow">
-                      {lang === "SK" ? "Pozvať" : (lang === "DE" ? "Einladen" : "Invite")}
-                    </button>
-                  </div>
-                </form>
-
-                <div className="space-y-1.5 pt-1 border-t border-gray-700">
-                  <span className="text-[10px] text-gray-400 font-bold uppercase block">{t.activePartnersLabel} ({coopPartners.length})</span>
-                  {coopPartners.length === 0 ? (
-                    <p className="text-[11px] text-gray-500 italic">{t.noPartnersMsg}</p>
-                  ) : (
-                    <div className="space-y-1 max-h-36 overflow-y-auto">
-                      {coopPartners.map(p => (
-                        <div key={p.id} className="flex justify-between items-center bg-gray-900 p-2 rounded border border-gray-700 text-xs">
-                          <div className="flex items-center gap-1.5 truncate">
-                            <i className="fa-solid fa-user-check text-green-400 text-[10px]"></i>
-                            <span className="text-gray-200 font-medium truncate">{p.partnerEmail}</span>
-                          </div>
-                          <span className="text-[9px] bg-green-500/20 text-green-300 font-bold px-1.5 py-0.5 rounded">{t.partnerBadge}</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* NASTAVENIA */}
-          {showSettingsModal && (
-            <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50">
-              <div className="bg-gray-800 border border-gray-700 rounded-xl p-5 w-full max-w-sm space-y-3.5 shadow-2xl">
-                <div className="flex justify-between items-center border-b border-gray-700 pb-2">
-                  <h3 className="text-sm font-bold text-amber-400">{t.settingsTitle}</h3>
-                  <button onClick={() => setShowSettingsModal(false)} className="text-gray-400 hover:text-white">
-                    <i className="fa-solid fa-xmark"></i>
-                  </button>
-                </div>
-
-                {settingsMsg && <p className="text-xs text-center text-amber-300 bg-amber-500/10 p-2 rounded">{settingsMsg}</p>}
-
-                <div className="space-y-1.5">
-                  <label className="text-[10px] text-gray-400 font-bold uppercase">{t.languageLabel}</label>
-                  <div className="grid grid-cols-3 gap-1 bg-gray-900 p-1 rounded-lg border border-gray-700">
-                    {["EN", "DE", "SK"].map(l => (
-                      <button
-                        key={l}
-                        type="button"
-                        onClick={() => handleSetLanguage(l)}
-                        className={`py-1.5 text-xs font-bold rounded ${lang === l ? "bg-amber-500 text-black font-black" : "text-gray-400 hover:text-white"}`}
-                      >
-                        {l === "EN" ? "English" : (l === "DE" ? "Deutsch" : "Slovenčina")}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <form onSubmit={handlePasswordUpdate} className="space-y-3 pt-2 border-t border-gray-700">
-                  <input type="password" value={newAccountPassword} onChange={e => setNewAccountPassword(e.target.value)} placeholder={t.passwordPlaceholder} className="w-full bg-gray-900 border border-gray-600 rounded p-2 text-xs text-white" required />
-                  <button type="submit" className="w-full bg-amber-500 text-black font-bold py-2 rounded text-xs shadow">
-                    {t.updatePasswordBtn}
-                  </button>
-                </form>
-              </div>
-            </div>
-          )}
-
-          {/* BOTTOM SHEET DETAIL & PLNÁ EDITÁCIA */}
-          {activeBottomSheet && (
-            <div className="fixed inset-0 bg-black/80 z-50 flex flex-col justify-end">
-              <div className="fixed inset-0" onClick={() => { setActiveBottomSheet(null); setIsEditingSheet(false); }}></div>
-              <div className="relative max-w-md mx-auto left-0 right-0 w-full bg-gray-900 border-t border-amber-500/50 rounded-t-2xl p-5 shadow-2xl z-10 bottom-sheet max-h-[88vh] overflow-y-auto space-y-3">
-                <div className="w-12 h-1 bg-gray-700 rounded-full mx-auto"></div>
-                <div className="flex justify-between items-center border-b border-gray-800 pb-2">
-                  <span className="text-[10px] font-bold text-amber-400 uppercase">
-                    {activeBottomSheet.type === "client" ? t.clientCardTitle : t.locationDetailTitle}
-                  </span>
-                  <div className="flex gap-2">
-                    <button 
-                      onClick={() => setIsEditingSheet(!isEditingSheet)} 
-                      className="text-xs bg-gray-800 border border-gray-700 text-amber-400 px-2.5 py-0.5 rounded font-bold"
-                    >
-                      {isEditingSheet ? t.cancelBtn : t.editBtn}
-                    </button>
-                    <button onClick={() => { setActiveBottomSheet(null); setIsEditingSheet(false); }} className="text-gray-400 hover:text-white p-1">
-                      <i className="fa-solid fa-circle-xmark text-lg"></i>
-                    </button>
-                  </div>
-                </div>
-
-                {isEditingSheet ? (
-                  <div className="space-y-2.5 text-xs">
-                    <div>
-                      <label className="text-[9px] text-gray-400 uppercase">Country</label>
-                      <CountryPicker 
-                        selectedCode={sheetEditData.country_code || "DE"} 
-                        onSelect={(c) => {
-                          setSheetEditData({ ...sheetEditData, country_code: c.code, phone: c.dial });
-                        }} 
-                        lang={lang} 
-                        placeholder={t.countryPlaceholder} 
-                      />
-                    </div>
-
-                    <div>
-                      <label className="text-[9px] text-gray-400 uppercase">{t.clientNamePlaceholder}</label>
-                      <input type="text" value={sheetEditData.name || ""} onChange={e => setSheetEditData({ ...sheetEditData, name: e.target.value })} className="w-full bg-gray-950 border border-gray-700 rounded p-1.5 text-white" />
-                    </div>
-
-                    <div>
-                      <label className="text-[9px] text-gray-400 uppercase">{t.clientAddressPlaceholder}</label>
-                      <input type="text" value={sheetEditData.address || ""} onChange={e => setSheetEditData({ ...sheetEditData, address: e.target.value })} className="w-full bg-gray-950 border border-gray-700 rounded p-1.5 text-white" />
-                    </div>
-
-                    <div className="grid grid-cols-3 gap-2">
-                      <div>
-                        <label className="text-[9px] text-gray-400 uppercase">{t.postalCodePlaceholder}</label>
-                        <input type="text" maxLength={8} value={sheetEditData.postal_code || ""} onChange={e => setSheetEditData({ ...sheetEditData, postal_code: sanitizePostalCode(e.target.value) })} className="w-full bg-gray-950 border border-gray-700 rounded p-1.5 text-white uppercase font-mono" />
-                      </div>
-                      <div className="col-span-2">
-                        <label className="text-[9px] text-gray-400 uppercase">{t.cityPlaceholder}</label>
-                        <input type="text" value={sheetEditData.city || ""} onChange={e => setSheetEditData({ ...sheetEditData, city: e.target.value })} className="w-full bg-gray-950 border border-gray-700 rounded p-1.5 text-white" />
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-2">
-                      <div>
-                        <label className="text-[9px] text-gray-400 uppercase">{t.contactPersonPlaceholder}</label>
-                        <input type="text" value={sheetEditData.contact_person || ""} onChange={e => setSheetEditData({ ...sheetEditData, contact_person: e.target.value })} className="w-full bg-gray-950 border border-gray-700 rounded p-1.5 text-white" />
-                      </div>
-                      <div>
-                        <label className="text-[9px] text-gray-400 uppercase">{t.phonePlaceholder}</label>
-                        <input type="tel" maxLength={16} value={sheetEditData.phone || ""} onChange={e => setSheetEditData({ ...sheetEditData, phone: sanitizePhone(e.target.value) })} className="w-full bg-gray-950 border border-gray-700 rounded p-1.5 text-white font-mono" />
-                      </div>
-                    </div>
-
-                    {activeBottomSheet.type === "client" && (
-                      <div className="grid grid-cols-2 gap-2 pt-1 border-t border-gray-800">
-                        <div>
-                          <label className="text-[9px] text-gray-400">{t.defaultPdrPercentLabel}</label>
-                          <input type="number" inputMode="decimal" value={sheetEditData.default_pdr_percent ?? ""} onChange={e => setSheetEditData({ ...sheetEditData, default_pdr_percent: e.target.value })} className="w-full bg-gray-950 border border-gray-700 rounded p-1.5 text-amber-400 font-bold" />
-                        </div>
-                        <div>
-                          <label className="text-[9px] text-gray-400">{t.defaultRiPercentLabel}</label>
-                          <input type="number" inputMode="decimal" value={sheetEditData.default_ri_percent ?? ""} onChange={e => setSheetEditData({ ...sheetEditData, default_ri_percent: e.target.value })} className="w-full bg-gray-950 border border-gray-700 rounded p-1.5 text-amber-400 font-bold" />
-                        </div>
-                      </div>
-                    )}
-
-                    {activeBottomSheet.type === "project" && (
-                      <div className="space-y-2 pt-1 border-t border-gray-800">
-                        <div className="grid grid-cols-2 gap-2">
-                          <div>
-                            <label className="text-[9px] text-gray-400">% PDR</label>
-                            <input type="number" inputMode="decimal" value={sheetEditData.tech_pdr_percent ?? ""} onChange={e => setSheetEditData({ ...sheetEditData, tech_pdr_percent: e.target.value })} className="w-full bg-gray-950 border border-gray-700 rounded p-1.5 text-amber-400 font-bold" />
-                          </div>
-                          <div>
-                            <label className="text-[9px] text-gray-400">% R&I</label>
-                            <input type="number" inputMode="decimal" value={sheetEditData.tech_ri_percent ?? ""} onChange={e => setSheetEditData({ ...sheetEditData, tech_ri_percent: e.target.value })} className="w-full bg-gray-950 border border-gray-700 rounded p-1.5 text-amber-400 font-bold" />
-                          </div>
-                        </div>
-
-                        <div>
-                          <label className="text-[9px] text-gray-400 uppercase">{t.pricingModeLabel}</label>
-                          <div className="grid grid-cols-3 gap-1 mt-0.5">
-                            {["free", "fixed", "categories"].map(m => (
-                              <button key={m} type="button" onClick={() => setSheetEditData({ ...sheetEditData, pricing_mode: m })} className={`py-1 text-[9px] font-bold rounded uppercase border ${sheetEditData.pricing_mode === m ? "bg-amber-500 text-black border-amber-400" : "bg-gray-950 text-gray-300 border-gray-700"}`}>
-                                {m}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-
-                        {sheetEditData.pricing_mode === "fixed" && (
-                          <div>
-                            <label className="text-[9px] text-gray-400">{t.fixedRateLabel} ({currSymbol})</label>
-                            <input type="number" inputMode="decimal" value={sheetEditData.fixed_price || ""} onChange={e => setSheetEditData({ ...sheetEditData, fixed_price: e.target.value })} className="w-full bg-gray-950 border border-gray-700 rounded p-1.5 text-amber-400 font-bold" />
-                          </div>
-                        )}
-
-                        {sheetEditData.pricing_mode === "categories" && (
-                          <div className="p-2 bg-gray-950 rounded border border-gray-800 space-y-1.5">
-                            <div className="flex gap-1.5">
-                              <input 
-                                type="number" 
-                                inputMode="decimal"
-                                value={sheetEditTempCatPrice} 
-                                onChange={e => setSheetEditTempCatPrice(e.target.value)} 
-                                placeholder={`Cat ${sheetEditCategories.length + 1} (${currSymbol})`}
-                                className="flex-1 bg-gray-900 border border-amber-500/50 rounded p-1 text-xs text-amber-400 font-bold"
-                              />
-                              <button type="button" onClick={handleAddSheetEditCategory} className="bg-amber-500 text-black font-extrabold px-3 py-1 text-xs rounded shadow">
-                                {t.addCatBtn}
-                              </button>
-                            </div>
-
-                            <div className="flex flex-wrap gap-1">
-                              {sheetEditCategories.map((cat, i) => (
-                                <span key={i} className="inline-flex items-center gap-1 bg-gray-900 border border-amber-500/40 text-amber-300 px-2 py-0.5 rounded text-[10px] font-bold">
-                                  {cat.label}: {cat.price} {currSymbol}
-                                  <button type="button" onClick={() => handleRemoveSheetEditCategory(i)} className="text-red-400 hover:text-red-200 ml-1">×</button>
-                                </span>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-
-                        {sheetEditData.pricing_mode === "free" && (
-                          <div>
-                            <label className="text-[9px] text-gray-400">{t.awRateLabel} ({currSymbol})</label>
-                            <input type="number" inputMode="decimal" value={sheetEditData.aw_rate || ""} onChange={e => setSheetEditData({ ...sheetEditData, aw_rate: e.target.value })} className="w-full bg-gray-950 border border-gray-700 rounded p-1.5 text-amber-400 font-bold" />
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    <button onClick={handleSaveSheetEdit} className="w-full bg-amber-500 text-black font-extrabold py-2 rounded text-xs shadow mt-2">
-                      {t.saveChangesBtn}
-                    </button>
-                  </div>
-                ) : (
-                  <div className="space-y-2.5 text-xs">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xl">{EUROPEAN_COUNTRIES.find(c => c.code === activeBottomSheet.data.country_code)?.flag || "🇪🇺"}</span>
-                      <h3 className="text-base font-black text-white">{activeBottomSheet.data.name}</h3>
-                    </div>
-                    
-                    {activeBottomSheet.data.address ? (
-                      <a 
-                        href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${activeBottomSheet.data.address || ""}, ${activeBottomSheet.data.postal_code || ""} ${activeBottomSheet.data.city || ""}, ${activeBottomSheet.data.country_code || ""}`)}`} 
-                        target="_blank" 
-                        rel="noopener noreferrer" 
-                        className="flex items-start gap-2.5 p-2.5 bg-gray-800 rounded-xl border border-gray-700 hover:border-amber-500/50"
-                      >
-                        <i className="fa-solid fa-location-dot text-amber-400 mt-0.5"></i>
-                        <div>
-                          <p className="text-[9px] text-gray-400 font-bold uppercase">{t.clientAddressPlaceholder}</p>
-                          <p className="text-white font-medium">
-                            {activeBottomSheet.data.address}
-                            {activeBottomSheet.data.postal_code || activeBottomSheet.data.city ? ` — ${activeBottomSheet.data.postal_code || ""} ${activeBottomSheet.data.city || ""}` : ""}
-                          </p>
-                          <span className="text-[9px] text-amber-400 underline mt-0.5 inline-block">{t.navigateBtn}</span>
-                        </div>
-                      </a>
-                    ) : <p className="text-gray-500 italic text-[10px]">No address provided.</p>}
-
-                    {activeBottomSheet.data.contact_person && (
-                      <div className="p-2.5 bg-gray-800 rounded-xl border border-gray-700">
-                        <p className="text-[9px] text-gray-400 font-bold uppercase">{t.contactPersonPlaceholder}</p>
-                        <p className="text-white font-semibold">{activeBottomSheet.data.contact_person}</p>
-                      </div>
-                    )}
-
-                    {activeBottomSheet.data.phone && (
-                      <a href={`tel:${activeBottomSheet.data.phone}`} className="flex items-center gap-2.5 p-2.5 bg-gray-800 rounded-xl border border-gray-700">
-                        <i className="fa-solid fa-phone text-green-400"></i>
-                        <span className="text-white font-bold">{activeBottomSheet.data.phone}</span>
-                        <span className="ml-auto bg-green-500/20 text-green-300 text-[9px] font-bold px-2 py-0.5 rounded">{t.callBtn}</span>
-                      </a>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* HLAVIČKA APLIKÁCIE */}
-          <header className="flex justify-between items-center mb-2.5 border-b border-gray-800 pb-2">
-            <div>
-              <h1 className="text-base font-black tracking-tight">
-                <span className="text-amber-500">PDR</span> <span className="text-gray-200">FlowBoard</span>
-              </h1>
-              <p className="text-[10px] text-gray-400">
-                {userDisplayRole} | {currentUser.email}
-              </p>
-            </div>
-            
-            <div className="flex items-center gap-1.5">
-              <button 
-                onClick={() => setShowCoopModal(true)} 
-                className="relative bg-gray-800 border border-amber-500/50 text-amber-400 px-2 py-1 text-xs rounded hover:bg-gray-700"
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setShowCoopModal(true)}
+                className="relative text-gray-400 hover:text-amber-400 p-1"
                 title={t.coopTitle}
               >
-                <i className="fa-solid fa-handshake"></i>
+                <i className="fa-solid fa-handshake text-sm"></i>
                 {pendingCoopInvites.length > 0 && (
-                  <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-amber-500 rounded-full animate-ping"></span>
+                  <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full animate-ping"></span>
                 )}
               </button>
-
-              <button onClick={() => setShowSettingsModal(true)} className="bg-gray-800 border border-gray-600 text-gray-300 px-2 py-1 text-xs rounded hover:text-amber-400" title={t.settingsTitle}>
-                <i className="fa-solid fa-gear"></i>
+              <button
+                type="button"
+                onClick={() => setShowSettingsModal(true)}
+                className="text-gray-400 hover:text-amber-400 p-1"
+                title={t.settingsTitle}
+              >
+                <i className="fa-solid fa-gear text-sm"></i>
               </button>
-              
-              <button onClick={() => { supabase.auth.signOut(); setCurrentUser(null); }} className="bg-gray-800 border border-red-500/50 text-red-400 px-2 py-1 text-xs rounded hover:bg-red-500/20" title="Logout">
-                <i className="fa-solid fa-power-off"></i>
+              <button
+                type="button"
+                onClick={() => supabase.auth.signOut()}
+                className="text-gray-400 hover:text-red-400 p-1"
+                title="Sign Out"
+              >
+                <i className="fa-solid fa-right-from-bracket text-sm"></i>
               </button>
             </div>
-          </header>
+          </div>
 
-          {/* TAB BAR */}
-          <div className="flex bg-gray-800 p-1 rounded-xl mb-3 border border-gray-700">
-            <button onClick={() => setActiveTab("vehicles")} className={`flex-1 py-1.5 text-center rounded-lg ${activeTab === "vehicles" ? "bg-amber-500 text-black font-black" : "text-gray-400 font-bold"}`}>
-              <i className="fa-solid fa-car text-xs block mb-0.5"></i>
-              <span className="text-[10px] leading-tight block">{t.tabVehicles1}</span>
-              <span className="text-[10px] leading-tight block">{t.tabVehicles2}</span>
+          {/* Navigácia záložiek */}
+          <div className="grid grid-cols-3 border-b border-gray-800 text-center font-bold text-[11px]">
+            <button
+              onClick={() => setActiveTab("vehicles")}
+              className={`py-2 border-b-2 flex flex-col items-center justify-center ${activeTab === "vehicles" ? "border-amber-500 text-amber-400 bg-amber-500/10" : "border-transparent text-gray-400 hover:text-gray-200"}`}
+            >
+              <span>{t.tabVehicles1}</span>
+              <span className="text-[9px] font-normal">{t.tabVehicles2}</span>
             </button>
-            <button onClick={() => setActiveTab("projects")} className={`flex-1 py-1.5 text-center rounded-lg ${activeTab === "projects" ? "bg-amber-500 text-black font-black" : "text-gray-400 font-bold"}`}>
-              <i className="fa-solid fa-warehouse text-xs block mb-0.5"></i>
-              <span className="text-[10px] leading-tight block">{t.tabProjects1}</span>
-              <span className="text-[10px] leading-tight block">{t.tabProjects2}</span>
+            <button
+              onClick={() => setActiveTab("projects")}
+              className={`py-2 border-b-2 flex flex-col items-center justify-center ${activeTab === "projects" ? "border-amber-500 text-amber-400 bg-amber-500/10" : "border-transparent text-gray-400 hover:text-gray-200"}`}
+            >
+              <span>{t.tabProjects1}</span>
+              <span className="text-[9px] font-normal">{t.tabProjects2}</span>
             </button>
-            <button onClick={() => setActiveTab("reports")} className={`flex-1 py-1.5 text-center rounded-lg ${activeTab === "reports" ? "bg-amber-500 text-black font-black" : "text-gray-400 font-bold"}`}>
-              <i className="fa-solid fa-chart-pie text-xs block mb-0.5"></i>
-              <span className="text-[10px] leading-tight block">{t.tabReports1}</span>
-              <span className="text-[10px] leading-tight block">{t.tabReports2}</span>
+            <button
+              onClick={() => setActiveTab("reports")}
+              className={`py-2 border-b-2 flex flex-col items-center justify-center ${activeTab === "reports" ? "border-amber-500 text-amber-400 bg-amber-500/10" : "border-transparent text-gray-400 hover:text-gray-200"}`}
+            >
+              <span>{t.tabReports1}</span>
+              <span className="text-[9px] font-normal">{t.tabReports2}</span>
             </button>
           </div>
 
-          {/* 1. KARTA: VOZIDLÁ */}
-          {activeTab === "vehicles" ? (
-            <form onSubmit={handleSaveVehicle} className="bg-gray-800 p-3.5 rounded-xl border border-gray-700 space-y-3.5">
-              
-              <div className="space-y-2 bg-gray-900/60 p-2.5 rounded-lg border border-gray-700">
-                <div className="flex justify-between items-center">
-                  <label className="text-xs font-bold text-gray-300">{t.clientLabel}</label>
-                  {selectedClientId && (
-                    <button type="button" onClick={() => { const c = clients.find(cl => cl.id === selectedClientId); if (c) handleOpenSheet("client", c); }} className="text-[10px] text-amber-400 font-bold hover:underline">
-                      <i className="fa-solid fa-circle-info mr-1"></i>{t.clientCardTitle}
-                    </button>
-                  )}
-                </div>
-                <select value={selectedClientId} onChange={e => handleClientChange(e.target.value)} className="w-full bg-gray-900 border border-gray-600 rounded p-1.5 text-xs text-white font-semibold">
-                  {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                </select>
-
-                <div className="flex justify-between items-center">
-                  <label className="text-xs font-bold text-gray-300">{t.locationLabel}</label>
-                  {selectedProjectId && (
-                    <button type="button" onClick={() => { const p = projects.find(pr => pr.id === selectedProjectId); if (p) handleOpenSheet("project", p); }} className="text-[10px] text-amber-400 font-bold hover:underline">
-                      <i className="fa-solid fa-location-dot mr-1"></i>{t.locationDetailTitle}
-                    </button>
-                  )}
-                </div>
-                <select value={selectedProjectId} onChange={e => handleProjectChange(e.target.value)} className="w-full bg-gray-900 border border-gray-600 rounded p-1.5 text-xs text-amber-400 font-bold">
-                  {availableProjects.map(p => (
-                    <option key={p.id} value={p.id}>{p.name} {p.city ? `(${p.city})` : ""}</option>
-                  ))}
-                </select>
-
-                <input type="text" value={clientCalcNo} onChange={e => setClientCalcNo(e.target.value)} placeholder={t.calcNumberLabel} className="w-full bg-gray-900 border border-amber-500/60 rounded p-1.5 text-xs text-amber-300 font-mono font-bold" />
-              </div>
-
-              {/* FOTO SKEN */}
-              <div className="bg-amber-500/10 border border-amber-500/30 p-2.5 rounded-lg text-center space-y-2">
-                <button 
-                  type="button" 
-                  onClick={() => { setScanStep(1); if (cameraInputRef.current) cameraInputRef.current.click(); }}
-                  className="w-full bg-amber-500 hover:bg-amber-400 text-black font-extrabold py-3.5 rounded-lg text-xs flex justify-center items-center gap-2 shadow tracking-wide uppercase"
-                >
-                  <i className="fa-solid fa-camera text-base"></i>
-                  <span>{t.scanBtn}</span>
-                </button>
-
-                {scanStep > 0 && (
-                  <div className="bg-gray-900 p-2 rounded border border-amber-500/50 flex justify-between items-center text-[10px] font-bold">
-                    <span className={scanStep === 1 ? "text-amber-400 font-black" : "text-gray-500"}>{t.step1Label}</span>
-                    <span className={scanStep === 2 ? "text-amber-400 font-black" : "text-gray-500"}>{t.step2Label}</span>
-                    <span className={scanStep === 3 ? "text-amber-400 font-black" : "text-gray-500"}>{t.step3Label}</span>
-                    {scanStep === 1 && vinPreview && <button type="button" onClick={() => { setScanStep(2); if (cameraInputRef.current) cameraInputRef.current.click(); }} className="bg-amber-500 text-black px-2 py-0.5 rounded text-[9px]">➔</button>}
-                    {scanStep === 2 && rearPreview && <button type="button" onClick={() => { setScanStep(3); if (cameraInputRef.current) cameraInputRef.current.click(); }} className="bg-amber-500 text-black px-2 py-0.5 rounded text-[9px]">➔</button>}
-                  </div>
-                )}
-
-                <div className="flex gap-2 justify-center">
-                  {vinPreview && <img src={vinPreview} className="w-12 h-12 object-cover rounded border border-amber-500" />}
-                  {rearPreview && <img src={rearPreview} className="w-12 h-12 object-cover rounded border border-amber-500" />}
-                  {sheetPreview && <img src={sheetPreview} className="w-12 h-12 object-cover rounded border border-amber-500" />}
-                </div>
-              </div>
-
-              {/* IDENTIFIKÁCIA VOZIDLA */}
-              <div className="space-y-2">
-                <div className="grid grid-cols-2 gap-2">
-                  <input type="text" value={vin} onChange={e => setVin(e.target.value)} placeholder={t.vin} className="w-full bg-gray-900 border border-gray-600 rounded p-1.5 text-xs text-amber-400 font-mono font-bold uppercase" />
-                  <input type="text" value={hasNoEcv ? (lang === "SK" ? "Bez ŠPZ" : (lang === "DE" ? "Ohne KZ" : "No Plate")) : ecv} disabled={hasNoEcv} onChange={e => setEcv(e.target.value)} placeholder={t.ecv} className="w-full bg-gray-900 border border-gray-600 rounded p-1.5 text-xs uppercase text-amber-400 font-bold" />
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <input type="text" value={brand} onChange={e => setBrand(e.target.value)} placeholder={t.brand} className="w-full bg-gray-900 border border-gray-600 rounded p-1.5 text-xs text-white font-semibold" />
-                  <input type="text" value={model} onChange={e => setModel(e.target.value)} placeholder={t.model} className="w-full bg-gray-900 border border-gray-600 rounded p-1.5 text-xs text-white font-semibold" />
-                </div>
-                
-                {/* 14 FAREBNÁ MRIEŽKA (2 RIADKY PO 7) */}
-                <div className="space-y-1">
+          {/* Telo aplikácie */}
+          <div className="p-3 space-y-3 flex-1 overflow-y-auto">
+            {activeTab === "vehicles" && (
+              <div className="space-y-3">
+                {/* Výber klienta a lokácie */}
+                <div className="bg-gray-900 border border-gray-800 rounded-xl p-2.5 space-y-2">
                   <div className="flex justify-between items-center">
-                    <span className="text-[10px] text-gray-400 font-bold uppercase">{t.color}</span>
-                    <span className="text-[10px] text-amber-400 font-bold">
-                      {COLOR_PALETTE.find(c => c.id === selectedColorId)?.labels[lang] || selectedColorId}
-                    </span>
-                  </div>
-                  <div className="grid grid-cols-7 gap-1">
-                    {COLOR_PALETTE.map(c => {
-                      const isSelected = selectedColorId === c.id;
-                      return (
-                        <button
-                          key={c.id}
-                          type="button"
-                          onClick={() => setSelectedColorId(c.id)}
-                          style={{ backgroundColor: c.bg, color: c.text, borderColor: isSelected ? "#F59E0B" : c.border }}
-                          className={`h-7 rounded text-[9px] font-black uppercase flex items-center justify-center transition-transform border ${
-                            isSelected ? "ring-2 ring-amber-400 scale-105 shadow-md" : "opacity-90 hover:opacity-100"
-                          }`}
-                        >
-                          <span className="truncate px-0.5">{isSelected ? `✓ ${c.labels[lang]}` : c.labels[lang]}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-
-              {/* CENOVÁ ČASŤ */}
-              <div className="p-2.5 bg-gray-900/80 rounded-xl border border-gray-700 space-y-2.5">
-                <div className="flex justify-between items-center">
-                  <div className="flex items-center gap-1.5">
-                    <label className="text-xs font-bold text-gray-300">{t.priceLabel}</label>
-                    <button 
-                      type="button"
-                      onClick={toggleCurrency} 
-                      className="bg-gray-800 border border-amber-500/40 text-amber-400 font-black px-1.5 py-0.2 rounded text-[10px]"
-                    >
-                      {currSymbol}
-                    </button>
-                    {currentSelectedProject?.pricing_mode === "fixed" && <span className="text-[10px] text-amber-400">(Fix)</span>}
-                    {currentSelectedProject?.pricing_mode === "categories" && <span className="text-[10px] text-amber-400">(Cat)</span>}
-                  </div>
-                  <label className="text-[10px] text-amber-400 flex items-center gap-1 font-bold cursor-pointer">
-                    <input type="checkbox" checked={isPricePending} onChange={e => setIsPricePending(e.target.checked)} />
-                    {t.pricePendingCheckbox}
-                  </label>
-                </div>
-
-                {!isPricePending && (
-                  <div>
-                    {currentSelectedProject?.pricing_mode === "categories" && currentSelectedProject.pricing_categories?.length > 0 ? (
-                      <div className="space-y-1.5">
-                        <div className="grid grid-cols-3 gap-1.5">
-                          {currentSelectedProject.pricing_categories.map((cat, idx) => (
-                            <button
-                              key={idx}
-                              type="button"
-                              onClick={() => { setSelectedCategoryLabel(cat.label); setPrice(String(cat.price)); }}
-                              className={`py-1.5 px-1 text-center rounded border font-bold text-xs ${selectedCategoryLabel === cat.label ? "bg-amber-500 text-black border-amber-400" : "bg-gray-900 text-gray-300 border-gray-700"}`}
-                            >
-                              <div>{cat.label}</div>
-                              <div className="text-[10px] font-normal">{cat.price} {currSymbol}</div>
-                            </button>
-                          ))}
-                        </div>
-                        <div className="text-right text-[10px] font-bold text-amber-400">
-                          {selectedCategoryLabel} ({price} {currSymbol})
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="space-y-2">
-                        {currentSelectedProject?.pricing_mode === "free" ? (
-                          <div className="grid grid-cols-2 gap-2">
-                            <div>
-                              <label className="block text-[9px] text-gray-400 mb-0.5">{t.priceLabel} ({currSymbol})</label>
-                              <input 
-                                type="number" 
-                                inputMode="decimal"
-                                value={price} 
-                                disabled={isTypingAw}
-                                onChange={e => handleDirectPriceChange(e.target.value)} 
-                                placeholder={`0.00 ${currSymbol}`} 
-                                className={`w-full bg-gray-900 border rounded p-1.5 text-xs font-bold ${
-                                  isTypingAw 
-                                    ? "opacity-50 text-gray-500 border-gray-800" 
-                                    : "text-amber-400 border-gray-600"
-                                }`} 
-                              />
-                            </div>
-
-                            <div>
-                              <div className="flex justify-between items-center mb-0.5">
-                                <label className="text-[9px] text-gray-400">AW</label>
-                                <span className="text-[8px] text-gray-500">
-                                  {currentSelectedProject?.aw_rate ? `${currentSelectedProject.aw_rate} ${currSymbol}/AW` : "No rate"}
-                                </span>
-                              </div>
-                              <input 
-                                type="number" 
-                                inputMode="decimal"
-                                value={awCount} 
-                                disabled={isTypingPrice}
-                                onChange={e => handleAwChange(e.target.value)} 
-                                placeholder="0 AW" 
-                                className={`w-full bg-gray-900 border rounded p-1.5 text-xs font-bold ${
-                                  isTypingPrice 
-                                    ? "opacity-50 text-gray-500 border-gray-800" 
-                                    : (isAwRateMissing 
-                                        ? "text-yellow-400 border-amber-500 bg-amber-500/10 animate-pulse" 
-                                        : "text-amber-300 border-gray-600")
-                                }`} 
-                              />
-                            </div>
-                          </div>
-                        ) : (
-                          <input 
-                            type="number" 
-                            inputMode="decimal"
-                            value={price} 
-                            onChange={e => setPrice(e.target.value)} 
-                            placeholder={`${t.priceLabel} (${currSymbol})`} 
-                            className="w-full bg-gray-900 border border-gray-600 rounded p-1.5 text-xs text-amber-400 font-bold" 
-                          />
-                        )}
-
-                        {isAwRateMissing && (
-                          <p className="text-[9px] text-amber-400 font-bold bg-amber-500/10 p-1.5 rounded border border-amber-500/30">
-                            <i className="fa-solid fa-triangle-exclamation mr-1"></i>
-                            {t.missingAwRateAlert}
-                          </p>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                <input 
-                  type="number" 
-                  inputMode="decimal"
-                  value={riPrice} 
-                  onChange={e => setRiPrice(e.target.value)} 
-                  placeholder={`${t.riPriceLabel} (${currSymbol})`} 
-                  className="w-full bg-gray-900 border border-gray-600 rounded p-1.5 text-xs text-amber-400 font-bold" 
-                />
-
-                <div className="pt-2 border-t border-gray-800 space-y-1.5">
-                  <div className="flex justify-between items-center">
-                    <span className="text-[10px] text-gray-400 font-bold uppercase flex items-center gap-1.5">
-                      <i className="fa-solid fa-handshake text-amber-400"></i>
-                      <span>{t.coopRowLabel}</span>
-                    </span>
-                    {selectedCoopPartners.length > 0 && (
-                      <span className="text-[9px] bg-amber-500 text-black font-black px-1.5 py-0.2 rounded">
-                        Co-Op 1/{1 + selectedCoopPartners.length} ({(coopSplitFraction * 100).toFixed(1)}%)
-                      </span>
-                    )}
-                  </div>
-
-                  {coopPartners.length === 0 ? (
-                    <p className="text-[9px] text-gray-500 italic">{t.noPartnersMsg}</p>
-                  ) : (
-                    <div className="flex gap-1.5 overflow-x-auto pb-1">
-                      {coopPartners.map(p => {
-                        const isSelected = selectedCoopPartners.some(sp => sp.id === p.id);
-                        return (
-                          <button
-                            key={p.id}
-                            type="button"
-                            onClick={() => toggleCoopPartnerSelection(p)}
-                            className={`px-2 py-1 rounded-lg text-[10px] font-bold border flex items-center gap-1 whitespace-nowrap transition-colors ${
-                              isSelected 
-                                ? "bg-amber-500 text-black border-amber-400 font-black shadow" 
-                                : "bg-gray-950 text-gray-300 border-gray-700 hover:border-gray-500"
-                            }`}
-                          >
-                            <span>{isSelected ? "✓" : "+"}</span>
-                            <span>{p.partnerEmail.split("@")[0]}</span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-
-                <div className="flex justify-between items-center text-[9px] text-gray-400 pt-1 border-t border-gray-800">
-                  <span>
-                    Base: {basePdrPercent}% | R&I {baseRiPercent}%
-                    {selectedCoopPartners.length > 0 && ` ÷ ${1 + selectedCoopPartners.length}`}
-                  </span>
-                  <span className="text-amber-400 font-extrabold text-xs">{t.kpiMyShare}: ~{techEarned} {currSymbol}</span>
-                </div>
-              </div>
-
-              {/* POZNÁMKA */}
-              <div className="p-2.5 bg-gray-900/60 rounded-xl border border-gray-700 space-y-2">
-                <input type="text" value={damageNote} onChange={e => setDamageNote(e.target.value)} placeholder={t.damageNoteLabel} className="w-full bg-gray-900 border border-gray-700 rounded p-1.5 text-xs text-gray-200" />
-                <div className="flex justify-between items-center">
-                  <button type="button" onClick={() => { if (damagePhotoInputRef.current) damagePhotoInputRef.current.click(); }} disabled={damageFiles.length >= 5} className="bg-gray-800 hover:bg-gray-700 border border-amber-500/40 text-amber-400 font-bold py-1 px-2.5 rounded text-[10px] flex items-center gap-1.5">
-                    <i className="fa-solid fa-camera"></i>
-                    <span>{t.addDamagePhoto} ({damageFiles.length}/5)</span>
-                  </button>
-                  {damageFiles.length > 0 && <span className="text-[10px] text-green-400 font-bold"><i className="fa-solid fa-check mr-1"></i>{t.uploadedPhotos} ({damageFiles.length})</span>}
-                </div>
-              </div>
-
-              <button 
-                type="submit" 
-                disabled={isUploading} 
-                className={`w-full font-extrabold py-3.5 rounded-lg text-xs shadow tracking-wide uppercase ${
-                  !canCloseRecord 
-                    ? "bg-gray-700 text-gray-400 cursor-not-allowed border border-gray-600" 
-                    : "bg-amber-500 hover:bg-amber-400 text-black"
-                }`}
-              >
-                {isUploading ? t.savingVehicleStatus : (!canCloseRecord ? t.blockedSubmission : t.saveVehicle)}
-              </button>
-            </form>
-          ) : activeTab === "projects" ? (
-            /* 2. KARTA: KLIENTI & LOKÁCIE */
-            <div className="space-y-3">
-              <button 
-                onClick={() => setShowNewClientForm(!showNewClientForm)} 
-                className="w-full bg-amber-500 hover:bg-amber-400 text-black font-extrabold py-2.5 px-3 rounded-xl text-xs flex items-center justify-center gap-1.5 shadow"
-              >
-                <i className="fa-solid fa-plus"></i>
-                <span>{t.addClientBtn}</span>
-              </button>
-
-              {/* FORMULÁR NOVÉHO KLIENTA */}
-              {showNewClientForm && (
-                <form onSubmit={async (e) => {
-                  e.preventDefault();
-                  if (!newClientName.trim()) return;
-
-                  const { data, error } = await supabase.from("clients").insert([{ 
-                    name: newClientName.trim(), 
-                    country_code: newClientCountry,
-                    address: newClientAddress.trim() || null,
-                    city: newClientCity.trim() || null,
-                    postal_code: newClientPostalCode.trim() || null,
-                    contact_person: newClientContactPerson.trim() || null,
-                    phone: newClientPhone.trim() || null,
-                    ico: newClientIco.trim() || null,
-                    default_pdr_percent: newClientDefaultPdr ? parseFloat(newClientDefaultPdr) : null,
-                    default_ri_percent: newClientDefaultRi ? parseFloat(newClientDefaultRi) : null,
-                    auto_numbering: hasSeqConfig,
-                    fixed_seq_prefix: hasSeqConfig ? (newClientSeqPrefix.trim() || null) : null,
-                    initial_seq_number: hasSeqConfig ? (parseInt(newClientInitialSeq, 10) || 1) : 1,
-                    created_by: currentUser.id 
-                  }]).select();
-
-                  if (!error && data) {
-                    setClients([...clients, data[0]]);
-                    handleClientChange(data[0].id);
-                    setNewClientName("");
-                    setNewClientAddress("");
-                    setNewClientCity("");
-                    setNewClientPostalCode("");
-                    setNewClientContactPerson("");
-                    setNewClientPhone("+49");
-                    setNewClientIco("");
-                    setNewClientDefaultPdr("");
-                    setNewClientDefaultRi("");
-                    setHasSeqConfig(false);
-                    setNewClientSeqPrefix("");
-                    setShowNewClientForm(false);
-                  } else {
-                    alert("Error: " + (error ? error.message : "Database write failed"));
-                  }
-                }} className="bg-gray-800 p-3.5 rounded-xl border border-amber-500/50 space-y-2.5">
-                  <div className="flex justify-between items-center border-b border-gray-700 pb-1.5">
-                    <h4 className="text-xs font-bold text-amber-400 uppercase">{t.addClientBtn}</h4>
-                    <div className="flex gap-2 items-center">
-                      <button 
-                        type="button" 
-                        onClick={() => { if (clientCardInputRef.current) clientCardInputRef.current.click(); }} 
-                        className="w-7 h-7 bg-gray-900 border border-amber-500/50 text-amber-400 rounded flex items-center justify-center hover:bg-gray-700"
-                        title="Scan Card"
+                    <label className="text-[10px] text-gray-400 font-bold uppercase">{t.clientLabel}</label>
+                    {currentSelectedClient && (
+                      <button
+                        type="button"
+                        onClick={() => setActiveBottomSheet({ type: "client", id: currentSelectedClient.id, data: currentSelectedClient })}
+                        className="text-[10px] text-amber-400 hover:underline flex items-center gap-1 font-bold"
                       >
-                        <i className="fa-solid fa-camera text-xs"></i>
+                        <i className="fa-solid fa-circle-info"></i> {t.clientCardTitle}
                       </button>
-                      <button type="button" onClick={() => setShowNewClientForm(false)} className="text-gray-400 hover:text-white">
-                        <i className="fa-solid fa-xmark"></i>
-                      </button>
-                    </div>
-                  </div>
-
-                  <div>
-                    <span className="text-[8px] text-gray-400 uppercase">Country</span>
-                    <CountryPicker 
-                      selectedCode={newClientCountry} 
-                      onSelect={(c) => {
-                        setNewClientCountry(c.code);
-                        setNewClientPhone(c.dial);
-                      }} 
-                      lang={lang} 
-                      placeholder={t.countryPlaceholder} 
-                    />
-                  </div>
-
-                  <input type="text" value={newClientName} onChange={e => setNewClientName(e.target.value)} placeholder={t.clientNamePlaceholder} className="w-full bg-gray-900 border border-gray-600 rounded p-1.5 text-xs text-white font-bold" required />
-                  <input type="text" value={newClientAddress} onChange={e => setNewClientAddress(e.target.value)} placeholder={t.clientAddressPlaceholder} className="w-full bg-gray-900 border border-gray-700 rounded p-1.5 text-xs text-gray-200" />
-                  
-                  <div className="grid grid-cols-3 gap-2">
-                    <div>
-                      <input type="text" maxLength={8} value={newClientPostalCode} onChange={e => setNewClientPostalCode(sanitizePostalCode(e.target.value))} placeholder={t.postalCodePlaceholder} className="w-full bg-gray-900 border border-gray-700 rounded p-1.5 text-xs text-gray-200 uppercase font-mono" />
-                    </div>
-                    <div className="col-span-2">
-                      <input type="text" value={newClientCity} onChange={e => setNewClientCity(e.target.value)} placeholder={t.cityPlaceholder} className="w-full bg-gray-900 border border-gray-700 rounded p-1.5 text-xs text-gray-200 font-semibold" />
-                    </div>
-                  </div>
-                  
-                  <div className="grid grid-cols-2 gap-2">
-                    <input type="text" value={newClientContactPerson} onChange={e => setNewClientContactPerson(e.target.value)} placeholder={t.contactPersonPlaceholder} className="bg-gray-900 border border-gray-700 rounded p-1.5 text-xs text-gray-200" />
-                    <input type="tel" maxLength={16} value={newClientPhone} onChange={e => setNewClientPhone(sanitizePhone(e.target.value))} placeholder={t.phonePlaceholder} className="bg-gray-900 border border-gray-700 rounded p-1.5 text-xs text-gray-200 font-mono" />
-                  </div>
-                  <input type="text" maxLength={14} value={newClientIco} onChange={e => setNewClientIco(sanitizeIco(e.target.value))} placeholder={t.icoPlaceholder} className="w-full bg-gray-900 border border-gray-700 rounded p-1.5 text-xs text-gray-200 uppercase font-mono" />
-
-                  <div className="grid grid-cols-2 gap-2 pt-1 border-t border-gray-700">
-                    <div>
-                      <label className="text-[9px] text-gray-400">{t.defaultPdrPercentLabel}</label>
-                      <input type="number" inputMode="decimal" value={newClientDefaultPdr} onChange={e => setNewClientDefaultPdr(e.target.value)} placeholder="100" className="w-full bg-gray-900 border border-gray-700 rounded p-1 text-xs text-amber-400 font-bold" />
-                    </div>
-                    <div>
-                      <label className="text-[9px] text-gray-400">{t.defaultRiPercentLabel}</label>
-                      <input type="number" inputMode="decimal" value={newClientDefaultRi} onChange={e => setNewClientDefaultRi(e.target.value)} placeholder="100" className="w-full bg-gray-900 border border-gray-700 rounded p-1 text-xs text-amber-400 font-bold" />
-                    </div>
-                  </div>
-
-                  <div className="pt-1 border-t border-gray-700 space-y-1.5">
-                    <label className="text-[10px] text-gray-300 font-bold flex items-center gap-1.5 cursor-pointer">
-                      <input type="checkbox" checked={hasSeqConfig} onChange={e => setHasSeqConfig(e.target.checked)} />
-                      <span>{t.predefinedSeqCheckbox}</span>
-                    </label>
-
-                    {hasSeqConfig && (
-                      <div className="grid grid-cols-2 gap-2 bg-gray-950 p-2 rounded border border-gray-700">
-                        <div>
-                          <span className="text-[8px] text-gray-400 uppercase">{t.seqFixedPart}</span>
-                          <input type="text" value={newClientSeqPrefix} onChange={e => setNewClientSeqPrefix(e.target.value)} placeholder="DNK/{ROK}/" className="w-full bg-gray-900 border border-gray-600 rounded p-1 text-xs text-amber-300 font-mono" />
-                        </div>
-                        <div>
-                          <span className="text-[8px] text-gray-400 uppercase">{t.seqStartPart}</span>
-                          <input type="number" inputMode="decimal" value={newClientInitialSeq} onChange={e => setNewClientInitialSeq(e.target.value)} placeholder="1" className="w-full bg-gray-900 border border-gray-600 rounded p-1 text-xs text-amber-300 font-mono" />
-                        </div>
-                      </div>
                     )}
                   </div>
+                  <select
+                    value={selectedClientId}
+                    onChange={e => handleClientChange(e.target.value)}
+                    className="w-full bg-gray-950 border border-gray-700 rounded p-1.5 text-xs text-white font-bold"
+                  >
+                    {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </select>
 
-                  <button type="submit" className="w-full bg-amber-500 text-black font-extrabold py-2 rounded text-xs shadow">{t.saveChangesBtn}</button>
-                </form>
-              )}
+                  <div className="flex justify-between items-center pt-1">
+                    <label className="text-[10px] text-gray-400 font-bold uppercase">{t.locationLabel}</label>
+                    {currentSelectedProject && (
+                      <button
+                        type="button"
+                        onClick={() => setActiveBottomSheet({ type: "project", id: currentSelectedProject.id, data: currentSelectedProject })}
+                        className="text-[10px] text-amber-400 hover:underline flex items-center gap-1 font-bold"
+                      >
+                        <i className="fa-solid fa-location-dot"></i> {t.locationDetailTitle}
+                      </button>
+                    )}
+                  </div>
+                  <select
+                    value={selectedProjectId}
+                    onChange={e => handleProjectChange(e.target.value)}
+                    className="w-full bg-gray-950 border border-gray-700 rounded p-1.5 text-xs text-white font-bold"
+                  >
+                    {availableProjects.length === 0 ? (
+                      <option value="">No locations available</option>
+                    ) : (
+                      availableProjects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)
+                    )}
+                  </select>
 
-              <div className="flex justify-end px-1">
-                <button onClick={() => setShowArchivedProjects(!showArchivedProjects)} className="text-[10px] text-amber-400 font-bold underline">
-                  {showArchivedProjects ? "Hide Archived Locations" : "Show Archived Locations"}
-                </button>
-              </div>
+                  {clientCalcNo && (
+                    <div className="pt-1">
+                      <label className="text-[9px] text-gray-400">{t.calcNumberLabel}</label>
+                      <input
+                        type="text"
+                        value={clientCalcNo}
+                        onChange={e => setClientCalcNo(e.target.value)}
+                        className="w-full bg-gray-950 border border-gray-800 rounded p-1 text-xs text-amber-300 font-mono font-bold"
+                      />
+                    </div>
+                  )}
+                </div>
 
-              {/* ZOZNAM KLIENTOV A LOKÁCIÍ */}
-              <div className="space-y-2.5">
-                {clients.map(c => {
-                  const clientProjects = projects.filter(p => p.client_id === c.id && (showArchivedProjects ? true : p.is_active !== false));
-                  const isOpen = selectedClientDetailId === c.id;
+                {/* Sekcia fotoaparátu a skenovania */}
+                <div className="bg-gray-900 border border-gray-800 rounded-xl p-2.5 space-y-2.5">
+                  {/* Skrytý vstup s natívnym spúšťaním zadného foťáku */}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    ref={cameraInputRef}
+                    onChange={handlePhotoCapture}
+                    className="hidden"
+                  />
 
-                  const filteredLocations = clientProjects.filter(p => {
-                    if (!locationSearchFilter.trim()) return true;
-                    const f = locationSearchFilter.toLowerCase();
-                    return (
-                      (p.name && p.name.toLowerCase().includes(f)) || 
-                      (p.city && p.city.toLowerCase().includes(f)) ||
-                      (p.address && p.address.toLowerCase().includes(f)) ||
-                      (p.postal_code && p.postal_code.toLowerCase().includes(f))
-                    );
-                  });
+                  <button
+                    type="button"
+                    onClick={() => triggerScanStep(1)}
+                    className="w-full bg-amber-500 hover:bg-amber-600 active:scale-95 text-gray-950 font-black py-2.5 rounded-xl text-sm flex items-center justify-center gap-2 shadow-lg transition-all"
+                  >
+                    <i className="fa-solid fa-camera text-base"></i>
+                    <span>{t.scanBtn}</span>
+                  </button>
 
-                  return (
-                    <div key={c.id} className="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden">
-                      <div onClick={() => setSelectedClientDetailId(isOpen ? null : c.id)} className="p-3 flex justify-between items-center cursor-pointer hover:bg-gray-750">
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <span className="text-base">{EUROPEAN_COUNTRIES.find(cou => cou.code === c.country_code)?.flag || "🇪🇺"}</span>
-                            <h4 className="font-extrabold text-white text-sm">{c.name}</h4>
-                            {c.city && <span className="text-[11px] text-gray-300">({c.city})</span>}
-                            {c.fixed_seq_prefix && <span className="text-[9px] bg-amber-500/20 text-amber-300 px-1 py-0.5 rounded font-mono font-bold">{c.fixed_seq_prefix}</span>}
+                  <div className="grid grid-cols-3 gap-1.5 text-center text-[10px] text-gray-400">
+                    <button
+                      type="button"
+                      onClick={() => triggerScanStep(1)}
+                      className={`p-1.5 rounded border flex items-center justify-center gap-1 ${vinPreview ? "border-emerald-500/60 bg-emerald-950/20 text-emerald-300" : "border-gray-800 bg-gray-950"}`}
+                    >
+                      {vinPreview && <i className="fa-solid fa-check text-emerald-400 text-xs"></i>}
+                      <span>{t.step1Label}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => triggerScanStep(2)}
+                      className={`p-1.5 rounded border flex items-center justify-center gap-1 ${rearPreview ? "border-emerald-500/60 bg-emerald-950/20 text-emerald-300" : "border-gray-800 bg-gray-950"}`}
+                    >
+                      {rearPreview && <i className="fa-solid fa-check text-emerald-400 text-xs"></i>}
+                      <span>{t.step2Label}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => triggerScanStep(3)}
+                      className={`p-1.5 rounded border flex items-center justify-center gap-1 ${sheetPreview ? "border-emerald-500/60 bg-emerald-950/20 text-emerald-300" : "border-gray-800 bg-gray-950"}`}
+                    >
+                      {sheetPreview && <i className="fa-solid fa-check text-emerald-400 text-xs"></i>}
+                      <span>{t.step3Label}</span>
+                    </button>
+                  </div>
+
+                  {/* Miniatúry s vizuálnym potvrdením zelenou fajkou */}
+                  {(vinPreview || rearPreview || sheetPreview) && (
+                    <div className="grid grid-cols-3 gap-2 pt-1">
+                      {vinPreview && (
+                        <div className="relative aspect-video bg-gray-950 rounded border border-emerald-500/60 overflow-hidden">
+                          <img src={vinPreview} alt="VIN" className="w-full h-full object-cover" />
+                          <div className="absolute top-1 right-1 bg-emerald-500 text-gray-950 rounded-full w-4 h-4 flex items-center justify-center text-[9px] font-black">
+                            <i className="fa-solid fa-check"></i>
                           </div>
-                          <p className="text-[10px] text-gray-400 mt-0.5">{clientProjects.length} {t.tabProjects2.toLowerCase()}</p>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <button type="button" onClick={(e) => { e.stopPropagation(); handleOpenSheet("client", c); }} className="text-xs px-2 py-1 rounded border bg-gray-900 text-amber-400 border-gray-700 font-bold">
-                            <i className="fa-solid fa-address-card"></i>
-                          </button>
-                          <i className={`fa-solid ${isOpen ? "fa-chevron-up" : "fa-chevron-down"} text-xs text-gray-400`}></i>
-                        </div>
-                      </div>
-
-                      {isOpen && (
-                        <div className="p-3 bg-gray-900/70 border-t border-gray-700 space-y-2.5">
-                          <div className="flex justify-between items-center gap-2">
-                            <input type="text" value={locationSearchFilter} onChange={e => setLocationSearchFilter(e.target.value)} placeholder={t.searchLocationsPlaceholder} className="flex-1 bg-gray-950 border border-gray-700 rounded-lg px-2.5 py-1 text-xs text-white" />
-                            <button onClick={() => { setAddingProjectClientId(addingProjectClientId === c.id ? null : c.id); setProjectCategoriesList([]); }} className="bg-amber-500 hover:bg-amber-400 text-black font-extrabold px-2.5 py-1 rounded-lg text-xs shadow whitespace-nowrap">
-                              <i className="fa-solid fa-plus mr-1"></i>{t.addLocationBtn}
-                            </button>
+                      )}
+                      {rearPreview && (
+                        <div className="relative aspect-video bg-gray-950 rounded border border-emerald-500/60 overflow-hidden">
+                          <img src={rearPreview} alt="Rear" className="w-full h-full object-cover" />
+                          <div className="absolute top-1 right-1 bg-emerald-500 text-gray-950 rounded-full w-4 h-4 flex items-center justify-center text-[9px] font-black">
+                            <i className="fa-solid fa-check"></i>
                           </div>
-
-                          {/* FORMULÁR NOVEJ LOKÁCIE */}
-                          {addingProjectClientId === c.id && (
-                            <div className="bg-gray-950 p-2.5 rounded-xl border border-amber-500/50 space-y-2">
-                              <div className="flex justify-between items-center">
-                                <span className="text-xs font-bold text-amber-400 uppercase">{t.addLocationBtn}</span>
-                                <button 
-                                  type="button" 
-                                  onClick={() => { if (locationCardInputRef.current) locationCardInputRef.current.click(); }} 
-                                  className="w-6 h-6 bg-gray-900 border border-amber-500/50 text-amber-400 rounded flex items-center justify-center"
-                                  title="Scan"
-                                >
-                                  <i className="fa-solid fa-camera text-[10px]"></i>
-                                </button>
-                              </div>
-
-                              <div>
-                                <span className="text-[8px] text-gray-400 uppercase">Country</span>
-                                <CountryPicker 
-                                  selectedCode={newProjectCountry} 
-                                  onSelect={(cou) => {
-                                    setNewProjectCountry(cou.code);
-                                    setNewProjectPhone(cou.dial);
-                                  }} 
-                                  lang={lang} 
-                                  placeholder={t.countryPlaceholder} 
-                                />
-                              </div>
-
-                              <input type="text" value={newProjectName} onChange={e => setNewProjectName(e.target.value)} placeholder="Location name" className="w-full bg-gray-900 border border-gray-700 rounded p-1 text-xs text-white font-bold" />
-                              <input type="text" value={newProjectAddress} onChange={e => setNewProjectAddress(e.target.value)} placeholder={t.clientAddressPlaceholder} className="w-full bg-gray-900 border border-gray-700 rounded p-1 text-xs text-gray-200" />
-                              
-                              <div className="grid grid-cols-3 gap-1.5">
-                                <div>
-                                  <input type="text" maxLength={8} value={newProjectPostalCode} onChange={e => setNewProjectPostalCode(sanitizePostalCode(e.target.value))} placeholder={t.postalCodePlaceholder} className="w-full bg-gray-900 border border-gray-700 rounded p-1 text-xs text-gray-200 uppercase font-mono" />
-                                </div>
-                                <div className="col-span-2">
-                                  <input type="text" value={newProjectCity} onChange={e => setNewProjectCity(e.target.value)} placeholder={t.cityPlaceholder} className="w-full bg-gray-900 border border-gray-700 rounded p-1 text-xs text-gray-200 font-semibold" />
-                                </div>
-                              </div>
-
-                              <div className="grid grid-cols-2 gap-1.5">
-                                <input type="text" value={newProjectContactPerson} onChange={e => setNewProjectContactPerson(e.target.value)} placeholder={t.contactPersonPlaceholder} className="bg-gray-900 border border-gray-700 rounded p-1 text-xs text-gray-200" />
-                                <input type="tel" maxLength={16} value={newProjectPhone} onChange={e => setNewProjectPhone(sanitizePhone(e.target.value))} placeholder={t.phonePlaceholder} className="bg-gray-900 border border-gray-700 rounded p-1 text-xs text-gray-200 font-mono" />
-                              </div>
-
-                              <div className="grid grid-cols-3 gap-1 pt-1">
-                                {["free", "fixed", "categories"].map(mode => (
-                                  <button key={mode} type="button" onClick={() => setNewProjectPricingMode(mode)} className={`py-1 text-[9px] font-bold rounded uppercase border ${newProjectPricingMode === mode ? "bg-amber-500 text-black border-amber-400" : "bg-gray-900 text-gray-300 border-gray-700"}`}>
-                                    {mode}
-                                  </button>
-                                ))}
-                              </div>
-
-                              {newProjectPricingMode === "fixed" && (
-                                <input type="number" inputMode="decimal" value={newProjectFixedPrice} onChange={e => setNewProjectFixedPrice(e.target.value)} placeholder={`${t.fixedRateLabel} (${currSymbol})`} className="w-full bg-gray-900 border border-gray-700 rounded p-1 text-xs text-amber-300 font-bold" />
-                              )}
-
-                              {newProjectPricingMode === "categories" && (
-                                <div className="p-2 bg-gray-900 rounded border border-gray-700 space-y-2">
-                                  <div className="flex gap-1.5">
-                                    <input 
-                                      type="number" 
-                                      inputMode="decimal"
-                                      value={tempCategoryPrice} 
-                                      onChange={e => setTempCategoryPrice(e.target.value)} 
-                                      placeholder={`Cat ${projectCategoriesList.length + 1} (${currSymbol})`}
-                                      className="flex-1 bg-gray-950 border border-amber-500/50 rounded p-1 text-xs text-amber-400 font-bold"
-                                    />
-                                    <button type="button" onClick={handleAddCategoryItem} className="bg-amber-500 text-black font-extrabold px-3 py-1 text-xs rounded shadow">
-                                      {t.addCatBtn}
-                                    </button>
-                                  </div>
-
-                                  <div className="flex flex-wrap gap-1">
-                                    {projectCategoriesList.map((cat, i) => (
-                                      <span key={i} className="inline-flex items-center gap-1 bg-gray-950 border border-amber-500/40 text-amber-300 px-2 py-0.5 rounded text-[10px] font-bold">
-                                        {cat.label}: {cat.price} {currSymbol}
-                                        <button type="button" onClick={() => handleRemoveCategoryItem(i)} className="text-red-400 hover:text-red-200 ml-1">×</button>
-                                      </span>
-                                    ))}
-                                  </div>
-                                </div>
-                              )}
-
-                              <div className="grid grid-cols-2 gap-1.5 pt-1 border-t border-gray-800">
-                                <div>
-                                  <label className="text-[8px] text-gray-400 uppercase">% PDR</label>
-                                  <input type="number" inputMode="decimal" value={newProjectTechPdrPercent} onChange={e => setNewProjectTechPdrPercent(e.target.value)} placeholder={c.default_pdr_percent ? `${c.default_pdr_percent}%` : "100"} className="w-full bg-gray-900 border border-gray-700 rounded p-1 text-xs text-amber-400 font-bold" />
-                                </div>
-                                <div>
-                                  <label className="text-[8px] text-gray-400 uppercase">% R&I</label>
-                                  <input type="number" inputMode="decimal" value={newProjectTechRiPercent} onChange={e => setNewProjectTechRiPercent(e.target.value)} placeholder={c.default_ri_percent ? `${c.default_ri_percent}%` : "100"} className="w-full bg-gray-900 border border-gray-700 rounded p-1 text-xs text-amber-400 font-bold" />
-                                </div>
-                              </div>
-
-                              {newProjectPricingMode === "free" && (
-                                <input type="number" inputMode="decimal" value={newProjectAwRate} onChange={e => setNewProjectAwRate(e.target.value)} placeholder={`${t.awRateLabel} (${currSymbol})`} className="w-full bg-gray-900 border border-gray-700 rounded p-1 text-xs text-amber-400 font-bold" />
-                              )}
-
-                              <button type="button" onClick={async () => {
-                                if (!newProjectName.trim()) return;
-
-                                const parsedFixed = newProjectPricingMode === "fixed" && newProjectFixedPrice ? parseFloat(newProjectFixedPrice) : null;
-                                const parsedAw = newProjectPricingMode === "free" && newProjectAwRate ? parseFloat(newProjectAwRate) : null;
-                                const parsedPdr = newProjectTechPdrPercent !== "" ? parseFloat(newProjectTechPdrPercent) : null;
-                                const parsedRi = newProjectTechRiPercent !== "" ? parseFloat(newProjectTechRiPercent) : null;
-
-                                const { data, error } = await supabase.from("projects").insert([{ 
-                                  client_id: c.id, 
-                                  name: newProjectName.trim(), 
-                                  country_code: newProjectCountry,
-                                  address: newProjectAddress.trim() || null,
-                                  city: newProjectCity.trim() || null,
-                                  postal_code: newProjectPostalCode.trim() || null,
-                                  contact_person: newProjectContactPerson.trim() || null,
-                                  phone: newProjectPhone.trim() || null,
-                                  pricing_mode: newProjectPricingMode,
-                                  fixed_price: parsedFixed,
-                                  pricing_categories: newProjectPricingMode === "categories" ? projectCategoriesList : null,
-                                  tech_pdr_percent: parsedPdr,
-                                  tech_ri_percent: parsedRi,
-                                  aw_rate: parsedAw,
-                                  is_active: true,
-                                  created_by: currentUser.id 
-                                }]).select();
-
-                                if (!error && data) {
-                                  setProjects([...projects, data[0]]);
-                                  handleProjectChange(data[0].id);
-                                  setNewProjectName("");
-                                  setNewProjectAddress("");
-                                  setNewProjectCity("");
-                                  setNewProjectPostalCode("");
-                                  setNewProjectContactPerson("");
-                                  setNewProjectPhone("+49");
-                                  setProjectCategoriesList([]);
-                                  setAddingProjectClientId(null);
-                                } else {
-                                  alert("Error: " + (error ? error.message : "Save failed"));
-                                }
-                              }} className="w-full bg-amber-500 text-black font-extrabold py-1.5 text-xs rounded">{t.saveChangesBtn}</button>
-                            </div>
-                          )}
-
-                          <div className="space-y-1">
-                            {filteredLocations.map(p => (
-                              <div key={p.id} className="text-xs p-2 rounded border bg-gray-950 border-gray-800 flex justify-between items-center">
-                                <div>
-                                  <div className="flex items-center gap-1.5">
-                                    <span className="text-base">{EUROPEAN_COUNTRIES.find(cou => cou.code === p.country_code)?.flag || "🇪🇺"}</span>
-                                    <span className="font-bold text-white">{p.name}</span>
-                                    <span className="text-[8px] uppercase bg-gray-800 text-amber-400 px-1 rounded font-bold">{p.pricing_mode}</span>
-                                  </div>
-                                  <p className="text-[9px] text-gray-400">
-                                    {p.city ? `${p.city} (${p.country_code || "DE"})` : (p.country_code || "DE")} 
-                                    {p.address ? ` — ${p.address}` : ""}
-                                    {p.postal_code ? ` [${p.postal_code}]` : ""}
-                                  </p>
-                                </div>
-                                <div className="flex items-center gap-1.5">
-                                  <button type="button" onClick={() => handleOpenSheet("project", p)} className="text-[10px] px-2 py-1 bg-gray-900 border border-gray-700 rounded text-amber-400 font-bold">
-                                    {t.editBtn}
-                                  </button>
-                                  <button 
-                                    type="button" 
-                                    onClick={() => handleToggleArchiveProject(p.id, p.is_active !== false)}
-                                    className={`text-[9px] px-2 py-1 rounded font-bold border ${p.is_active === false ? "bg-gray-800 text-green-400 border-green-600/50" : "bg-gray-900 text-red-400 border-red-500/40"}`}
-                                  >
-                                    {p.is_active === false ? t.restoreBtn : t.archiveBtn}
-                                  </button>
-                                </div>
-                              </div>
-                            ))}
+                        </div>
+                      )}
+                      {sheetPreview && (
+                        <div className="relative aspect-video bg-gray-950 rounded border border-emerald-500/60 overflow-hidden">
+                          <img src={sheetPreview} alt="Sheet" className="w-full h-full object-cover" />
+                          <div className="absolute top-1 right-1 bg-emerald-500 text-gray-950 rounded-full w-4 h-4 flex items-center justify-center text-[9px] font-black">
+                            <i className="fa-solid fa-check"></i>
                           </div>
                         </div>
                       )}
                     </div>
-                  );
-                })}
-              </div>
-            </div>
-          ) : (
-            /* 3. KARTA: REGISTER & REPORTS */
-            <div className="space-y-3">
-              <div className="bg-gray-800 p-2.5 rounded-xl border border-gray-700 space-y-2">
-                <input 
-                  type="text" 
-                  value={repSearchQuery} 
-                  onChange={e => setRepSearchQuery(e.target.value)} 
-                  placeholder={t.searchPlaceholder} 
-                  className="w-full bg-gray-900 border border-gray-700 rounded-lg p-1.5 text-xs text-white"
-                />
-
-                <div className="grid grid-cols-3 gap-1.5 text-[10px]">
-                  <select value={repClientFilter} onChange={e => { setRepClientFilter(e.target.value); setRepProjectFilter("all"); }} className="bg-gray-900 border border-gray-700 rounded p-1 text-white">
-                    <option value="all">{t.allClients}</option>
-                    {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                  </select>
-
-                  <select value={repProjectFilter} onChange={e => setRepProjectFilter(e.target.value)} className="bg-gray-900 border border-gray-700 rounded p-1 text-amber-400">
-                    <option value="all">{t.allLocations}</option>
-                    {projects.filter(p => repClientFilter === "all" || p.client_id === repClientFilter).map(p => (
-                      <option key={p.id} value={p.id}>{p.name} {p.city ? `(${p.city})` : ""}</option>
-                    ))}
-                  </select>
-
-                  <select value={repDateRange} onChange={e => setRepDateRange(e.target.value)} className="bg-gray-900 border border-gray-700 rounded p-1 text-white">
-                    <option value="all">{t.allDates}</option>
-                    <option value="7days">{t.last7Days}</option>
-                    <option value="this_month">{t.thisMonth}</option>
-                    <option value="last_month">{t.lastMonth}</option>
-                    <option value="custom_month">{t.customMonthYear}</option>
-                  </select>
+                  )}
                 </div>
 
-                {repDateRange === "custom_month" && (
-                  <div className="grid grid-cols-2 gap-1.5 pt-1 border-t border-gray-700">
+                {/* Formulár údajov vozidla */}
+                <form onSubmit={handleSaveVehicle} className="space-y-2.5">
+                  <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <span className="text-[8px] text-gray-400 uppercase">{t.selectMonth}</span>
-                      <select value={repSelectedMonth} onChange={e => setRepSelectedMonth(e.target.value)} className="w-full bg-gray-950 border border-amber-500/50 rounded p-1 text-xs text-amber-400 font-bold">
-                        {MONTHS_LIST[lang].map((mName, idx) => (
-                          <option key={idx} value={idx}>{mName}</option>
-                        ))}
-                      </select>
+                      <label className="text-[10px] text-gray-400 font-bold uppercase">{t.vin}</label>
+                      <input
+                        type="text"
+                        value={vin}
+                        onChange={e => setVin(sanitizeVin(e.target.value))}
+                        className="w-full bg-gray-900 border border-gray-700 rounded p-1.5 text-xs text-white font-mono font-bold"
+                        placeholder="17 chars"
+                      />
                     </div>
                     <div>
-                      <span className="text-[8px] text-gray-400 uppercase">{t.selectYear}</span>
-                      <select value={repSelectedYear} onChange={e => setRepSelectedYear(e.target.value)} className="w-full bg-gray-950 border border-amber-500/50 rounded p-1 text-xs text-amber-400 font-bold">
-                        {availableYears.map(yr => (
-                          <option key={yr} value={yr}>{yr}</option>
-                        ))}
-                      </select>
+                      <div className="flex justify-between items-center">
+                        <label className="text-[10px] text-gray-400 font-bold uppercase">{t.ecv}</label>
+                        <label className="flex items-center gap-1 text-[9px] text-gray-400">
+                          <input
+                            type="checkbox"
+                            checked={hasNoEcv}
+                            onChange={e => {
+                              setHasNoEcv(e.target.checked);
+                              if (e.target.checked) setEcv("");
+                            }}
+                          />
+                          <span>{t.noEcvCheckbox}</span>
+                        </label>
+                      </div>
+                      <input
+                        type="text"
+                        disabled={hasNoEcv}
+                        value={hasNoEcv ? (lang === "SK" ? "Bez ŠPZ" : (lang === "DE" ? "Ohne KZ" : "No Plate")) : ecv}
+                        onChange={e => setEcv(e.target.value.toUpperCase())}
+                        className={`w-full border rounded p-1.5 text-xs font-bold ${hasNoEcv ? "bg-gray-800 text-gray-500 border-gray-800" : "bg-gray-900 text-white border-gray-700"}`}
+                      />
                     </div>
                   </div>
-                )}
-              </div>
 
-              {/* SÚČTY */}
-              <div className="grid grid-cols-3 gap-1.5 text-center">
-                <div className="bg-gray-800 p-2 rounded-xl border border-gray-700">
-                  <span className="text-[9px] text-gray-400 uppercase font-bold">{t.kpiVehicles}</span>
-                  <p className="text-sm font-black text-white">{reportTotals.count}</p>
-                </div>
-                <div className="bg-gray-800 p-2 rounded-xl border border-gray-700">
-                  <span className="text-[9px] text-gray-400 uppercase font-bold">{t.kpiGross}</span>
-                  <p className="text-sm font-black text-amber-400">{reportTotals.gross} {currSymbol}</p>
-                </div>
-                <div className="bg-gray-800 p-2 rounded-xl border border-amber-500/40 bg-amber-500/10">
-                  <span className="text-[9px] text-amber-300 uppercase font-bold">{t.kpiMyShare}</span>
-                  <p className="text-sm font-black text-amber-400">~{reportTotals.tech} {currSymbol}</p>
-                </div>
-              </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-[10px] text-gray-400 font-bold uppercase">{t.brand}</label>
+                      <input
+                        type="text"
+                        value={brand}
+                        onChange={e => setBrand(e.target.value)}
+                        className="w-full bg-gray-900 border border-gray-700 rounded p-1.5 text-xs text-white font-medium"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] text-gray-400 font-bold uppercase">{t.model}</label>
+                      <input
+                        type="text"
+                        value={model}
+                        onChange={e => setModel(e.target.value)}
+                        className="w-full bg-gray-900 border border-gray-700 rounded p-1.5 text-xs text-white font-medium"
+                      />
+                    </div>
+                  </div>
 
-              {/* EXPORT TLAČIDLÁ */}
-              <div className="flex gap-2">
-                <button onClick={exportPDF} className="flex-1 bg-amber-500 hover:bg-amber-400 text-black font-extrabold py-2 px-3 rounded-xl text-xs flex items-center justify-center gap-1.5 shadow">
-                  <i className="fa-solid fa-file-pdf"></i>
-                  <span>{t.downloadPdfBtn}</span>
-                </button>
-                <button onClick={exportCSV} className="bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-300 font-bold py-2 px-3 rounded-xl text-xs flex items-center justify-center gap-1.5">
-                  <i className="fa-solid fa-file-csv"></i>
-                  <span>{t.downloadCsvBtn}</span>
-                </button>
-              </div>
+                  {/* 14-farebná paleta */}
+                  <div className="space-y-1">
+                    <div className="flex justify-between items-center">
+                      <label className="text-[10px] text-gray-400 font-bold uppercase">{t.color}</label>
+                      <span className="text-[10px] text-amber-400 font-bold">
+                        {COLOR_PALETTE.find(c => c.id === selectedColorId)?.labels[lang] || selectedColorId}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-7 gap-1">
+                      {COLOR_PALETTE.map(col => {
+                        const isSel = selectedColorId === col.id;
+                        return (
+                          <button
+                            key={col.id}
+                            type="button"
+                            onClick={() => setSelectedColorId(col.id)}
+                            style={{ backgroundColor: col.bg, color: col.text, borderColor: col.border }}
+                            className={`h-7 rounded border font-bold text-[9px] flex items-center justify-center transition-all ${isSel ? "ring-2 ring-amber-400 ring-offset-1 ring-offset-gray-950 scale-105" : "opacity-80 hover:opacity-100"}`}
+                          >
+                            {isSel ? "✓" : col.labels[lang].substring(0, 4)}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
 
-              {/* SÚPIS VOZIDIEL */}
-              <div className="space-y-1.5">
-                {reportVehicles.length === 0 ? (
-                  <p className="p-6 text-center text-xs text-gray-500">{t.noVehicles}</p>
-                ) : (
-                  reportVehicles.map(v => {
-                    const myCoop = coopRecords.find(c => c.vehicle_id === v.id && c.technician_id === currentUser.id);
-                    const fraction = myCoop ? Number(myCoop.split_fraction) : 1;
-                    const isOwner = v.created_by === currentUser.id;
-
-                    return (
-                      <div key={v.id} onClick={() => { setSelectedVehicleDetail(v); setLatePriceInput(""); }} className="bg-gray-800 p-2.5 rounded-xl border border-gray-700 flex justify-between items-center cursor-pointer hover:border-amber-500/50">
-                        <div>
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-xs font-bold text-amber-400 font-mono">{v.client_calc_no || "-"}</span>
-                            <span className="text-xs font-bold text-white">{v.brand} {v.model}</span>
-                            {fraction < 1 && (
-                              <span className="text-[8px] bg-amber-500/20 text-amber-300 border border-amber-500/40 px-1 py-0.2 rounded font-black flex items-center gap-0.5">
-                                <i className="fa-solid fa-handshake text-[8px]"></i>
-                                <span>Co-Op {Math.round(fraction*100)}%</span>
-                              </span>
-                            )}
-                          </div>
-                          <p className="text-[9px] text-gray-400 font-mono">
-                            VIN: {v.vin} | {v.ecv}
-                            {!isOwner && <span className="ml-1 text-gray-500 font-normal">({t.partnerBadge})</span>}
-                          </p>
+                  {/* PDR Ceny, Kategórie a Hodnoty */}
+                  <div className="bg-gray-900/60 border border-gray-800 rounded-xl p-2.5 space-y-2">
+                    {currentSelectedProject?.pricing_mode === "categories" ? (
+                      <div className="space-y-1">
+                        <label className="text-[10px] text-gray-400 font-bold uppercase">{t.priceLabel} (Kategória)</label>
+                        <div className="grid grid-cols-4 gap-1">
+                          {(currentSelectedProject.pricing_categories || []).map(cat => (
+                            <button
+                              key={cat.label}
+                              type="button"
+                              onClick={() => {
+                                setSelectedCategoryLabel(cat.label);
+                                setPrice(String(cat.price));
+                                setIsPricePending(false);
+                              }}
+                              className={`p-1.5 rounded text-xs font-bold border ${selectedCategoryLabel === cat.label ? "bg-amber-500 border-amber-500 text-gray-950 shadow" : "bg-gray-950 border-gray-800 text-gray-300"}`}
+                            >
+                              <div>{cat.label}</div>
+                              <div className="text-[10px] font-normal">{currSymbol}{cat.price}</div>
+                            </button>
+                          ))}
                         </div>
-                        <div className="text-right">
-                          {v.is_price_pending ? (
-                            <span className="text-[10px] bg-yellow-500/20 text-yellow-300 font-bold px-2 py-0.5 rounded border border-yellow-500/30">
-                              {v.aw_count ? `${v.aw_count} AW` : t.pricePendingCheckbox}
-                            </span>
-                          ) : (
-                            <div>
-                              <span className="text-xs bg-amber-500/20 text-amber-300 font-bold px-2 py-0.5 rounded">
-                                {(Number(v.price) + Number(v.ri_price || 0)).toFixed(2)} {currSymbol}
-                              </span>
-                              <p className="text-[8px] text-gray-400 mt-0.5">
-                                {t.kpiMyShare}: ~{((((Number(v.price) * (v.tech_pdr_percent/100)) + (Number(v.ri_price || 0) * (v.tech_ri_percent/100))) * fraction)).toFixed(2)} {currSymbol}
-                              </p>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <div className="flex justify-between items-center">
+                            <label className="text-[10px] text-gray-400 font-bold uppercase">{t.priceLabel}</label>
+                            <label className="flex items-center gap-1 text-[9px] text-gray-400">
+                              <input
+                                type="checkbox"
+                                checked={isPricePending}
+                                onChange={e => {
+                                  setIsPricePending(e.target.checked);
+                                  if (e.target.checked) {
+                                    setPrice("");
+                                    setAwCount("");
+                                  }
+                                }}
+                              />
+                              <span>{t.pricePendingCheckbox}</span>
+                            </label>
+                          </div>
+                          <div className="relative">
+                            <input
+                              type="number"
+                              inputMode="decimal"
+                              disabled={isPricePending}
+                              value={price}
+                              onChange={e => handleDirectPriceChange(e.target.value)}
+                              className={`w-full border rounded p-1.5 text-xs font-bold ${isPricePending ? "bg-gray-800 text-gray-500 border-gray-800" : "bg-gray-900 text-amber-300 border-gray-700"}`}
+                              placeholder={isPricePending ? t.pricePendingCheckbox : "0.00"}
+                            />
+                            <span className="absolute right-2 top-2 text-[10px] text-gray-500">{currSymbol}</span>
+                          </div>
+                        </div>
+
+                        {currentSelectedProject?.pricing_mode === "free" && (
+                          <div>
+                            <label className="text-[10px] text-gray-400 font-bold uppercase">AW (Počet)</label>
+                            <input
+                              type="number"
+                              inputMode="decimal"
+                              disabled={isPricePending}
+                              value={awCount}
+                              onChange={e => handleAwChange(e.target.value)}
+                              className={`w-full border rounded p-1.5 text-xs font-bold ${isPricePending ? "bg-gray-800 text-gray-500 border-gray-800" : "bg-gray-900 text-white border-gray-700"}`}
+                              placeholder="AW"
+                            />
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    <div>
+                      <label className="text-[10px] text-gray-400 font-bold uppercase">{t.riPriceLabel}</label>
+                      <div className="relative">
+                        <input
+                          type="number"
+                          inputMode="decimal"
+                          value={riPrice}
+                          onChange={e => setRiPrice(e.target.value)}
+                          className="w-full bg-gray-900 border border-gray-700 rounded p-1.5 text-xs text-white font-bold"
+                          placeholder="0.00"
+                        />
+                        <span className="absolute right-2 top-2 text-[10px] text-gray-500">{currSymbol}</span>
+                      </div>
+                    </div>
+
+                    {/* Spolupráca na zákazke */}
+                    {coopPartners.length > 0 && (
+                      <div className="space-y-1 pt-1 border-t border-gray-800">
+                        <label className="text-[10px] text-gray-400 font-bold uppercase">{t.coopRowLabel}</label>
+                        <div className="flex flex-wrap gap-1">
+                          {coopPartners.map(p => {
+                            const isSel = selectedCoopPartners.some(cp => cp.id === p.id);
+                            return (
+                              <button
+                                key={p.id}
+                                type="button"
+                                onClick={() => toggleCoopPartnerSelection(p)}
+                                className={`px-2 py-1 rounded text-[10px] font-bold border transition-all ${isSel ? "bg-amber-500 border-amber-500 text-gray-950" : "bg-gray-950 border-gray-800 text-gray-400"}`}
+                              >
+                                {p.partnerEmail.split("@")[0]}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Výpočet čistého podielu */}
+                    <div className="bg-gray-950 border border-gray-800 rounded p-2 flex justify-between items-center text-xs">
+                      <span className="text-gray-400 font-medium">Môj podiel ({effectivePdrPercent.toFixed(0)}% PDR):</span>
+                      <span className="text-amber-400 font-black text-sm">{currSymbol}{techEarned}</span>
+                    </div>
+                  </div>
+
+                  {/* Foto poškodenia & Ochranná pečiatka */}
+                  <div className="bg-gray-900/40 border border-gray-800 rounded-xl p-2.5 space-y-2">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      capture="environment"
+                      ref={damagePhotoInputRef}
+                      onChange={handleDamagePhotoAdd}
+                      className="hidden"
+                    />
+                    <div className="flex justify-between items-center">
+                      <button
+                        type="button"
+                        onClick={() => damagePhotoInputRef.current && damagePhotoInputRef.current.click()}
+                        className="bg-gray-800 hover:bg-gray-700 text-gray-200 px-2 py-1 rounded text-[10px] font-bold flex items-center gap-1"
+                      >
+                        <i className="fa-solid fa-camera"></i> {t.addDamagePhoto} ({damageFiles.length}/5)
+                      </button>
+                    </div>
+
+                    <input
+                      type="text"
+                      value={damageNote}
+                      onChange={e => setDamageNote(e.target.value)}
+                      placeholder={t.damageNoteLabel}
+                      className="w-full bg-gray-950 border border-gray-800 rounded p-1.5 text-xs text-white"
+                    />
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={isUploading}
+                    className="w-full bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-black py-2.5 rounded-xl text-xs shadow-lg transition-all flex items-center justify-center gap-2"
+                  >
+                    {isUploading ? (
+                      <>
+                        <i className="fa-solid fa-circle-notch fa-spin"></i>
+                        <span>{uploadStatusText || t.savingVehicleStatus}</span>
+                      </>
+                    ) : (
+                      <>
+                        <i className="fa-solid fa-floppy-disk"></i>
+                        <span>{t.saveVehicle}</span>
+                      </>
+                    )}
+                  </button>
+                </form>
+              </div>
+            )}
+
+            {/* Správa Klientov a Lokácií */}
+            {activeTab === "projects" && (
+              <div className="space-y-3">
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowNewClientForm(true)}
+                    className="flex-1 bg-amber-500 hover:bg-amber-600 text-gray-950 font-bold py-1.5 rounded-lg text-xs"
+                  >
+                    + {t.addClientBtn}
+                  </button>
+                </div>
+
+                <div className="space-y-2">
+                  {clients.map(c => {
+                    const clientProjects = projects.filter(p => p.client_id === c.id && (showArchivedProjects || p.is_active !== false));
+                    return (
+                      <div key={c.id} className="bg-gray-900 border border-gray-800 rounded-xl p-2.5 space-y-2">
+                        <div className="flex justify-between items-center">
+                          <button
+                            type="button"
+                            onClick={() => setActiveBottomSheet({ type: "client", id: c.id, data: c })}
+                            className="font-bold text-amber-400 hover:underline text-left text-xs flex items-center gap-1.5"
+                          >
+                            <span>{c.name}</span>
+                            <i className="fa-solid fa-arrow-up-right-from-square text-[9px] text-gray-500"></i>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setAddingProjectClientId(c.id)}
+                            className="bg-gray-800 hover:bg-gray-700 text-gray-200 px-2 py-0.5 rounded text-[10px] font-bold"
+                          >
+                            + {t.addLocationBtn}
+                          </button>
+                        </div>
+
+                        <div className="space-y-1">
+                          {clientProjects.map(p => (
+                            <div
+                              key={p.id}
+                              onClick={() => setActiveBottomSheet({ type: "project", id: p.id, data: p })}
+                              className={`p-2 rounded-lg border flex justify-between items-center cursor-pointer ${p.is_active === false ? "bg-gray-950/40 border-gray-900 opacity-60" : "bg-gray-950 border-gray-800/80 hover:border-amber-500/40"}`}
+                            >
+                              <div className="space-y-0.5">
+                                <div className="font-bold text-gray-200">{p.name}</div>
+                                <div className="text-[10px] text-gray-500">{p.city || "No address"}</div>
+                              </div>
+                              <div className="text-right">
+                                <span className="bg-gray-900 text-amber-400 border border-gray-800 px-1.5 py-0.5 rounded text-[10px] font-mono">
+                                  {p.pricing_mode === "fixed" ? `${currSymbol}${p.fixed_price}` : (p.pricing_mode === "categories" ? "Kategórie" : "AW / Voľná")}
+                                </span>
+                              </div>
                             </div>
-                          )}
+                          ))}
                         </div>
                       </div>
                     );
-                  })
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Reporty a KPI */}
+            {activeTab === "reports" && (
+              <div className="space-y-3">
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="bg-gray-900 border border-gray-800 p-2 rounded-xl text-center">
+                    <div className="text-[10px] text-gray-400 font-bold">{t.kpiVehicles}</div>
+                    <div className="text-base font-black text-white">{kpiStats.count}</div>
+                  </div>
+                  <div className="bg-gray-900 border border-gray-800 p-2 rounded-xl text-center">
+                    <div className="text-[10px] text-gray-400 font-bold">{t.kpiGross}</div>
+                    <div className="text-base font-black text-amber-400">{currSymbol}{kpiStats.gross}</div>
+                  </div>
+                  <div className="bg-gray-900 border border-gray-800 p-2 rounded-xl text-center">
+                    <div className="text-[10px] text-gray-400 font-bold">{t.kpiMyShare}</div>
+                    <div className="text-base font-black text-emerald-400">{currSymbol}{kpiStats.myShare}</div>
+                  </div>
+                </div>
+
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={exportPdf}
+                    className="flex-1 bg-amber-500 hover:bg-amber-600 text-gray-950 font-bold py-1.5 rounded-lg text-xs flex items-center justify-center gap-1.5"
+                  >
+                    <i className="fa-solid fa-file-pdf"></i> {t.downloadPdfBtn}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={exportCsv}
+                    className="bg-gray-800 hover:bg-gray-700 text-gray-200 px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5"
+                  >
+                    <i className="fa-solid fa-file-csv"></i> {t.downloadCsvBtn}
+                  </button>
+                </div>
+
+                <input
+                  type="text"
+                  value={repSearchQuery}
+                  onChange={e => setRepSearchQuery(e.target.value)}
+                  placeholder={t.searchPlaceholder}
+                  className="w-full bg-gray-900 border border-gray-700 rounded-lg p-2 text-xs text-white"
+                />
+
+                <div className="space-y-1.5">
+                  {filteredVehicles.map(v => (
+                    <div
+                      key={v.id}
+                      onClick={() => setSelectedVehicleDetail(v)}
+                      className="bg-gray-900 border border-gray-800 hover:border-amber-500/60 p-2 rounded-xl flex justify-between items-center cursor-pointer"
+                    >
+                      <div>
+                        <div className="font-bold text-gray-200">{v.brand} {v.model}</div>
+                        <div className="text-[10px] font-mono text-gray-400">{v.ecv} | {v.vin.substring(0, 8)}...</div>
+                      </div>
+                      <div className="text-right">
+                        <div className="font-bold text-amber-400">{currSymbol}{v.price}</div>
+                        <div className="text-[9px] text-gray-500">{new Date(v.created_at).toLocaleDateString()}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* ========================================================================= */}
+          {/* KROKOVÝ MODÁL PRE OKAMŽITÚ KONTROLU A OPRAVU PRI AUTE (VARIANT 2)          */}
+          {/* ========================================================================= */}
+          {activeOcrModal && (
+            <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+              <div className="w-full max-w-sm bg-gray-950 border border-amber-500/80 rounded-2xl p-4 shadow-2xl space-y-3.5">
+                {/* Hlavička modálu */}
+                <div className="flex justify-between items-center border-b border-gray-800 pb-2">
+                  <div className="font-bold text-amber-400 text-xs flex items-center gap-2">
+                    <i className="fa-solid fa-camera"></i>
+                    <span>
+                      {activeOcrModal === "vin" && t.ocrModalTitleVin}
+                      {activeOcrModal === "rear" && t.ocrModalTitleRear}
+                      {activeOcrModal === "sheet" && t.ocrModalTitleSheet}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setActiveOcrModal(null)}
+                    className="text-gray-500 hover:text-white"
+                  >
+                    <i className="fa-solid fa-xmark text-sm"></i>
+                  </button>
+                </div>
+
+                {/* Indikátor priebehu Google Vision */}
+                {isAnalyzingOcr ? (
+                  <div className="py-8 flex flex-col items-center justify-center space-y-2">
+                    <i className="fa-solid fa-circle-notch fa-spin text-2xl text-amber-500"></i>
+                    <span className="text-xs text-gray-400">{t.ocrModalAnalyzing}</span>
+                  </div>
+                ) : (
+                  <>
+                    {/* Náhľad odfoteného obrázka */}
+                    <div className="relative aspect-video bg-gray-900 rounded-lg overflow-hidden border border-gray-800">
+                      <img
+                        src={activeOcrModal === "vin" ? vinPreview : (activeOcrModal === "rear" ? rearPreview : sheetPreview)}
+                        alt="Náhľad"
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+
+                    {/* Formulár kroku 1: Kontrola VIN */}
+                    {activeOcrModal === "vin" && (
+                      <div className="space-y-2">
+                        <div>
+                          <label className="text-[10px] text-gray-400 font-bold uppercase">{t.vin}</label>
+                          <input
+                            type="text"
+                            value={tempOcrVin}
+                            onChange={e => setTempOcrVin(sanitizeVin(e.target.value))}
+                            className="w-full bg-gray-900 border border-amber-500/80 rounded p-2 text-sm text-amber-300 font-mono font-black tracking-widest text-center"
+                            placeholder="VIN (17 znakov)"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[10px] text-gray-400 font-bold uppercase">{t.brand}</label>
+                          <input
+                            type="text"
+                            value={tempOcrBrand}
+                            onChange={e => setTempOcrBrand(e.target.value)}
+                            className="w-full bg-gray-900 border border-gray-700 rounded p-1.5 text-xs text-white font-bold"
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Formulár kroku 2: Kontrola ŠPZ a Farby karosérie */}
+                    {activeOcrModal === "rear" && (
+                      <div className="space-y-2.5">
+                        <div>
+                          <div className="flex justify-between items-center">
+                            <label className="text-[10px] text-gray-400 font-bold uppercase">{t.ecv}</label>
+                            <label className="flex items-center gap-1.5 text-[10px] text-gray-300">
+                              <input
+                                type="checkbox"
+                                checked={tempOcrHasNoEcv}
+                                onChange={e => {
+                                  setTempOcrHasNoEcv(e.target.checked);
+                                  if (e.target.checked) setTempOcrEcv("");
+                                }}
+                              />
+                              <span>{t.noEcvCheckbox}</span>
+                            </label>
+                          </div>
+                          <input
+                            type="text"
+                            disabled={tempOcrHasNoEcv}
+                            value={tempOcrHasNoEcv ? (lang === "SK" ? "Bez ŠPZ" : (lang === "DE" ? "Ohne KZ" : "No Plate")) : tempOcrEcv}
+                            onChange={e => setTempOcrEcv(e.target.value.toUpperCase())}
+                            className={`w-full border rounded p-2 text-sm font-black tracking-widest text-center ${tempOcrHasNoEcv ? "bg-gray-800 text-gray-500 border-gray-800" : "bg-gray-900 text-white border-amber-500/80"}`}
+                          />
+                        </div>
+
+                        {/* Rýchly výber farby z palety */}
+                        <div className="space-y-1">
+                          <div className="flex justify-between items-center">
+                            <label className="text-[10px] text-gray-400 font-bold uppercase">{t.color}</label>
+                            <span className="text-[10px] text-amber-400 font-bold">
+                              {COLOR_PALETTE.find(c => c.id === tempOcrColorId)?.labels[lang] || tempOcrColorId}
+                            </span>
+                          </div>
+                          <div className="grid grid-cols-7 gap-1">
+                            {COLOR_PALETTE.map(col => {
+                              const isSel = tempOcrColorId === col.id;
+                              return (
+                                <button
+                                  key={col.id}
+                                  type="button"
+                                  onClick={() => setTempOcrColorId(col.id)}
+                                  style={{ backgroundColor: col.bg, color: col.text, borderColor: col.border }}
+                                  className={`h-6 rounded border font-bold text-[8px] flex items-center justify-center ${isSel ? "ring-2 ring-amber-400 ring-offset-1 ring-offset-gray-950 scale-105" : "opacity-80"}`}
+                                >
+                                  {isSel ? "✓" : col.labels[lang].substring(0, 3)}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Akčné tlačidlá v modále */}
+                    <div className="grid grid-cols-2 gap-2 pt-2">
+                      <button
+                        type="button"
+                        onClick={() => triggerScanStep(scanStep)}
+                        className="bg-gray-800 hover:bg-gray-700 text-gray-300 font-bold py-2 rounded-xl text-xs"
+                      >
+                        {t.ocrModalRetake}
+                      </button>
+
+                      {activeOcrModal === "vin" && (
+                        <button
+                          type="button"
+                          onClick={confirmVinModal}
+                          className="bg-amber-500 hover:bg-amber-600 text-gray-950 font-black py-2 rounded-xl text-xs shadow"
+                        >
+                          {t.ocrModalConfirmNext} ➔
+                        </button>
+                      )}
+
+                      {activeOcrModal === "rear" && (
+                        <button
+                          type="button"
+                          onClick={confirmRearModal}
+                          className="bg-amber-500 hover:bg-amber-600 text-gray-950 font-black py-2 rounded-xl text-xs shadow"
+                        >
+                          {t.ocrModalConfirmNext} ➔
+                        </button>
+                      )}
+
+                      {activeOcrModal === "sheet" && (
+                        <button
+                          type="button"
+                          onClick={confirmSheetModal}
+                          className="bg-emerald-600 hover:bg-emerald-500 text-white font-black py-2 rounded-xl text-xs shadow"
+                        >
+                          {t.ocrModalConfirmFinish} ✓
+                        </button>
+                      )}
+                    </div>
+                  </>
                 )}
+              </div>
+            </div>
+          )}
+
+          {/* Bottom Sheet Detail Klienta / Lokácie */}
+          {activeBottomSheet && (
+            <div className="fixed inset-0 z-40 bg-black/60 flex items-end justify-center">
+              <div className="w-full max-w-md bg-gray-950 border-t border-gray-800 rounded-t-2xl p-4 space-y-3 bottom-sheet max-h-[85vh] overflow-y-auto">
+                <div className="flex justify-between items-center border-b border-gray-800 pb-2">
+                  <div className="font-bold text-amber-400 text-sm">
+                    {activeBottomSheet.type === "client" ? t.clientCardTitle : t.locationDetailTitle}
+                  </div>
+                  <button type="button" onClick={() => setActiveBottomSheet(null)} className="text-gray-500 hover:text-white">
+                    <i className="fa-solid fa-xmark text-base"></i>
+                  </button>
+                </div>
+
+                <div className="space-y-2 text-xs">
+                  <div className="font-bold text-white text-sm">{activeBottomSheet.data.name}</div>
+                  <div className="text-gray-400">{activeBottomSheet.data.address || "No address"}, {activeBottomSheet.data.city || ""}</div>
+                  {activeBottomSheet.data.phone && (
+                    <div className="flex gap-2 pt-2">
+                      <a
+                        href={`tel:${activeBottomSheet.data.phone}`}
+                        className="flex-1 bg-emerald-600 text-white font-bold py-1.5 rounded-lg text-center flex items-center justify-center gap-1.5"
+                      >
+                        <i className="fa-solid fa-phone"></i> {t.callBtn}
+                      </a>
+                      <a
+                        href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${activeBottomSheet.data.name} ${activeBottomSheet.data.address || ''} ${activeBottomSheet.data.city || ''}`)}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="flex-1 bg-blue-600 text-white font-bold py-1.5 rounded-lg text-center flex items-center justify-center gap-1.5"
+                      >
+                        <i className="fa-solid fa-map-location-dot"></i> {t.navigateBtn}
+                      </a>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           )}
@@ -3112,7 +2833,7 @@
       );
     }
 
-    ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+    ReactDOM.render(<App />, document.getElementById("root"));
   </script>
 </body>
 </html>
