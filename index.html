@@ -121,8 +121,7 @@
     { id: "brown", bg: "#78350F", text: "#FFFFFF", border: "#582509", rgb: [120, 53, 15], labels: { EN: "Brown", DE: "Braun", SK: "Hnedá" } },
     { id: "gold_bronze", bg: "#B4833E", text: "#111827", border: "#926322", rgb: [180, 131, 62], labels: { EN: "Gold/Brz", DE: "Gold/Brz", SK: "Zlatá/Brz" } },
     { id: "burgundy", bg: "#831843", text: "#FFFFFF", border: "#601031", rgb: [131, 24, 67], labels: { EN: "Burgundy", DE: "Bordeaux", SK: "Bordová" } },
-    { id: "wrap", bg: "#0D9488", text: "#FFFFFF", border: "#0F766E", rgb: [13, 148, 136], labels: { EN: "Wrap", DE: "Folie", SK: "Fólia" } },
-    { id: "matt", bg: "#475569", text: "#FFFFFF", border: "#334155", rgb: [71, 85, 105], labels: { EN: "Matt", DE: "Matt", SK: "Matt" } }
+   
   ];
 
     const TRANSLATIONS = {
@@ -1663,16 +1662,51 @@ const fileToBase64 = (file) => {
 
           try {
             const rawText = await analyzeImageWithGoogleVision(file);
-            const cleanedText = rawText.toUpperCase().replace(/\s+/g, "");
-            const vinMatch = cleanedText.match(/[A-HJ-NPR-Z0-9]{17}/);
 
-            const detectedVin = vinMatch ? vinMatch[0] : sanitizeVin(cleanedText.slice(0, 17));
-            setTempOcrVin(detectedVin);
+            // 1. Rozdelenie na riadky a odfiltrovanie schválení a hmotností (problém Toyoty)
+            const lines = rawText.split("\n");
+            let cleanParts = [];
 
-            if (detectedVin.length >= 3) {
-              const wmi = detectedVin.substring(0, 3);
-              setTempOcrBrand(WMI_MAP[wmi] || brand || "");
+            for (const line of lines) {
+              const upper = line.toUpperCase().trim();
+              // Ignorujeme typové schválenia (e11*, e1*, 2007/46) a hmotnosti v kg
+              if (upper.includes("*") || upper.includes("2007/46") || upper.endsWith("KG") || upper.startsWith("E1") || upper.startsWith("E2")) {
+                continue;
+              }
+              const cleaned = upper.replace(/[^A-Z0-9]/g, "");
+              if (cleaned.length >= 5) {
+                cleanParts.push(cleaned);
+              }
             }
+
+            const combinedText = cleanParts.join("");
+            let detectedVin = "";
+            let detectedBrand = "";
+
+            // 2. Hľadáme VIN začínajúci platným kódom výrobcu (WMI)
+            if (typeof WMI_MAP !== "undefined") {
+              for (const wmiKey of Object.keys(WMI_MAP)) {
+                const wmiIndex = combinedText.indexOf(wmiKey);
+                if (wmiIndex !== -1 && (combinedText.length - wmiIndex) >= 17) {
+                  detectedVin = sanitizeVin(combinedText.substring(wmiIndex, wmiIndex + 17));
+                  detectedBrand = WMI_MAP[wmiKey];
+                  break;
+                }
+              }
+            }
+
+            // 3. Fallback, ak WMI nesedelo
+            if (!detectedVin) {
+              const vinMatch = combinedText.match(/[A-HJ-NPR-Z0-9]{17}/);
+              detectedVin = vinMatch ? sanitizeVin(vinMatch[0]) : sanitizeVin(combinedText.slice(0, 17));
+              if (detectedVin.length >= 3 && typeof WMI_MAP !== "undefined") {
+                detectedBrand = WMI_MAP[detectedVin.substring(0, 3)] || "";
+              }
+            }
+
+            setTempOcrVin(detectedVin);
+            setTempOcrBrand(detectedBrand || brand || "");
+          }
           } catch (err) {
             console.warn(err);
             setTempOcrVin("");
@@ -1704,104 +1738,83 @@ const fileToBase64 = (file) => {
             const textAnnotations = resultData?.responses?.[0]?.textAnnotations || [];
             const fullText = textAnnotations[0]?.description || "";
 
-            // Čierna listina nápisov a modelov (striktne ignorovať chrómové emblémy)
+            // Zoznam chrómových modelov a motorizácií na ignorovanie
             const blacklistWords = ["PASSAT", "GOLF", "OCTAVIA", "SUPERB", "FABIA", "TIGUAN", "TOUAREG", "TDI", "TSI", "4MOTION", "QUATTRO", "HYBRID", "TURBO", "KOMBI", "ALLTRACK", "VOLKSWAGEN", "SKODA", "AUDI", "SEAT"];
 
             let bestPlate = "";
             let plateBox = null;
 
-            // KROK A: Globálna analýza celého textu cez európske regex vzory (spája okres + erb/medzeru + telo)
-            const fullTextLines = fullText.split("\n");
-            for (const rawLine of fullTextLines) {
-              const lineUpper = rawLine.toUpperCase();
-              if (blacklistWords.some(b => lineUpper.includes(b))) continue;
+            // 1. Získame všetky detekované slová s ich rozmermi a orientáciou
+            const words = [];
+            for (let i = 1; i < textAnnotations.length; i++) {
+              const item = textAnnotations[i];
+              const desc = (item.description || "").toUpperCase().trim();
+              const clean = desc.replace(/[^A-Z0-9]/g, "");
+              if (!clean) continue;
+              if (blacklistWords.some(b => desc.includes(b))) continue;
 
-              // 1. Slovenská / Česká / Poľská / Maďarská štruktúra (napr. PU 676CI, PU-676CI, BA 123AB, 1AB 2345)
-              const matchSK_CZ = lineUpper.match(/\b([A-Z0-9]{2,3})[\s\-\.\:\|]+([0-9A-Z]{4,5})\b/);
-              if (matchSK_CZ) {
-                const combined = (matchSK_CZ[1] + matchSK_CZ[2]).replace(/[^A-Z0-9]/g, "");
-                if (combined.length >= 6 && combined.length <= 8 && /[A-Z]/.test(combined) && /[0-9]/.test(combined)) {
-                  bestPlate = combined;
-                  break;
-                }
-              }
+              const v = item.boundingPoly?.vertices || [];
+              if (v.length < 4) continue;
 
-              // 2. Nemecká / Rakúska štruktúra (okres 1-3 písmená + medzera/erb + 1-2 písmená + 1-4 čísla, napr. M XY 1234, W 12345 A)
-              const matchDE_AT = lineUpper.match(/\b([A-Z]{1,3})[\s\-\.\:\|]+([A-Z]{1,2}[\s\-]?[0-9]{1,4}[A-Z]?)\b/);
-              if (matchDE_AT) {
-                const combined = (matchDE_AT[1] + matchDE_AT[2]).replace(/[^A-Z0-9]/g, "");
-                if (combined.length >= 5 && combined.length <= 9 && /[A-Z]/.test(combined) && /[0-9]/.test(combined)) {
-                  bestPlate = combined;
-                  break;
-                }
+              // Výpočet stredového bodu a výšky s toleranciou náklonu
+              const centerX = ( (v[0]?.x || 0) + (v[1]?.x || 0) + (v[2]?.x || 0) + (v[3]?.x || 0) ) / 4;
+              const centerY = ( (v[0]?.y || 0) + (v[1]?.y || 0) + (v[2]?.y || 0) + (v[3]?.y || 0) ) / 4;
+              const height = Math.hypot((v[3]?.x || 0) - (v[0]?.x || 0), (v[3]?.y || 0) - (v[0]?.y || 0)) || 10;
+
+              words.push({ text: clean, raw: desc, box: v, x: centerX, y: centerY, h: height });
+            }
+
+            // 2. Skúška A: Jedno celistvé slovo (kompaktná ŠPZ, napr. SK/NL/FR bez medzery)
+            for (const w of words) {
+              if (w.text.length >= 5 && w.text.length <= 8 && /[A-Z]/.test(w.text) && /[0-9]/.test(w.text)) {
+                bestPlate = w.text;
+                plateBox = w.box;
+                break;
               }
             }
 
-            // KROK B: Horizontálne priestorové zlúčenie susediacich blokov (Bounding Poly)
-            // Ak sú okres (napr. PU) a číslo (napr. 676CI) v dvoch osobitných blokoch vedľa seba v rovnakej výške
-            if (!bestPlate && textAnnotations.length > 2) {
-              for (let i = 1; i < textAnnotations.length; i++) {
-                const boxA = textAnnotations[i].boundingPoly?.vertices || [];
-                const wordA = (textAnnotations[i].description || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
-                if (!wordA || wordA.length < 1 || wordA.length > 4) continue;
-                if (blacklistWords.some(b => wordA.includes(b))) continue;
-
-                const yA = (boxA[0]?.y + boxA[2]?.y) / 2 || 0;
-                const hA = Math.abs((boxA[2]?.y || 0) - (boxA[0]?.y || 0));
-                const rightA = Math.max(...boxA.map(v => v.x || 0));
-
-                for (let j = 1; j < textAnnotations.length; j++) {
+            // 3. Skúška B: Zhlukovanie častí ŠPZ s rovnakou výškou a sklonom (napr. HN - 445 - K alebo PU 676CI)
+            if (!bestPlate && words.length >= 2) {
+              for (let i = 0; i < words.length; i++) {
+                const group = [words[i]];
+                for (let j = 0; j < words.length; j++) {
                   if (i === j) continue;
-                  const boxB = textAnnotations[j].boundingPoly?.vertices || [];
-                  const wordB = (textAnnotations[j].description || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
-                  if (!wordB || wordB.length < 3 || wordB.length > 6) continue;
-                  if (blacklistWords.some(b => wordB.includes(b))) continue;
+                  const target = words[j];
+                  // Overenie rovnakej výšky písma (tolerancia 35%)
+                  const heightMatch = Math.abs(group[0].h - target.h) / group[0].h < 0.35;
+                  // Overenie, či ležia v jednej línii aj pri naklonenom mobile
+                  const lineMatch = Math.abs(group[0].y - target.y) < (group[0].h * 0.7);
+                  // Rozostup medzi blokmi do 3-násobku výšky znaku
+                  const distMatch = Math.hypot(group[group.length - 1].x - target.x, group[group.length - 1].y - target.y) < (group[0].h * 3.5);
 
-                  const yB = (boxB[0]?.y + boxB[2]?.y) / 2 || 0;
-                  const leftB = Math.min(...boxB.map(v => v.x || 0));
-
-                  // Overenie, či ležia v rovnakom riadku (Y) a blok B nasleduje tesne za blokom A (X vzdialenosť do 1.8-násobku výšky)
-                  const sameRow = Math.abs(yA - yB) < (hA * 0.5);
-                  const isNextTo = leftB >= rightA && (leftB - rightA) < (hA * 1.8);
-
-                  if (sameRow && isNextTo) {
-                    const merged = wordA + wordB;
-                    if (merged.length >= 6 && merged.length <= 8 && /[A-Z]/.test(merged) && /[0-9]/.test(merged)) {
-                      bestPlate = merged;
-                      plateBox = [boxA[0], boxB[1], boxB[2], boxA[3]];
-                      break;
-                    }
+                  if (heightMatch && lineMatch && distMatch) {
+                    group.push(target);
                   }
                 }
-                if (bestPlate) break;
-              }
-            }
 
-            // KROK C: Fallback na jedno kompaktné slovo (napr. nová slovenská ŠPZ bez znaku, holandská, francúzska)
-            if (!bestPlate) {
-              for (let i = 1; i < textAnnotations.length; i++) {
-                const item = textAnnotations[i];
-                const cleanedWord = (item.description || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
-                if (blacklistWords.some(b => cleanedWord.includes(b))) continue;
-                if (cleanedWord.length >= 5 && cleanedWord.length <= 8 && /[A-Z]/.test(cleanedWord) && /[0-9]/.test(cleanedWord)) {
-                  bestPlate = cleanedWord;
-                  plateBox = item.boundingPoly?.vertices || null;
+                // Zoradenie zľava doprava pozdĺž X osi
+                group.sort((a, b) => a.x - b.x);
+                const merged = group.map(g => g.text).join("");
+
+                if (merged.length >= 5 && merged.length <= 8 && /[A-Z]/.test(merged) && /[0-9]/.test(merged)) {
+                  bestPlate = merged;
+                  plateBox = group[0].box;
                   break;
                 }
               }
             }
 
-            // Nastavenie nájdenej ŠPZ do stavu
+            // 4. Nastavenie ŠPZ do stavu – ak sa nenájde, NEZAŠKRTÁVAŤ 'Bez ŠPZ', nechať čisté pole
             if (bestPlate) {
               setTempOcrEcv(bestPlate);
               setTempOcrHasNoEcv(false);
             } else {
               setTempOcrEcv("");
-              setTempOcrHasNoEcv(true);
+              setTempOcrHasNoEcv(false);
             }
 
             // 2. Analýza farby karosérie výhradne z okolia tabuľky ŠPZ (plech nárazníka/kufra)
-            let detectedColor = "Strieborná";
+            let detectedColor = "silver";
             try {
               const img = new Image();
               img.src = URL.createObjectURL(file);
@@ -1813,38 +1826,55 @@ const fileToBase64 = (file) => {
               canvas.height = img.naturalHeight || img.height;
               ctx.drawImage(img, 0, 0);
 
-              let sampleX = canvas.width * 0.25;
-              let sampleY = canvas.height * 0.55;
-              let sampleW = canvas.width * 0.5;
-              let sampleH = canvas.height * 0.15;
+              let samples = [];
 
-              // Ak máme presné súradnice ŠPZ, vzorkujeme plech priamo pod/nad tabuľkou
               if (plateBox && plateBox[0] && plateBox[2]) {
                 const pMinX = Math.min(...plateBox.map(v => v.x || 0));
                 const pMaxX = Math.max(...plateBox.map(v => v.x || 0));
+                const pMinY = Math.min(...plateBox.map(v => v.y || 0));
                 const pMaxY = Math.max(...plateBox.map(v => v.y || 0));
-                
-                sampleX = Math.max(0, pMinX);
-                sampleY = Math.min(canvas.height - 20, pMaxY + 5);
-                sampleW = Math.max(20, pMaxX - pMinX);
-                sampleH = Math.min(canvas.height - sampleY, Math.round((pMaxX - pMinX) * 0.25));
+                const pH = Math.max(10, pMaxY - pMinY);
+
+                // 1. Zóna naľavo od ŠPZ (čistý plech kufra mimo svetiel)
+                const leftX = Math.max(0, pMinX - (pH * 1.8));
+                const leftW = Math.max(10, pMinX - leftX - 10);
+                samples.push({ x: leftX, y: pMinY, w: leftW, h: pH });
+
+                // 2. Zóna napravo od ŠPZ (čistý plech kufra mimo svetiel)
+                const rightX = pMaxX + 10;
+                const rightW = Math.min(canvas.width - rightX, pH * 1.5);
+                if (rightW > 10) {
+                  samples.push({ x: rightX, y: pMinY, w: rightW, h: pH });
+                }
               }
 
-              const imgData = ctx.getImageData(sampleX, sampleY, sampleW, sampleH).data;
+              // Fallback ak nemáme presný box ŠPZ (stred kufra vľavo a vpravo)
+              if (samples.length === 0) {
+                samples.push({ x: canvas.width * 0.20, y: canvas.height * 0.50, w: canvas.width * 0.15, h: canvas.height * 0.10 });
+                samples.push({ x: canvas.width * 0.65, y: canvas.height * 0.50, w: canvas.width * 0.15, h: canvas.height * 0.10 });
+              }
+
               let rTotal = 0, gTotal = 0, bTotal = 0, count = 0;
 
-              for (let p = 0; p < imgData.length; p += 16) {
-                const r = imgData[p];
-                const g = imgData[p + 1];
-                const b = imgData[p + 2];
-                const brightness = (r + g + b) / 3;
+              for (const s of samples) {
+                if (s.w <= 0 || s.h <= 0) continue;
+                const imgData = ctx.getImageData(s.x, s.y, s.w, s.h).data;
 
-                // Odfiltrovanie odleskov (príliš svetlé) a hlbokých tieňov/špiny
-                if (brightness > 20 && brightness < 240) {
-                  rTotal += r;
-                  gTotal += g;
-                  bTotal += b;
-                  count++;
+                for (let p = 0; p < imgData.length; p += 16) {
+                  const r = imgData[p];
+                  const g = imgData[p + 1];
+                  const b = imgData[p + 2];
+                  const brightness = (r + g + b) / 3;
+
+                  // Ignorujeme červené brzdové svetlá
+                  if (r > 165 && g < 75 && b < 75) continue;
+                  // Ignorujeme hlboké tiene a silné prepálené odlesky
+                  if (brightness > 28 && brightness < 232) {
+                    rTotal += r;
+                    gTotal += g;
+                    bTotal += b;
+                    count++;
+                  }
                 }
               }
 
@@ -1855,11 +1885,7 @@ const fileToBase64 = (file) => {
 
                 let minDistance = Infinity;
                 COLOR_PALETTE.forEach(c => {
-                  const d = Math.sqrt(
-                    Math.pow(c.rgb[0] - avgR, 2) +
-                    Math.pow(c.rgb[1] - avgG, 2) +
-                    Math.pow(c.rgb[2] - avgB, 2)
-                  );
+                  const d = Math.hypot(c.rgb[0] - avgR, c.rgb[1] - avgG, c.rgb[2] - avgB);
                   if (d < minDistance) {
                     minDistance = d;
                     detectedColor = c.id;
@@ -1893,12 +1919,14 @@ const fileToBase64 = (file) => {
       };
 
       const confirmRearModal = () => {
-        setEcv(tempOcrEcv);
-        setHasNoEcv(tempOcrHasNoEcv);
-        setSelectedColorId(tempOcrColorId);
-        setActiveOcrModal(null);
-        triggerScanStep(3);
-      };
+  setEcv(tempOcrEcv);
+  setHasNoEcv(tempOcrHasNoEcv);
+  setSelectedColorId(tempOcrColorId);
+  if (tempIsMatt) setDamageNote(prev => (prev ? prev + " | Matný lak" : "Matný lak"));
+  if (tempIsWrap) setDamageNote(prev => (prev ? prev + " | Fólia" : "Fólia"));
+  setActiveOcrModal(null);
+  triggerScanStep(3);
+};
 
       const confirmSheetModal = () => {
         setActiveOcrModal(null);
@@ -2110,29 +2138,7 @@ const fileToBase64 = (file) => {
               <p className="text-xs text-gray-400">{isResetMode ? t.forgotPasswordLink : (isRegistering ? t.registerTitle : t.loginTitle)}</p>
             </div>
 
-            {/* PWA: Karta na pridanie aplikácie na plochu */}
-            {!isAppInstalled && (
-              <div className="bg-amber-500/10 border border-amber-500/40 rounded-xl p-2.5 flex items-center justify-between gap-2 shadow-inner">
-                <div className="space-y-0.5 min-w-0">
-                  <div className="text-xs font-black text-amber-400 flex items-center gap-1.5 truncate">
-                    <i className="fa-solid fa-mobile-screen-button"></i>
-                    <span>{t.installAppTitle}</span>
-                  </div>
-                  <div className="text-[10px] text-gray-300">
-                    {isIosDevice ? t.iosInstallHelp : t.installAppSubtitle}
-                  </div>
-                </div>
-                {deferredInstallPrompt && !isIosDevice && (
-                  <button
-                    type="button"
-                    onClick={handleInstallAppClick}
-                    className="bg-amber-500 hover:bg-amber-600 active:scale-95 text-gray-950 font-black px-2.5 py-1.5 rounded-lg text-[10px] whitespace-nowrap shadow transition-all"
-                  >
-                    {t.installAppBtn}
-                  </button>
-                )}
-              </div>
-            )}
+            
 
             {authError && (
               <div className="bg-red-900/40 border border-red-700/60 p-2 rounded text-red-200 text-xs text-center font-medium">
@@ -2166,6 +2172,26 @@ const fileToBase64 = (file) => {
               <hr className="flex-1 border-gray-800" />
             </div>
 
+            {/* Vycentrovaný prepínač jazyka na prihlasovacej stránke */}
+        <div className="flex items-center justify-center gap-2 pt-2 pb-1">
+          {["SK", "DE", "EN"].map((l) => (
+            <button
+              key={l}
+              type="button"
+              onClick={() => {
+                setLang(l);
+                localStorage.setItem("pdr_lang", l);
+              }}
+              className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+                lang === l
+                  ? "bg-amber-500 text-gray-950 shadow-md scale-105"
+                  : "bg-gray-800 text-gray-400 hover:text-white hover:bg-gray-700"
+              }`}
+            >
+              {l === "SK" ? "Slovenčina" : l === "DE" ? "Deutsch" : "English"}
+            </button>
+          ))}
+        </div>
             <form onSubmit={handleAuthSubmit} className="space-y-3">
               <input
                 type="email"
@@ -2884,6 +2910,27 @@ const fileToBase64 = (file) => {
                               );
                             })}
                           </div>
+                        </div>
+                        {/* Checkboxy pre Matný lak a Fóliu */}
+                        <div className="grid grid-cols-2 gap-2 pt-1 border-t border-gray-800/80">
+                          <label className="flex items-center gap-1.5 text-[10px] text-gray-300 bg-gray-900 border border-gray-800 p-1.5 rounded cursor-pointer hover:border-amber-500/50">
+                            <input
+                              type="checkbox"
+                              checked={tempIsMatt}
+                              onChange={e => setTempIsMatt(e.target.checked)}
+                              className="rounded text-amber-500"
+                            />
+                            <span className="font-bold">Matný lak</span>
+                          </label>
+                          <label className="flex items-center gap-1.5 text-[10px] text-gray-300 bg-gray-900 border border-gray-800 p-1.5 rounded cursor-pointer hover:border-amber-500/50">
+                            <input
+                              type="checkbox"
+                              checked={tempIsWrap}
+                              onChange={e => setTempIsWrap(e.target.checked)}
+                              className="rounded text-amber-500"
+                            />
+                            <span className="font-bold">Fólia (Wrap)</span>
+                          </label>
                         </div>
                       </div>
                     )}
