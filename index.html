@@ -566,9 +566,25 @@
     };
 
     const sanitizeVin = (val) => {
-      if (!val) return "";
-      return val.toUpperCase().replace(/[^A-HJ-NPR-Z0-9]/g, "").slice(0, 17);
-    };
+  if (!val) return "";
+  
+  // 1. Prevod na veľké písmená a vyčistenie nepovolených znakov
+  let clean = val.toUpperCase().replace(/[^A-Z0-9]/g, "");
+  
+  // 2. Zámena zakázaných znakov podľa ISO 3779 (I, O, Q)
+  clean = clean.replace(/I/g, "1").replace(/O/g, "0").replace(/Q/g, "0");
+  
+  // 3. Oprava rotácie (posun o 1 doprava, napr. 3WVW... -> WVW...3)
+  if (clean.length >= 4 && /^[0-9]/.test(clean)) {
+    const potentialWmi = clean.substring(1, 4);
+    if (typeof WMI_MAP !== "undefined" && WMI_MAP[potentialWmi]) {
+      clean = clean.substring(1) + clean[0];
+    }
+  }
+  
+  // 4. Striktné orezanie na 17 znakov
+  return clean.slice(0, 17);
+};
 
     function CountryPicker({ selectedCode, onSelect, lang, placeholder }) {
       const [isOpen, setIsOpen] = useState(false);
