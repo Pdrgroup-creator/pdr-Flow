@@ -1669,27 +1669,144 @@
           } finally {
             setIsAnalyzingOcr(false);
           }
-        } else if (scanStep === 2) {
+       } else if (scanStep === 2) {
           setRearFile(file);
           setRearPreview(URL.createObjectURL(file));
           setActiveOcrModal("rear");
           setIsAnalyzingOcr(true);
 
           try {
-            const rawText = await analyzeImageWithGoogleVision(file);
-            const plateClean = rawText.toUpperCase().replace(/[^A-Z0-9]/g, "");
+            // 1. Získanie plnej odozvy z Vision API
+            const base64Data = await fileToBase64(file);
+            const res = await fetch(`https://vision.googleapis.com/v1/images:annotate?key=${GOOGLE_VISION_KEY}`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                requests: [
+                  {
+                    image: { content: base64Data },
+                    features: [{ type: "TEXT_DETECTION" }, { type: "IMAGE_PROPERTIES" }]
+                  }
+                ]
+              })
+            });
+            const resultData = await res.json();
+            const textAnnotations = resultData?.responses?.[0]?.textAnnotations || [];
 
-            // Hľadanie vzoru ŠPZ (5 až 8 znakov)
-            const plateMatch = plateClean.match(/[A-Z0-9]{5,8}/);
-            if (plateMatch) {
-              setTempOcrEcv(plateMatch[0]);
+            // Čierna listina nápisov a modelov (striktne ignorovať chrómové emblémy)
+            const blacklistWords = ["PASSAT", "GOLF", "OCTAVIA", "SUPERB", "FABIA", "TIGUAN", "TOUAREG", "TDI", "TSI", "4MOTION", "QUATTRO", "HYBRID", "TURBO", "KOMBI", "ALLTRACK", "VOLKSWAGEN", "SKODA", "AUDI", "SEAT"];
+
+            let bestPlate = "";
+            let plateBox = null;
+
+            // Prehľadávanie jednotlivých blokov textu (od indexu 1, kde sú jednotlivé slová)
+            for (let i = 1; i < textAnnotations.length; i++) {
+              const item = textAnnotations[i];
+              const cleanedWord = (item.description || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+
+              // Ignorovať slová z čiernej listiny a príliš krátke/dlhé texty
+              if (blacklistWords.some(b => cleanedWord.includes(b))) continue;
+              if (cleanedWord.length < 5 || cleanedWord.length > 8) continue;
+
+              // Vzor pre európsku ŠPZ (aspoň 1 písmeno a aspoň 1 číslo)
+              if (/[A-Z]/.test(cleanedWord) && /[0-9]/.test(cleanedWord)) {
+                bestPlate = cleanedWord;
+                plateBox = item.boundingPoly?.vertices || null;
+                break;
+              }
+            }
+
+            // Fallback na pôvodný regex ak sa nenašiel presný blok
+            if (!bestPlate && textAnnotations[0]) {
+              const allClean = textAnnotations[0].description.toUpperCase().replace(/[^A-Z0-9\n]/g, " ");
+              const words = allClean.split(/\s+/);
+              for (const w of words) {
+                if (blacklistWords.some(b => w.includes(b))) continue;
+                if (w.length >= 5 && w.length <= 8 && /[A-Z]/.test(w) && /[0-9]/.test(w)) {
+                  bestPlate = w;
+                  break;
+                }
+              }
+            }
+
+            if (bestPlate) {
+              setTempOcrEcv(bestPlate);
               setTempOcrHasNoEcv(false);
             } else {
               setTempOcrEcv("");
               setTempOcrHasNoEcv(true);
             }
 
-            const detectedColor = await detectDominantColor(file);
+            // 2. Analýza farby karosérie výhradne z okolia tabuľky ŠPZ (plech nárazníka/kufra)
+            let detectedColor = "Strieborná";
+            try {
+              const img = new Image();
+              img.src = URL.createObjectURL(file);
+              await new Promise(r => { img.onload = r; });
+
+              const canvas = document.createElement("canvas");
+              const ctx = canvas.getContext("2d");
+              canvas.width = img.naturalWidth || img.width;
+              canvas.height = img.naturalHeight || img.height;
+              ctx.drawImage(img, 0, 0);
+
+              let sampleX = canvas.width * 0.25;
+              let sampleY = canvas.height * 0.55;
+              let sampleW = canvas.width * 0.5;
+              let sampleH = canvas.height * 0.15;
+
+              // Ak máme presné súradnice ŠPZ, vzorkujeme plech priamo pod/nad tabuľkou
+              if (plateBox && plateBox[0] && plateBox[2]) {
+                const pMinX = Math.min(...plateBox.map(v => v.x || 0));
+                const pMaxX = Math.max(...plateBox.map(v => v.x || 0));
+                const pMaxY = Math.max(...plateBox.map(v => v.y || 0));
+                
+                sampleX = Math.max(0, pMinX);
+                sampleY = Math.min(canvas.height - 20, pMaxY + 5);
+                sampleW = Math.max(20, pMaxX - pMinX);
+                sampleH = Math.min(canvas.height - sampleY, Math.round((pMaxX - pMinX) * 0.25));
+              }
+
+              const imgData = ctx.getImageData(sampleX, sampleY, sampleW, sampleH).data;
+              let rTotal = 0, gTotal = 0, bTotal = 0, count = 0;
+
+              for (let p = 0; p < imgData.length; p += 16) {
+                const r = imgData[p];
+                const g = imgData[p + 1];
+                const b = imgData[p + 2];
+                const brightness = (r + g + b) / 3;
+
+                // Odfiltrovanie odleskov (príliš svetlé) a hlbokých tieňov/špiny
+                if (brightness > 20 && brightness < 240) {
+                  rTotal += r;
+                  gTotal += g;
+                  bTotal += b;
+                  count++;
+                }
+              }
+
+              if (count > 0) {
+                const avgR = rTotal / count;
+                const avgG = gTotal / count;
+                const avgB = bTotal / count;
+
+                let minDistance = Infinity;
+                COLOR_PALETTE.forEach(c => {
+                  const d = Math.sqrt(
+                    Math.pow(c.rgb[0] - avgR, 2) +
+                    Math.pow(c.rgb[1] - avgG, 2) +
+                    Math.pow(c.rgb[2] - avgB, 2)
+                  );
+                  if (d < minDistance) {
+                    minDistance = d;
+                    detectedColor = c.id;
+                  }
+                });
+              }
+            } catch (colorErr) {
+              console.warn("Chyba vzorkovania laku:", colorErr);
+            }
+
             setTempOcrColorId(detectedColor);
           } catch (err) {
             console.warn(err);
@@ -1697,6 +1814,7 @@
           } finally {
             setIsAnalyzingOcr(false);
           }
+        }
         } else if (scanStep === 3) {
           setSheetFile(file);
           setSheetPreview(URL.createObjectURL(file));
