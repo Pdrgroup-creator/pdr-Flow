@@ -924,6 +924,7 @@ const fileToBase64 = (file) => {
       const [repSearchQuery, setRepSearchQuery] = useState("");
 
       const cameraInputRef = useRef(null);
+      const galleryInputRef = useRef(null);
       const damagePhotoInputRef = useRef(null);
 
       // Stavy skenovania a overovania (Variant 2)
@@ -1640,14 +1641,14 @@ const fileToBase64 = (file) => {
         doc.save(`pdr_summary_${Date.now()}.pdf`);
       };
       // Spustenie jednotlivých krokov skenovania
-      const triggerScanStep = (stepNumber) => {
+      const triggerScanStep = (stepNumber, source = "camera") => {
         setScanStep(stepNumber);
-        if (cameraInputRef.current) {
-          cameraInputRef.current.value = "";
-          cameraInputRef.current.click();
+        const targetRef = source === "gallery" ? galleryInputRef : cameraInputRef;
+        if (targetRef.current) {
+          targetRef.current.value = "";
+          targetRef.current.click();
         }
       };
-
       // Spracovanie odfoteného obrázka cez Google Vision
       const handlePhotoCapture = async (e) => {
         const file = e.target.files[0];
@@ -2424,19 +2425,40 @@ const fileToBase64 = (file) => {
                     type="file"
                     accept="image/*"
 
-                    ref={cameraInputRef}
-                    onChange={handlePhotoCapture}
-                    className="hidden"
-                  />
+                   ref={cameraInputRef}
+                  capture="environment"
+                  onChange={handlePhotoCapture}
+                  className="hidden"
+                />
 
-                  <button
-                    type="button"
-                    onClick={() => triggerScanStep(1)}
-                    className="w-full bg-amber-500 hover:bg-amber-600 active:scale-95 text-gray-950 font-black py-2.5 rounded-xl text-sm flex items-center justify-center gap-2 shadow-lg transition-all"
-                  >
-                    <i className="fa-solid fa-camera text-base"></i>
-                    <span>{t.scanBtn}</span>
-                  </button>
+                {/* Skrytý input čisto pre výber z galérie / pamäte mobilu */}
+                <input
+                  type="file"
+                  accept="image/*"
+                  ref={galleryInputRef}
+                  onChange={handlePhotoCapture}
+                  className="hidden"
+                />
+
+                {/* 1. Hlavné tlačidlo pre dielňu - Živá kamera bez dialógu */}
+                <button
+                  type="button"
+                  onClick={() => triggerScanStep(1, "camera")}
+                  className="w-full bg-amber-500 hover:bg-amber-600 active:scale-95 text-gray-950 font-black py-2.5 rounded-xl text-sm flex items-center justify-center gap-2 shadow-lg transition-all"
+                >
+                  <i className="fa-solid fa-camera text-base"></i>
+                  <span>{t.scanBtn}</span>
+                </button>
+
+                {/* 2. Sekundárne tlačidlo - Výber z galérie / súborov */}
+                <button
+                  type="button"
+                  onClick={() => triggerScanStep(1, "gallery")}
+                  className="w-full bg-gray-950 hover:bg-gray-800 active:scale-95 text-gray-300 hover:text-white border border-gray-700 hover:border-amber-500/60 font-bold py-1.5 rounded-xl text-xs flex items-center justify-center gap-2 shadow transition-all"
+                >
+                  <i className="fa-solid fa-images text-xs text-amber-400"></i>
+                  <span>{t.scanGalleryBtn}</span>
+                </button>
 
                   <div className="grid grid-cols-3 gap-1.5 text-center text-[10px] text-gray-400">
                     <button
