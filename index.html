@@ -843,11 +843,7 @@ const fileToBase64 = (file) => {
       const [resetSuccessMsg, setResetSuccessMsg] = useState("");
       const [failedAttempts, setFailedAttempts] = useState(0);
 
-      // PWA podpora pre inštaláciu aplikácie na plochu
-      const [deferredInstallPrompt, setDeferredInstallPrompt] = useState(null);
-      const [isAppInstalled, setIsAppInstalled] = useState(false);
-      const [isIosDevice, setIsIosDevice] = useState(false);
-
+     
       const [showSettingsModal, setShowSettingsModal] = useState(false);
       const [newAccountPassword, setNewAccountPassword] = useState("");
       const [settingsMsg, setSettingsMsg] = useState("");
