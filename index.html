@@ -1755,76 +1755,99 @@ const fileToBase64 = (file) => {
               setTempOcrHasNoEcv(true);
             }
 
-            // 2. Analýza farby karosérie výhradne z okolia tabuľky ŠPZ (plech nárazníka/kufra)
-            let detectedColor = "Strieborná";
-            try {
-              const img = new Image();
-              img.src = URL.createObjectURL(file);
-              await new Promise(r => { img.onload = r; });
+           // 2. Analýza farby karosérie z čistého laku okolo ŠPZ (bočné strany veka/kufra)
+          let detectedColor = COLOR_PALETTE?.[1]?.id || "silver";
+          try {
+            const img = new Image();
+            img.src = URL.createObjectURL(file);
+            await new Promise((r) => { img.onload = r; });
 
-              const canvas = document.createElement("canvas");
-              const ctx = canvas.getContext("2d");
-              canvas.width = img.naturalWidth || img.width;
-              canvas.height = img.naturalHeight || img.height;
-              ctx.drawImage(img, 0, 0);
+            const canvas = document.createElement("canvas");
+            const ctx = canvas.getContext("2d");
+            const w = img.naturalWidth || img.width;
+            const h = img.naturalHeight || img.height;
+            canvas.width = 120;
+            canvas.height = 120;
 
-              let sampleX = canvas.width * 0.25;
-              let sampleY = canvas.height * 0.55;
-              let sampleW = canvas.width * 0.5;
-              let sampleH = canvas.height * 0.15;
+            let lx, ly, lw, lh, rx, ry, rw, rh;
 
-              // Ak máme presné súradnice ŠPZ, vzorkujeme plech priamo pod/nad tabuľkou
-              if (plateBox && plateBox[0] && plateBox[2]) {
-                const pMinX = Math.min(...plateBox.map(v => v.x || 0));
-                const pMaxX = Math.max(...plateBox.map(v => v.x || 0));
-                const pMaxY = Math.max(...plateBox.map(v => v.y || 0));
-                
-                sampleX = Math.max(0, pMinX);
-                sampleY = Math.min(canvas.height - 20, pMaxY + 5);
-                sampleW = Math.max(20, pMaxX - pMinX);
-                sampleH = Math.min(canvas.height - sampleY, Math.round((pMaxX - pMinX) * 0.25));
-              }
+            if (plateBox && plateBox[0] && plateBox[2]) {
+              const pMinX = Math.min(...plateBox.map((v) => v.x || 0));
+              const pMaxX = Math.max(...plateBox.map((v) => v.x || 0));
+              const pMinY = Math.min(...plateBox.map((v) => v.y || 0));
+              const pMaxY = Math.max(...plateBox.map((v) => v.y || 0));
+              const pHeight = pMaxY - pMinY;
 
-              const imgData = ctx.getImageData(sampleX, sampleY, sampleW, sampleH).data;
-              let rTotal = 0, gTotal = 0, bTotal = 0, count = 0;
+              // Zóna vľavo a vpravo od ŠPZ (vyhneme sa rámčeku a tieňu pod značkou)
+              const sideSpan = Math.max(30, Math.round(pHeight * 1.5));
+              lx = Math.max(0, pMinX - sideSpan - 10);
+              ly = pMinY;
+              lw = Math.min(sideSpan, pMinX - lx);
+              lh = pHeight;
 
-              for (let p = 0; p < imgData.length; p += 16) {
-                const r = imgData[p];
-                const g = imgData[p + 1];
-                const b = imgData[p + 2];
-                const brightness = (r + g + b) / 3;
+              rx = Math.min(w - 10, pMaxX + 10);
+              ry = pMinY;
+              rw = Math.min(sideSpan, w - rx);
+              rh = pHeight;
+            } else {
+              // Fallback: bezpečné lakované krídla kufra (mimo okna a nárazníka)
+              lx = Math.round(w * 0.15);
+              ly = Math.round(h * 0.45);
+              lw = Math.round(w * 0.18);
+              lh = Math.round(h * 0.25);
 
-                // Odfiltrovanie odleskov (príliš svetlé) a hlbokých tieňov/špiny
-                if (brightness > 20 && brightness < 240) {
-                  rTotal += r;
-                  gTotal += g;
-                  bTotal += b;
-                  count++;
-                }
-              }
-
-              if (count > 0) {
-                const avgR = rTotal / count;
-                const avgG = gTotal / count;
-                const avgB = bTotal / count;
-
-                let minDistance = Infinity;
-                COLOR_PALETTE.forEach(c => {
-                  const d = Math.sqrt(
-                    Math.pow(c.rgb[0] - avgR, 2) +
-                    Math.pow(c.rgb[1] - avgG, 2) +
-                    Math.pow(c.rgb[2] - avgB, 2)
-                  );
-                  if (d < minDistance) {
-                    minDistance = d;
-                    detectedColor = c.id;
-                  }
-                });
-              }
-            } catch (colorErr) {
-              console.warn("Chyba vzorkovania laku:", colorErr);
+              rx = Math.round(w * 0.67);
+              ry = Math.round(h * 0.45);
+              rw = Math.round(w * 0.18);
+              rh = Math.round(h * 0.25);
             }
 
+            // Kreslíme vzorky oboch strán na kompaktný canvas
+            if (lw > 0 && lh > 0) ctx.drawImage(img, lx, ly, lw, lh, 0, 0, 60, 120);
+            if (rw > 0 && rh > 0) ctx.drawImage(img, rx, ry, rw, rh, 60, 0, 60, 120);
+
+            const imgData = ctx.getImageData(0, 0, 120, 120).data;
+            let rTotal = 0, gTotal = 0, bTotal = 0, count = 0;
+
+            for (let p = 0; p < imgData.length; p += 4) {
+              const r = imgData[p];
+              const g = imgData[p + 1];
+              const b = imgData[p + 2];
+              const brightness = (r + g + b) / 3;
+
+              // Filter: ignorovať biely odlesk blesku/slnka a hlboký čierny tieň
+              if (brightness > 240 || brightness < 20) continue;
+              // Filter: červené zadné svetlá / odrazky
+              if (r > 165 && g < 75 && b < 75) continue;
+
+              rTotal += r;
+              gTotal += g;
+              bTotal += b;
+              count++;
+            }
+
+            if (count > 0) {
+              const avgR = rTotal / count;
+              const avgG = gTotal / count;
+              const avgB = bTotal / count;
+
+              let minDistance = Infinity;
+              COLOR_PALETTE.forEach((c) => {
+                // Percepčne vážená vzdialenosť (citlivosť ľudského oka: G > R > B)
+                const dR = avgR - c.rgb[0];
+                const dG = avgG - c.rgb[1];
+                const dB = avgB - c.rgb[2];
+                const d = (dR * dR * 0.3) + (dG * dG * 0.59) + (dB * dB * 0.11);
+
+                if (d < minDistance) {
+                  minDistance = d;
+                  detectedColor = c.id;
+                }
+              });
+            }
+          } catch (colorErr) {
+            console.warn("Chyba vzorkovania laku:", colorErr);
+          }
             setTempOcrColorId(detectedColor);
           } catch (err) {
             console.warn(err);
@@ -2057,13 +2080,36 @@ const fileToBase64 = (file) => {
 
       if (!currentUser) {
         return (
-          <div className="w-full max-w-sm bg-gray-950 border border-gray-800 rounded-2xl p-5 shadow-2xl space-y-4">
-            <div className="text-center space-y-1">
-              <h1 className="text-xl font-black text-white tracking-wider">
-                PDR <span className="text-amber-500">FlowBoard</span>
-              </h1>
-              <p className="text-xs text-gray-400">{isResetMode ? t.forgotPasswordLink : (isRegistering ? t.registerTitle : t.loginTitle)}</p>
+          <div className="w-full max-w-sm bg-gray-950 border border-gray-800 rounded-2xl p-5 shadow-2xl space-y-4 relative">
+          {/* Prepínač jazyka vpravo hore */}
+          <div className="flex justify-end">
+            <div className="inline-flex bg-gray-900 border border-gray-800 rounded-lg p-0.5 text-[10px] font-bold">
+              {["SK", "DE", "EN"].map((l) => (
+                <button
+                  key={l}
+                  type="button"
+                  onClick={() => {
+                    setLang(l);
+                    localStorage.setItem("pdr_lang", l);
+                  }}
+                  className={`px-2 py-0.5 rounded transition-all ${
+                    lang === l
+                      ? "bg-amber-500 text-gray-950 shadow font-black"
+                      : "text-gray-400 hover:text-white"
+                  }`}
+                >
+                  {l}
+                </button>
+              ))}
             </div>
+          </div>
+
+          <div className="text-center space-y-1 -mt-2">
+            <h1 className="text-xl font-black text-white tracking-wider">
+              PDR <span className="text-amber-500">FlowBoard</span>
+            </h1>
+            <p className="text-xs text-gray-400">{isResetMode ? t.forgotPasswordLink : (isRegistering ? t.registerTitle : t.loginTitle)}</p>
+          </div>
 
            
 
