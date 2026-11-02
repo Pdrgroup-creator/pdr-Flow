@@ -1821,7 +1821,7 @@ const fileToBase64 = (file) => {
           } finally {
             setIsAnalyzingOcr(false);
           }
-        }
+        
         } else if (scanStep === 3) {
           setSheetFile(file);
           setSheetPreview(URL.createObjectURL(file));
