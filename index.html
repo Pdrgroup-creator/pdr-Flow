@@ -937,6 +937,8 @@ const fileToBase64 = (file) => {
       const [tempOcrEcv, setTempOcrEcv] = useState("");
       const [tempOcrHasNoEcv, setTempOcrHasNoEcv] = useState(false);
       const [tempOcrColorId, setTempOcrColorId] = useState("grey");
+      const [tempIsMatt, setTempIsMatt] = useState(false);
+      const [tempIsWrap, setTempIsWrap] = useState(false);
 
       const [vinFile, setVinFile] = useState(null);
       const [rearFile, setRearFile] = useState(null);
@@ -961,45 +963,7 @@ const fileToBase64 = (file) => {
       const [riPrice, setRiPrice] = useState("");
       const [isPricePending, setIsPricePending] = useState(false);
       const [damageNote, setDamageNote] = useState("");
-      // PWA: Detekcia inštalácie a zachytenie inštalačného dialógu
-      useEffect(() => {
-        const handleBeforeInstall = (e) => {
-          e.preventDefault();
-          setDeferredInstallPrompt(e);
-        };
-
-        const handleAppInstalled = () => {
-          setIsAppInstalled(true);
-          setDeferredInstallPrompt(null);
-        };
-
-        window.addEventListener("beforeinstallprompt", handleBeforeInstall);
-        window.addEventListener("appinstalled", handleAppInstalled);
-
-        // Kontrola, či už beží ako PWA na ploche
-        if (window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true) {
-          setIsAppInstalled(true);
-        }
-
-        // Kontrola, či ide o iOS zariadenie
-        const isIos = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-        setIsIosDevice(isIos);
-
-        return () => {
-          window.removeEventListener("beforeinstallprompt", handleBeforeInstall);
-          window.removeEventListener("appinstalled", handleAppInstalled);
-        };
-      }, []);
-
-      const handleInstallAppClick = async () => {
-        if (!deferredInstallPrompt) return;
-        deferredInstallPrompt.prompt();
-        const { outcome } = await deferredInstallPrompt.userChoice;
-        if (outcome === "accepted") {
-          setIsAppInstalled(true);
-        }
-        setDeferredInstallPrompt(null);
-      };
+     
 
       useEffect(() => {
         let mounted = true;
@@ -1498,6 +1462,8 @@ const fileToBase64 = (file) => {
           setVinPreview(null);
           setRearPreview(null);
           setSheetPreview(null);
+          setTempIsMatt(false);
+          setTempIsWrap(false);
           setSelectedCoopPartners([]);
           loadPartnerships();
         } catch (err) {
