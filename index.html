@@ -3,6 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="PDR FlowBoard">
+  <meta name="theme-color" content="#111827">
   <title>PDR FlowBoard Pro</title>
   <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -254,7 +258,11 @@
         ocrModalAnalyzing: "Scanning via Google Vision...",
         ocrModalRetake: "Retake Photo",
         ocrModalConfirmNext: "Confirm & Next Step",
-        ocrModalConfirmFinish: "Confirm & Finish Scan"
+        ocrModalConfirmFinish: "Confirm & Finish Scan",
+        installAppTitle: "Add FlowBoard to Phone",
+        installAppSubtitle: "Fast 1-tap access on workshop",
+        installAppBtn: "Install App Icon",
+        iosInstallHelp: "Tap Share icon and select 'Add to Home Screen'."
       },
       DE: {
         roleTechLabel: "Techniker",
@@ -387,7 +395,11 @@
         ocrModalAnalyzing: "Google Vision Scan läuft...",
         ocrModalRetake: "Foto wiederholen",
         ocrModalConfirmNext: "Bestätigen & Weiter",
-        ocrModalConfirmFinish: "Bestätigen & Fertigstellen"
+        ocrModalConfirmFinish: "Bestätigen & Fertigstellen",
+        installAppTitle: "FlowBoard zum Startbildschirm",
+        installAppSubtitle: "Schneller Zugriff in der Werkstatt",
+        installAppBtn: "App-Symbol installieren",
+        iosInstallHelp: "Auf Teilen tippen und 'Zum Home-Bildschirm' wählen."
       },
       SK: {
         roleTechLabel: "Technik",
@@ -520,7 +532,11 @@
         ocrModalAnalyzing: "Google Vision skenuje fotku...",
         ocrModalRetake: "Znova odfotiť",
         ocrModalConfirmNext: "Potvrdiť a Ďalší krok",
-        ocrModalConfirmFinish: "Potvrdiť a Dokončiť sken"
+        ocrModalConfirmFinish: "Potvrdiť a Dokončiť sken",
+        installAppTitle: "Pridať FlowBoard na plochu",
+        installAppSubtitle: "Rýchly prístup 1 klikom priamo na dielni",
+        installAppBtn: "Inštalovať ikonu aplikácie",
+        iosInstallHelp: "Ťuknite na ikonu Zdieľať a zvoľte 'Pridať na plochu'."
       }
     };
 
@@ -803,6 +819,11 @@
       const [resetSuccessMsg, setResetSuccessMsg] = useState("");
       const [failedAttempts, setFailedAttempts] = useState(0);
 
+      // PWA podpora pre inštaláciu aplikácie na plochu
+      const [deferredInstallPrompt, setDeferredInstallPrompt] = useState(null);
+      const [isAppInstalled, setIsAppInstalled] = useState(false);
+      const [isIosDevice, setIsIosDevice] = useState(false);
+
       const [showSettingsModal, setShowSettingsModal] = useState(false);
       const [newAccountPassword, setNewAccountPassword] = useState("");
       const [settingsMsg, setSettingsMsg] = useState("");
@@ -915,6 +936,46 @@
       const [riPrice, setRiPrice] = useState("");
       const [isPricePending, setIsPricePending] = useState(false);
       const [damageNote, setDamageNote] = useState("");
+      // PWA: Detekcia inštalácie a zachytenie inštalačného dialógu
+      useEffect(() => {
+        const handleBeforeInstall = (e) => {
+          e.preventDefault();
+          setDeferredInstallPrompt(e);
+        };
+
+        const handleAppInstalled = () => {
+          setIsAppInstalled(true);
+          setDeferredInstallPrompt(null);
+        };
+
+        window.addEventListener("beforeinstallprompt", handleBeforeInstall);
+        window.addEventListener("appinstalled", handleAppInstalled);
+
+        // Kontrola, či už beží ako PWA na ploche
+        if (window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true) {
+          setIsAppInstalled(true);
+        }
+
+        // Kontrola, či ide o iOS zariadenie
+        const isIos = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+        setIsIosDevice(isIos);
+
+        return () => {
+          window.removeEventListener("beforeinstallprompt", handleBeforeInstall);
+          window.removeEventListener("appinstalled", handleAppInstalled);
+        };
+      }, []);
+
+      const handleInstallAppClick = async () => {
+        if (!deferredInstallPrompt) return;
+        deferredInstallPrompt.prompt();
+        const { outcome } = await deferredInstallPrompt.userChoice;
+        if (outcome === "accepted") {
+          setIsAppInstalled(true);
+        }
+        setDeferredInstallPrompt(null);
+      };
+
       useEffect(() => {
         let mounted = true;
         const initAuth = async () => {
@@ -1554,7 +1615,7 @@
 
         doc.save(`pdr_summary_${Date.now()}.pdf`);
       };
-      // Spustenie jednotlivých krokov skenovania
+     // Spustenie jednotlivých krokov skenovania
       const triggerScanStep = (stepNumber) => {
         setScanStep(stepNumber);
         if (cameraInputRef.current) {
@@ -1823,9 +1884,35 @@
         return (
           <div className="w-full max-w-sm bg-gray-950 border border-gray-800 rounded-2xl p-5 shadow-2xl space-y-4">
             <div className="text-center space-y-1">
-              <h1 className="text-xl font-black text-amber-500 tracking-wider">PDR FLOWBOARD</h1>
+              <h1 className="text-xl font-black text-white tracking-wider">
+                PDR <span className="text-amber-500">FlowBoard</span>
+              </h1>
               <p className="text-xs text-gray-400">{isResetMode ? t.forgotPasswordLink : (isRegistering ? t.registerTitle : t.loginTitle)}</p>
             </div>
+
+            {/* PWA: Karta na pridanie aplikácie na plochu */}
+            {!isAppInstalled && (
+              <div className="bg-amber-500/10 border border-amber-500/40 rounded-xl p-2.5 flex items-center justify-between gap-2 shadow-inner">
+                <div className="space-y-0.5 min-w-0">
+                  <div className="text-xs font-black text-amber-400 flex items-center gap-1.5 truncate">
+                    <i className="fa-solid fa-mobile-screen-button"></i>
+                    <span>{t.installAppTitle}</span>
+                  </div>
+                  <div className="text-[10px] text-gray-300">
+                    {isIosDevice ? t.iosInstallHelp : t.installAppSubtitle}
+                  </div>
+                </div>
+                {deferredInstallPrompt && !isIosDevice && (
+                  <button
+                    type="button"
+                    onClick={handleInstallAppClick}
+                    className="bg-amber-500 hover:bg-amber-600 active:scale-95 text-gray-950 font-black px-2.5 py-1.5 rounded-lg text-[10px] whitespace-nowrap shadow transition-all"
+                  >
+                    {t.installAppBtn}
+                  </button>
+                )}
+              </div>
+            )}
 
             {authError && (
               <div className="bg-red-900/40 border border-red-700/60 p-2 rounded text-red-200 text-xs text-center font-medium">
@@ -1978,20 +2065,18 @@
 
       return (
         <div className="w-full max-w-md bg-gray-950 border border-gray-800 rounded-2xl shadow-2xl flex flex-col overflow-hidden text-xs">
-          {/* Header - Pôvodné čisté prevedenie s emailom a rolou */}
+          {/* Header - Dvojfarebné logo PDR FlowBoard, vedľa rola a napravo v jednom riadku email/user */}
           <div className="bg-gray-900/80 border-b border-gray-800 p-2.5 flex items-center justify-between">
-            <div>
-              <div className="flex items-center gap-1.5">
-                <span className="font-black text-white tracking-wider text-sm">
-                  PDR <span className="text-amber-500">FlowBoard</span>
-                </span>
-                <span className="bg-amber-500/20 text-amber-400 font-bold px-1.5 py-0.2 rounded text-[9px] uppercase">
-                  {currentUser.role === "manager" ? t.roleManagerLabel : t.roleTechLabel}
-                </span>
-              </div>
-              <div className="text-[10px] text-gray-400 font-mono leading-none pt-0.5">
-                {currentUser.email}
-              </div>
+            <div className="flex items-center gap-1.5 min-w-0">
+              <span className="font-black text-white tracking-wider text-sm whitespace-nowrap">
+                PDR <span className="text-amber-500">FlowBoard</span>
+              </span>
+              <span className="bg-amber-500/20 text-amber-400 font-bold px-1.5 py-0.5 rounded text-[9px] uppercase whitespace-nowrap">
+                {currentUser.role === "manager" ? t.roleManagerLabel : t.roleTechLabel}
+              </span>
+              <span className="text-[10px] text-gray-400 font-mono truncate max-w-[125px]" title={currentUser.email}>
+                {currentUser.email.split("@")[0]}
+              </span>
             </div>
             <div className="flex items-center gap-2">
               <button
@@ -2053,7 +2138,7 @@
           <div className="p-3 space-y-3 flex-1 overflow-y-auto">
             {activeTab === "vehicles" && (
               <div className="space-y-3">
-                {/* Výber klienta a lokácie */}
+                {/* Výber klienta, lokácie a trvalé číslo kalkulácie */}
                 <div className="bg-gray-900 border border-gray-800 rounded-xl p-2.5 space-y-2">
                   <div className="flex justify-between items-center">
                     <label className="text-[10px] text-gray-400 font-bold uppercase">{t.clientLabel}</label>
@@ -2099,7 +2184,7 @@
                     )}
                   </select>
 
-                  {/* Trvalé pole na číslo kalkulácie */}
+                  {/* Trvalé pole na číslo kalkulácie priamo pod klientom a lokáciou */}
                   <div className="pt-1">
                     <label className="text-[10px] text-gray-400 font-bold uppercase">{t.calcNumberLabel}</label>
                     <input
