@@ -42,7 +42,7 @@
     const SUPABASE_KEY = "sb_publishable_5lQPiP19Qy2xwDq6eUXDmQ_MB5IYkHQ";
     const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    // Zoznam 40 európskych štátov
+    // Zoznam 40 európskych štátov s vlajkami a predvoľbami
     const EUROPEAN_COUNTRIES = [
       { code: "DE", flag: "🇩🇪", name: { EN: "Germany", DE: "Deutschland", SK: "Nemecko" }, dial: "+49" },
       { code: "AT", flag: "🇦🇹", name: { EN: "Austria", DE: "Österreich", SK: "Rakúsko" }, dial: "+43" },
@@ -1654,6 +1654,162 @@
         setDamageFiles([...damageFiles, file]);
       };
 
+      // --- OBSLUŽNÉ FUNKCIE PRE KLIENTOV, LOKÁCIE A DÁTA (UMIESTNENÉ PRED RETURN) ---
+      const handleAddClient = async (e) => {
+        e.preventDefault();
+        try {
+          const newClient = {
+            name: newClientName,
+            address: newClientAddress,
+            city: newClientCity,
+            postal_code: newClientPostalCode,
+            country: newClientCountry,
+            contact_person: newClientContactPerson,
+            phone: newClientPhone,
+            ico: newClientIco,
+            default_pdr_percent: newClientDefaultPdr ? parseFloat(newClientDefaultPdr) : 100,
+            default_ri_percent: newClientDefaultRi ? parseFloat(newClientDefaultRi) : 100,
+            auto_numbering: hasSeqConfig,
+            fixed_seq_prefix: hasSeqConfig ? newClientSeqPrefix : null,
+            initial_seq_number: hasSeqConfig ? parseInt(newClientInitialSeq, 10) : 1,
+            created_by: currentUser.id
+          };
+          const { data, error } = await supabase.from("clients").insert([newClient]).select();
+          if (error) throw error;
+          setClients([...clients, data[0]]);
+          setShowNewClientForm(false);
+          setNewClientName("");
+          setNewClientAddress("");
+          setNewClientCity("");
+          setNewClientPostalCode("");
+          setNewClientContactPerson("");
+          setNewClientIco("");
+          alert(lang === "SK" ? "Klient úspešne pridaný!" : "Client added successfully!");
+        } catch (err) {
+          alert("Error: " + err.message);
+        }
+      };
+
+      const handleAddProject = async (e) => {
+        e.preventDefault();
+        try {
+          const newProj = {
+            client_id: addingProjectClientId,
+            name: newProjectName,
+            address: newProjectAddress,
+            city: newProjectCity,
+            postal_code: newProjectPostalCode,
+            country: newProjectCountry,
+            contact_person: newProjectContactPerson,
+            phone: newProjectPhone,
+            pricing_mode: newProjectPricingMode,
+            fixed_price: newProjectPricingMode === "fixed" && newProjectFixedPrice ? parseFloat(newProjectFixedPrice) : null,
+            aw_rate: newProjectPricingMode === "free" && newProjectAwRate ? parseFloat(newProjectAwRate) : null,
+            pricing_categories: newProjectPricingMode === "categories" ? projectCategoriesList : null,
+            tech_pdr_percent: newProjectTechPdrPercent ? parseFloat(newProjectTechPdrPercent) : null,
+            tech_ri_percent: newProjectTechRiPercent ? parseFloat(newProjectTechRiPercent) : null,
+            is_active: true,
+            created_by: currentUser.id
+          };
+          const { data, error } = await supabase.from("projects").insert([newProj]).select();
+          if (error) throw error;
+          setProjects([...projects, data[0]]);
+          setAddingProjectClientId(null);
+          setNewProjectName("");
+          setNewProjectAddress("");
+          setNewProjectCity("");
+          setNewProjectPostalCode("");
+          setNewProjectContactPerson("");
+          setNewProjectFixedPrice("");
+          setNewProjectAwRate("");
+          setProjectCategoriesList([]);
+          alert(lang === "SK" ? "Lokácia úspešne pridaná!" : "Location added successfully!");
+        } catch (err) {
+          alert("Error: " + err.message);
+        }
+      };
+
+      const handleUpdateSheetData = async (e) => {
+        e.preventDefault();
+        try {
+          if (activeBottomSheet.type === "client") {
+            const { error } = await supabase.from("clients").update({
+              name: sheetEditData.name,
+              address: sheetEditData.address,
+              city: sheetEditData.city,
+              postal_code: sheetEditData.postal_code,
+              country: sheetEditData.country,
+              contact_person: sheetEditData.contact_person,
+              phone: sheetEditData.phone,
+              ico: sheetEditData.ico,
+              default_pdr_percent: sheetEditData.default_pdr_percent ? parseFloat(sheetEditData.default_pdr_percent) : 100,
+              default_ri_percent: sheetEditData.default_ri_percent ? parseFloat(sheetEditData.default_ri_percent) : 100
+            }).eq("id", activeBottomSheet.data.id);
+            if (error) throw error;
+            setClients(clients.map(c => c.id === activeBottomSheet.data.id ? { ...c, ...sheetEditData } : c));
+          } else {
+            const { error } = await supabase.from("projects").update({
+              name: sheetEditData.name,
+              address: sheetEditData.address,
+              city: sheetEditData.city,
+              postal_code: sheetEditData.postal_code,
+              country: sheetEditData.country,
+              contact_person: sheetEditData.contact_person,
+              phone: sheetEditData.phone,
+              pricing_mode: sheetEditData.pricing_mode,
+              fixed_price: sheetEditData.fixed_price ? parseFloat(sheetEditData.fixed_price) : null,
+              aw_rate: sheetEditData.aw_rate ? parseFloat(sheetEditData.aw_rate) : null,
+              pricing_categories: sheetEditData.pricing_mode === "categories" ? sheetEditCategories : null,
+              tech_pdr_percent: sheetEditData.tech_pdr_percent ? parseFloat(sheetEditData.tech_pdr_percent) : null,
+              tech_ri_percent: sheetEditData.tech_ri_percent ? parseFloat(sheetEditData.tech_ri_percent) : null
+            }).eq("id", activeBottomSheet.data.id);
+            if (error) throw error;
+            setProjects(projects.map(p => p.id === activeBottomSheet.data.id ? { ...p, ...sheetEditData, pricing_categories: sheetEditCategories } : p));
+          }
+          setIsEditingSheet(false);
+          setActiveBottomSheet(null);
+          alert(t.saveChangesBtn);
+        } catch (err) {
+          alert("Error: " + err.message);
+        }
+      };
+
+      const handleToggleArchiveProject = async (project) => {
+        const nextStatus = project.is_active === false;
+        const msg = nextStatus ? t.restoreConfirm : t.archiveConfirm;
+        if (!window.confirm(msg)) return;
+
+        try {
+          const { error } = await supabase.from("projects").update({ is_active: nextStatus }).eq("id", project.id);
+          if (error) throw error;
+          setProjects(projects.map(p => p.id === project.id ? { ...p, is_active: nextStatus } : p));
+          setActiveBottomSheet(null);
+        } catch (err) {
+          alert("Error: " + err.message);
+        }
+      };
+
+      const handleSaveLatePrice = async (vehicleId) => {
+        const p = parseFloat(latePriceInput);
+        if (isNaN(p) || p <= 0) return alert(lang === "SK" ? "Zadajte platnú sumu." : "Enter valid price.");
+
+        try {
+          const { error } = await supabase.from("vehicles").update({
+            price: p,
+            is_price_pending: false,
+            status: "completed"
+          }).eq("id", vehicleId);
+          if (error) throw error;
+
+          setVehicles(vehicles.map(v => v.id === vehicleId ? { ...v, price: p, is_price_pending: false, status: "completed" } : v));
+          setSelectedVehicleDetail(prev => ({ ...prev, price: p, is_price_pending: false, status: "completed" }));
+          setLatePriceInput("");
+          alert(lang === "SK" ? "Cena bola úspešne doplnená!" : "Price updated!");
+        } catch (err) {
+          alert("Error: " + err.message);
+        }
+      };
+
       if (loadingUser) {
         return (
           <div className="flex flex-col items-center justify-center p-8 space-y-3">
@@ -2447,724 +2603,568 @@
               </div>
             </div>
           )}
-            // --- OBSLUŽNÉ FUNKCIE PRE KLIENTOV, LOKÁCIE A DÁTA ---
-      const handleAddClient = async (e) => {
-        e.preventDefault();
-        try {
-          const newClient = {
-            name: newClientName,
-            address: newClientAddress,
-            city: newClientCity,
-            postal_code: newClientPostalCode,
-            country: newClientCountry,
-            contact_person: newClientContactPerson,
-            phone: newClientPhone,
-            ico: newClientIco,
-            default_pdr_percent: newClientDefaultPdr ? parseFloat(newClientDefaultPdr) : 100,
-            default_ri_percent: newClientDefaultRi ? parseFloat(newClientDefaultRi) : 100,
-            auto_numbering: hasSeqConfig,
-            fixed_seq_prefix: hasSeqConfig ? newClientSeqPrefix : null,
-            initial_seq_number: hasSeqConfig ? parseInt(newClientInitialSeq, 10) : 1,
-            created_by: currentUser.id
-          };
-          const { data, error } = await supabase.from("clients").insert([newClient]).select();
-          if (error) throw error;
-          setClients([...clients, data[0]]);
-          setShowNewClientForm(false);
-          setNewClientName("");
-          setNewClientAddress("");
-          setNewClientCity("");
-          setNewClientPostalCode("");
-          setNewClientContactPerson("");
-          setNewClientIco("");
-          alert(lang === "SK" ? "Klient úspešne pridaný!" : "Client added successfully!");
-        } catch (err) {
-          alert("Error: " + err.message);
-        }
-      };
+            {/* Správa Klientov a Lokácií */}
+            {activeTab === "projects" && (
+              <div className="space-y-3">
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowNewClientForm(!showNewClientForm)}
+                    className="flex-1 bg-amber-500 hover:bg-amber-600 text-gray-950 font-bold py-1.5 rounded-lg text-xs"
+                  >
+                    + {t.addClientBtn}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowArchivedProjects(!showArchivedProjects)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold border ${showArchivedProjects ? "bg-amber-500/20 border-amber-500 text-amber-300" : "bg-gray-900 border-gray-700 text-gray-400"}`}
+                  >
+                    {showArchivedProjects ? (lang === "SK" ? "Skryť archív" : "Hide Archive") : (lang === "SK" ? "Zobraziť archív" : "Show Archive")}
+                  </button>
+                </div>
 
-      const handleAddProject = async (e) => {
-        e.preventDefault();
-        try {
-          const newProj = {
-            client_id: addingProjectClientId,
-            name: newProjectName,
-            address: newProjectAddress,
-            city: newProjectCity,
-            postal_code: newProjectPostalCode,
-            country: newProjectCountry,
-            contact_person: newProjectContactPerson,
-            phone: newProjectPhone,
-            pricing_mode: newProjectPricingMode,
-            fixed_price: newProjectPricingMode === "fixed" && newProjectFixedPrice ? parseFloat(newProjectFixedPrice) : null,
-            aw_rate: newProjectPricingMode === "free" && newProjectAwRate ? parseFloat(newProjectAwRate) : null,
-            pricing_categories: newProjectPricingMode === "categories" ? projectCategoriesList : null,
-            tech_pdr_percent: newProjectTechPdrPercent ? parseFloat(newProjectTechPdrPercent) : null,
-            tech_ri_percent: newProjectTechRiPercent ? parseFloat(newProjectTechRiPercent) : null,
-            is_active: true,
-            created_by: currentUser.id
-          };
-          const { data, error } = await supabase.from("projects").insert([newProj]).select();
-          if (error) throw error;
-          setProjects([...projects, data[0]]);
-          setAddingProjectClientId(null);
-          setNewProjectName("");
-          setNewProjectAddress("");
-          setNewProjectCity("");
-          setNewProjectPostalCode("");
-          setNewProjectContactPerson("");
-          setNewProjectFixedPrice("");
-          setNewProjectAwRate("");
-          setProjectCategoriesList([]);
-          alert(lang === "SK" ? "Lokácia úspešne pridaná!" : "Location added successfully!");
-        } catch (err) {
-          alert("Error: " + err.message);
-        }
-      };
-
-      const handleUpdateSheetData = async (e) => {
-        e.preventDefault();
-        try {
-          if (activeBottomSheet.type === "client") {
-            const { error } = await supabase.from("clients").update({
-              name: sheetEditData.name,
-              address: sheetEditData.address,
-              city: sheetEditData.city,
-              postal_code: sheetEditData.postal_code,
-              country: sheetEditData.country,
-              contact_person: sheetEditData.contact_person,
-              phone: sheetEditData.phone,
-              ico: sheetEditData.ico,
-              default_pdr_percent: sheetEditData.default_pdr_percent ? parseFloat(sheetEditData.default_pdr_percent) : 100,
-              default_ri_percent: sheetEditData.default_ri_percent ? parseFloat(sheetEditData.default_ri_percent) : 100
-            }).eq("id", activeBottomSheet.data.id);
-            if (error) throw error;
-            setClients(clients.map(c => c.id === activeBottomSheet.data.id ? { ...c, ...sheetEditData } : c));
-          } else {
-            const { error } = await supabase.from("projects").update({
-              name: sheetEditData.name,
-              address: sheetEditData.address,
-              city: sheetEditData.city,
-              postal_code: sheetEditData.postal_code,
-              country: sheetEditData.country,
-              contact_person: sheetEditData.contact_person,
-              phone: sheetEditData.phone,
-              pricing_mode: sheetEditData.pricing_mode,
-              fixed_price: sheetEditData.fixed_price ? parseFloat(sheetEditData.fixed_price) : null,
-              aw_rate: sheetEditData.aw_rate ? parseFloat(sheetEditData.aw_rate) : null,
-              pricing_categories: sheetEditData.pricing_mode === "categories" ? sheetEditCategories : null,
-              tech_pdr_percent: sheetEditData.tech_pdr_percent ? parseFloat(sheetEditData.tech_pdr_percent) : null,
-              tech_ri_percent: sheetEditData.tech_ri_percent ? parseFloat(sheetEditData.tech_ri_percent) : null
-            }).eq("id", activeBottomSheet.data.id);
-            if (error) throw error;
-            setProjects(projects.map(p => p.id === activeBottomSheet.data.id ? { ...p, ...sheetEditData, pricing_categories: sheetEditCategories } : p));
-          }
-          setIsEditingSheet(false);
-          setActiveBottomSheet(null);
-          alert(t.saveChangesBtn);
-        } catch (err) {
-          alert("Error: " + err.message);
-        }
-      };
-
-      const handleToggleArchiveProject = async (project) => {
-        const nextStatus = project.is_active === false;
-        const msg = nextStatus ? t.restoreConfirm : t.archiveConfirm;
-        if (!window.confirm(msg)) return;
-
-        try {
-          const { error } = await supabase.from("projects").update({ is_active: nextStatus }).eq("id", project.id);
-          if (error) throw error;
-          setProjects(projects.map(p => p.id === project.id ? { ...p, is_active: nextStatus } : p));
-          setActiveBottomSheet(null);
-        } catch (err) {
-          alert("Error: " + err.message);
-        }
-      };
-
-      const handleSaveLatePrice = async (vehicleId) => {
-        const p = parseFloat(latePriceInput);
-        if (isNaN(p) || p <= 0) return alert(lang === "SK" ? "Zadajte platnú sumu." : "Enter valid price.");
-
-        try {
-          const { error } = await supabase.from("vehicles").update({
-            price: p,
-            is_price_pending: false,
-            status: "completed"
-          }).eq("id", vehicleId);
-          if (error) throw error;
-
-          setVehicles(vehicles.map(v => v.id === vehicleId ? { ...v, price: p, is_price_pending: false, status: "completed" } : v));
-          setSelectedVehicleDetail(prev => ({ ...prev, price: p, is_price_pending: false, status: "completed" }));
-          setLatePriceInput("");
-          alert(lang === "SK" ? "Cena bola úspešne doplnená!" : "Price updated!");
-        } catch (err) {
-          alert("Error: " + err.message);
-        }
-      };
-
-      return (
-        <>
-          {/* Správa Klientov a Lokácií */}
-          {activeTab === "projects" && (
-            <div className="space-y-3">
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => setShowNewClientForm(!showNewClientForm)}
-                  className="flex-1 bg-amber-500 hover:bg-amber-600 text-gray-950 font-bold py-1.5 rounded-lg text-xs"
-                >
-                  + {t.addClientBtn}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowArchivedProjects(!showArchivedProjects)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold border ${showArchivedProjects ? "bg-amber-500/20 border-amber-500 text-amber-300" : "bg-gray-900 border-gray-700 text-gray-400"}`}
-                >
-                  {showArchivedProjects ? (lang === "SK" ? "Skryť archív" : "Hide Archive") : (lang === "SK" ? "Zobraziť archív" : "Show Archive")}
-                </button>
-              </div>
-
-              {/* Formulár nového klienta */}
-              {showNewClientForm && (
-                <form onSubmit={handleAddClient} className="bg-gray-900 border border-amber-500/60 rounded-xl p-3 space-y-2">
-                  <div className="font-bold text-amber-400 text-xs">{lang === "SK" ? "Nový Klient (Firma)" : "New Client (Company)"}</div>
-                  <input
-                    type="text"
-                    required
-                    value={newClientName}
-                    onChange={e => setNewClientName(e.target.value)}
-                    placeholder={t.clientNamePlaceholder}
-                    className="w-full bg-gray-950 border border-gray-700 rounded p-1.5 text-xs text-white"
-                  />
-                  <input
-                    type="text"
-                    value={newClientAddress}
-                    onChange={e => setNewClientAddress(e.target.value)}
-                    placeholder={t.clientAddressPlaceholder}
-                    className="w-full bg-gray-950 border border-gray-700 rounded p-1.5 text-xs text-white"
-                  />
-                  <div className="grid grid-cols-2 gap-2">
+                {/* Formulár nového klienta */}
+                {showNewClientForm && (
+                  <form onSubmit={handleAddClient} className="bg-gray-900 border border-amber-500/60 rounded-xl p-3 space-y-2">
+                    <div className="font-bold text-amber-400 text-xs">{lang === "SK" ? "Nový Klient (Firma)" : "New Client (Company)"}</div>
                     <input
                       type="text"
-                      value={newClientCity}
-                      onChange={e => setNewClientCity(e.target.value)}
-                      placeholder={t.cityPlaceholder}
+                      required
+                      value={newClientName}
+                      onChange={e => setNewClientName(e.target.value)}
+                      placeholder={t.clientNamePlaceholder}
                       className="w-full bg-gray-950 border border-gray-700 rounded p-1.5 text-xs text-white"
                     />
                     <input
                       type="text"
-                      value={newClientPostalCode}
-                      onChange={e => setNewClientPostalCode(e.target.value)}
-                      placeholder={t.postalCodePlaceholder}
+                      value={newClientAddress}
+                      onChange={e => setNewClientAddress(e.target.value)}
+                      placeholder={t.clientAddressPlaceholder}
                       className="w-full bg-gray-950 border border-gray-700 rounded p-1.5 text-xs text-white"
                     />
-                  </div>
-                  <CountryPicker
-                    selectedCode={newClientCountry}
-                    onSelect={c => {
-                      setNewClientCountry(c.code);
-                      setNewClientPhone(c.dial);
-                    }}
-                    lang={lang}
-                    placeholder={t.countryPlaceholder}
-                  />
-                  <div className="grid grid-cols-2 gap-2">
-                    <input
-                      type="text"
-                      value={newClientContactPerson}
-                      onChange={e => setNewClientContactPerson(e.target.value)}
-                      placeholder={t.contactPersonPlaceholder}
-                      className="w-full bg-gray-950 border border-gray-700 rounded p-1.5 text-xs text-white"
-                    />
-                    <input
-                      type="text"
-                      value={newClientPhone}
-                      onChange={e => setNewClientPhone(sanitizePhone(e.target.value))}
-                      placeholder={t.phonePlaceholder}
-                      className="w-full bg-gray-950 border border-gray-700 rounded p-1.5 text-xs text-white"
-                    />
-                  </div>
-                  <input
-                    type="text"
-                    value={newClientIco}
-                    onChange={e => setNewClientIco(sanitizeIco(e.target.value))}
-                    placeholder={t.icoPlaceholder}
-                    className="w-full bg-gray-950 border border-gray-700 rounded p-1.5 text-xs text-white"
-                  />
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="text-[9px] text-gray-400">{t.defaultPdrPercentLabel}</label>
+                    <div className="grid grid-cols-2 gap-2">
                       <input
-                        type="number"
-                        value={newClientDefaultPdr}
-                        onChange={e => setNewClientDefaultPdr(e.target.value)}
-                        placeholder="100"
-                        className="w-full bg-gray-950 border border-gray-700 rounded p-1 text-xs text-white font-bold"
+                        type="text"
+                        value={newClientCity}
+                        onChange={e => setNewClientCity(e.target.value)}
+                        placeholder={t.cityPlaceholder}
+                        className="w-full bg-gray-950 border border-gray-700 rounded p-1.5 text-xs text-white"
+                      />
+                      <input
+                        type="text"
+                        value={newClientPostalCode}
+                        onChange={e => setNewClientPostalCode(e.target.value)}
+                        placeholder={t.postalCodePlaceholder}
+                        className="w-full bg-gray-950 border border-gray-700 rounded p-1.5 text-xs text-white"
                       />
                     </div>
-                    <div>
-                      <label className="text-[9px] text-gray-400">{t.defaultRiPercentLabel}</label>
+                    <CountryPicker
+                      selectedCode={newClientCountry}
+                      onSelect={c => {
+                        setNewClientCountry(c.code);
+                        setNewClientPhone(c.dial);
+                      }}
+                      lang={lang}
+                      placeholder={t.countryPlaceholder}
+                    />
+                    <div className="grid grid-cols-2 gap-2">
                       <input
-                        type="number"
-                        value={newClientDefaultRi}
-                        onChange={e => setNewClientDefaultRi(e.target.value)}
-                        placeholder="100"
-                        className="w-full bg-gray-950 border border-gray-700 rounded p-1 text-xs text-white font-bold"
+                        type="text"
+                        value={newClientContactPerson}
+                        onChange={e => setNewClientContactPerson(e.target.value)}
+                        placeholder={t.contactPersonPlaceholder}
+                        className="w-full bg-gray-950 border border-gray-700 rounded p-1.5 text-xs text-white"
+                      />
+                      <input
+                        type="text"
+                        value={newClientPhone}
+                        onChange={e => setNewClientPhone(sanitizePhone(e.target.value))}
+                        placeholder={t.phonePlaceholder}
+                        className="w-full bg-gray-950 border border-gray-700 rounded p-1.5 text-xs text-white"
                       />
                     </div>
-                  </div>
-                  <div className="pt-1 border-t border-gray-800 space-y-1.5">
-                    <label className="flex items-center gap-1.5 text-xs text-gray-300">
-                      <input
-                        type="checkbox"
-                        checked={hasSeqConfig}
-                        onChange={e => setHasSeqConfig(e.target.checked)}
-                      />
-                      <span>{t.predefinedSeqCheckbox}</span>
-                    </label>
-                    {hasSeqConfig && (
-                      <div className="grid grid-cols-2 gap-2">
-                        <input
-                          type="text"
-                          value={newClientSeqPrefix}
-                          onChange={e => setNewClientSeqPrefix(e.target.value)}
-                          placeholder="{ROK}/"
-                          className="w-full bg-gray-950 border border-gray-700 rounded p-1 text-xs text-white"
-                        />
-                        <input
-                          type="number"
-                          value={newClientInitialSeq}
-                          onChange={e => setNewClientInitialSeq(e.target.value)}
-                          placeholder="1"
-                          className="w-full bg-gray-950 border border-gray-700 rounded p-1 text-xs text-white"
-                        />
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex justify-end gap-2 pt-1">
-                    <button
-                      type="button"
-                      onClick={() => setShowNewClientForm(false)}
-                      className="bg-gray-800 px-3 py-1 rounded text-xs text-gray-300 font-bold"
-                    >
-                      {t.cancelBtn}
-                    </button>
-                    <button
-                      type="submit"
-                      className="bg-amber-500 text-gray-950 px-3 py-1 rounded text-xs font-bold"
-                    >
-                      {t.saveChangesBtn}
-                    </button>
-                  </div>
-                </form>
-              )}
-
-              {/* Formulár novej lokácie */}
-              {addingProjectClientId && (
-                <form onSubmit={handleAddProject} className="bg-gray-900 border border-amber-500/60 rounded-xl p-3 space-y-2">
-                  <div className="font-bold text-amber-400 text-xs">{lang === "SK" ? "Nová Lokácia / Dielňa" : "New Location / Shop"}</div>
-                  <input
-                    type="text"
-                    required
-                    value={newProjectName}
-                    onChange={e => setNewProjectName(e.target.value)}
-                    placeholder="Názov dielne (napr. Opel Paríž)"
-                    className="w-full bg-gray-950 border border-gray-700 rounded p-1.5 text-xs text-white"
-                  />
-                  <input
-                    type="text"
-                    value={newProjectAddress}
-                    onChange={e => setNewProjectAddress(e.target.value)}
-                    placeholder={t.clientAddressPlaceholder}
-                    className="w-full bg-gray-950 border border-gray-700 rounded p-1.5 text-xs text-white"
-                  />
-                  <div className="grid grid-cols-2 gap-2">
                     <input
                       type="text"
-                      value={newProjectCity}
-                      onChange={e => setNewProjectCity(e.target.value)}
-                      placeholder={t.cityPlaceholder}
+                      value={newClientIco}
+                      onChange={e => setNewClientIco(sanitizeIco(e.target.value))}
+                      placeholder={t.icoPlaceholder}
                       className="w-full bg-gray-950 border border-gray-700 rounded p-1.5 text-xs text-white"
                     />
-                    <input
-                      type="text"
-                      value={newProjectPostalCode}
-                      onChange={e => setNewProjectPostalCode(e.target.value)}
-                      placeholder={t.postalCodePlaceholder}
-                      className="w-full bg-gray-950 border border-gray-700 rounded p-1.5 text-xs text-white"
-                    />
-                  </div>
-                  <CountryPicker
-                    selectedCode={newProjectCountry}
-                    onSelect={c => {
-                      setNewProjectCountry(c.code);
-                      setNewProjectPhone(c.dial);
-                    }}
-                    lang={lang}
-                    placeholder={t.countryPlaceholder}
-                  />
-                  <div className="grid grid-cols-2 gap-2">
-                    <input
-                      type="text"
-                      value={newProjectContactPerson}
-                      onChange={e => setNewProjectContactPerson(e.target.value)}
-                      placeholder={t.contactPersonPlaceholder}
-                      className="w-full bg-gray-950 border border-gray-700 rounded p-1.5 text-xs text-white"
-                    />
-                    <input
-                      type="text"
-                      value={newProjectPhone}
-                      onChange={e => setNewProjectPhone(sanitizePhone(e.target.value))}
-                      placeholder={t.phonePlaceholder}
-                      className="w-full bg-gray-950 border border-gray-700 rounded p-1.5 text-xs text-white"
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="text-[9px] text-gray-400">{t.defaultPdrPercentLabel}</label>
-                      <input
-                        type="number"
-                        value={newProjectTechPdrPercent}
-                        onChange={e => setNewProjectTechPdrPercent(e.target.value)}
-                        placeholder="Podľa klienta"
-                        className="w-full bg-gray-950 border border-gray-700 rounded p-1 text-xs text-white font-bold"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-[9px] text-gray-400">{t.defaultRiPercentLabel}</label>
-                      <input
-                        type="number"
-                        value={newProjectTechRiPercent}
-                        onChange={e => setNewProjectTechRiPercent(e.target.value)}
-                        placeholder="Podľa klienta"
-                        className="w-full bg-gray-950 border border-gray-700 rounded p-1 text-xs text-white font-bold"
-                      />
-                    </div>
-                  </div>
-                  {/* Cenový model lokácie */}
-                  <div className="space-y-1.5 pt-1 border-t border-gray-800">
-                    <label className="text-[10px] text-gray-400 font-bold uppercase">{t.pricingModeLabel}</label>
-                    <div className="grid grid-cols-3 gap-1">
-                      <button
-                        type="button"
-                        onClick={() => setNewProjectPricingMode("free")}
-                        className={`p-1.5 rounded text-xs font-bold border ${newProjectPricingMode === "free" ? "bg-amber-500/20 border-amber-500 text-amber-300" : "bg-gray-950 border-gray-800 text-gray-400"}`}
-                      >
-                        Voľná / AW
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setNewProjectPricingMode("fixed")}
-                        className={`p-1.5 rounded text-xs font-bold border ${newProjectPricingMode === "fixed" ? "bg-amber-500/20 border-amber-500 text-amber-300" : "bg-gray-950 border-gray-800 text-gray-400"}`}
-                      >
-                        Fixná
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setNewProjectPricingMode("categories")}
-                        className={`p-1.5 rounded text-xs font-bold border ${newProjectPricingMode === "categories" ? "bg-amber-500/20 border-amber-500 text-amber-300" : "bg-gray-950 border-gray-800 text-gray-400"}`}
-                      >
-                        Kategórie
-                      </button>
-                    </div>
-
-                    {newProjectPricingMode === "free" && (
+                    <div className="grid grid-cols-2 gap-2">
                       <div>
-                        <label className="text-[9px] text-gray-400">{t.awRateLabel}</label>
+                        <label className="text-[9px] text-gray-400">{t.defaultPdrPercentLabel}</label>
                         <input
                           type="number"
-                          value={newProjectAwRate}
-                          onChange={e => setNewProjectAwRate(e.target.value)}
-                          placeholder="Sadzba v EUR za 1 AW"
+                          value={newClientDefaultPdr}
+                          onChange={e => setNewClientDefaultPdr(e.target.value)}
+                          placeholder="100"
                           className="w-full bg-gray-950 border border-gray-700 rounded p-1 text-xs text-white font-bold"
                         />
                       </div>
-                    )}
-
-                    {newProjectPricingMode === "fixed" && (
                       <div>
-                        <label className="text-[9px] text-gray-400">{t.fixedRateLabel}</label>
+                        <label className="text-[9px] text-gray-400">{t.defaultRiPercentLabel}</label>
                         <input
                           type="number"
-                          value={newProjectFixedPrice}
-                          onChange={e => setNewProjectFixedPrice(e.target.value)}
-                          placeholder="Fixná cena za auto"
+                          value={newClientDefaultRi}
+                          onChange={e => setNewClientDefaultRi(e.target.value)}
+                          placeholder="100"
                           className="w-full bg-gray-950 border border-gray-700 rounded p-1 text-xs text-white font-bold"
                         />
                       </div>
-                    )}
-
-                    {newProjectPricingMode === "categories" && (
-                      <div className="space-y-1.5">
-                        <div className="flex gap-1.5">
+                    </div>
+                    <div className="pt-1 border-t border-gray-800 space-y-1.5">
+                      <label className="flex items-center gap-1.5 text-xs text-gray-300">
+                        <input
+                          type="checkbox"
+                          checked={hasSeqConfig}
+                          onChange={e => setHasSeqConfig(e.target.checked)}
+                        />
+                        <span>{t.predefinedSeqCheckbox}</span>
+                      </label>
+                      {hasSeqConfig && (
+                        <div className="grid grid-cols-2 gap-2">
+                          <input
+                            type="text"
+                            value={newClientSeqPrefix}
+                            onChange={e => setNewClientSeqPrefix(e.target.value)}
+                            placeholder="{ROK}/"
+                            className="w-full bg-gray-950 border border-gray-700 rounded p-1 text-xs text-white"
+                          />
                           <input
                             type="number"
-                            value={tempCategoryPrice}
-                            onChange={e => setTempCategoryPrice(e.target.value)}
-                            placeholder="Cena ďalšej Cat v EUR"
-                            className="w-full bg-gray-950 border border-gray-700 rounded p-1 text-xs text-white font-bold"
+                            value={newClientInitialSeq}
+                            onChange={e => setNewClientInitialSeq(e.target.value)}
+                            placeholder="1"
+                            className="w-full bg-gray-950 border border-gray-700 rounded p-1 text-xs text-white"
                           />
-                          <button
-                            type="button"
-                            onClick={handleAddCategoryItem}
-                            className="bg-amber-500 text-gray-950 px-3 py-1 rounded text-xs font-bold whitespace-nowrap"
-                          >
-                            {t.addCatBtn}
-                          </button>
                         </div>
-                        <div className="grid grid-cols-2 gap-1 max-h-32 overflow-y-auto">
-                          {projectCategoriesList.map((cat, idx) => (
-                            <div key={idx} className="bg-gray-950 border border-gray-800 p-1 rounded flex justify-between items-center text-xs">
-                              <span>{cat.label}: {currSymbol}{cat.price}</span>
-                              <button type="button" onClick={() => handleRemoveCategoryItem(idx)} className="text-red-400 px-1 font-bold">×</button>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex justify-end gap-2 pt-1">
-                    <button
-                      type="button"
-                      onClick={() => setAddingProjectClientId(null)}
-                      className="bg-gray-800 px-3 py-1 rounded text-xs text-gray-300 font-bold"
-                    >
-                      {t.cancelBtn}
-                    </button>
-                    <button
-                      type="submit"
-                      className="bg-amber-500 text-gray-950 px-3 py-1 rounded text-xs font-bold"
-                    >
-                      {t.saveChangesBtn}
-                    </button>
-                  </div>
-                </form>
-              )}
-
-              {/* Zoznam klientov a lokácií */}
-              <div className="space-y-2">
-                {clients.map(c => {
-                  const clientProjects = projects.filter(p => p.client_id === c.id && (showArchivedProjects || p.is_active !== false));
-                  return (
-                    <div key={c.id} className="bg-gray-900 border border-gray-800 rounded-xl p-2.5 space-y-2">
-                      <div className="flex justify-between items-center">
-                        <button
-                          type="button"
-                          onClick={() => setActiveBottomSheet({ type: "client", id: c.id, data: c })}
-                          className="font-bold text-amber-400 hover:underline text-left text-xs flex items-center gap-1.5"
-                        >
-                          <span>{c.name}</span>
-                          <i className="fa-solid fa-circle-info text-[10px] text-gray-500"></i>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setAddingProjectClientId(c.id)}
-                          className="bg-gray-800 hover:bg-gray-700 text-gray-200 px-2 py-0.5 rounded text-[10px] font-bold"
-                        >
-                          + {t.addLocationBtn}
-                        </button>
-                      </div>
-
-                      <div className="space-y-1">
-                        {clientProjects.length === 0 ? (
-                          <div className="text-[10px] text-gray-500 italic p-1">{lang === "SK" ? "Žiadne lokácie" : "No locations"}</div>
-                        ) : (
-                          clientProjects.map(p => (
-                            <div
-                              key={p.id}
-                              onClick={() => setActiveBottomSheet({ type: "project", id: p.id, data: p })}
-                              className={`p-2 rounded-lg border flex justify-between items-center cursor-pointer ${p.is_active === false ? "bg-gray-950/40 border-gray-900 opacity-60" : "bg-gray-950 border-gray-800/80 hover:border-amber-500/40"}`}
-                            >
-                              <div className="space-y-0.5">
-                                <div className="font-bold text-gray-200 flex items-center gap-1.5">
-                                  <span>{p.name}</span>
-                                  {p.is_active === false && <span className="text-[9px] text-red-400 font-normal">({t.archiveBtn})</span>}
-                                </div>
-                                <div className="text-[10px] text-gray-500">{p.city || "Bez adresy"}</div>
-                              </div>
-                              <div className="text-right">
-                                <span className="bg-gray-900 text-amber-400 border border-gray-800 px-1.5 py-0.5 rounded text-[10px] font-mono">
-                                  {p.pricing_mode === "fixed" ? `${currSymbol}${p.fixed_price}` : (p.pricing_mode === "categories" ? "Kategórie" : "AW / Voľná")}
-                                </span>
-                              </div>
-                            </div>
-                          ))
-                        )}
-                      </div>
+                      )}
                     </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* Záložka Register & Reports */}
-          {activeTab === "reports" && (
-            <div className="space-y-3">
-              {/* KPI Súhrny */}
-              <div className="grid grid-cols-3 gap-2">
-                <div className="bg-gray-900 border border-gray-800 p-2 rounded-xl text-center">
-                  <div className="text-[10px] text-gray-400 font-bold">{t.kpiVehicles}</div>
-                  <div className="text-base font-black text-white">{kpiStats.count}</div>
-                </div>
-                <div className="bg-gray-900 border border-gray-800 p-2 rounded-xl text-center">
-                  <div className="text-[10px] text-gray-400 font-bold">{t.kpiGross}</div>
-                  <div className="text-base font-black text-amber-400">{currSymbol}{kpiStats.gross}</div>
-                </div>
-                <div className="bg-gray-900 border border-gray-800 p-2 rounded-xl text-center">
-                  <div className="text-[10px] text-gray-400 font-bold">{t.kpiMyShare}</div>
-                  <div className="text-base font-black text-emerald-400">{currSymbol}{kpiStats.myShare}</div>
-                </div>
-              </div>
-
-              {/* Filtre */}
-              <div className="bg-gray-900 border border-gray-800 rounded-xl p-2.5 space-y-2">
-                <div className="grid grid-cols-2 gap-2">
-                  <select
-                    value={repClientFilter}
-                    onChange={e => {
-                      setRepClientFilter(e.target.value);
-                      setRepProjectFilter("all");
-                    }}
-                    className="w-full bg-gray-950 border border-gray-700 rounded p-1 text-xs text-white"
-                  >
-                    <option value="all">{t.allClients}</option>
-                    {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                  </select>
-
-                  <select
-                    value={repProjectFilter}
-                    onChange={e => setRepProjectFilter(e.target.value)}
-                    className="w-full bg-gray-950 border border-gray-700 rounded p-1 text-xs text-white"
-                  >
-                    <option value="all">{t.allLocations}</option>
-                    {projects
-                      .filter(p => repClientFilter === "all" || p.client_id === repClientFilter)
-                      .map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                  </select>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2">
-                  <select
-                    value={repDateRange}
-                    onChange={e => setRepDateRange(e.target.value)}
-                    className="w-full bg-gray-950 border border-gray-700 rounded p-1 text-xs text-white"
-                  >
-                    <option value="all">{t.allDates}</option>
-                    <option value="7days">{t.last7Days}</option>
-                    <option value="thisMonth">{t.thisMonth}</option>
-                    <option value="lastMonth">{t.lastMonth}</option>
-                    <option value="customMonth">{t.customMonthYear}</option>
-                  </select>
-
-                  {repDateRange === "customMonth" && (
-                    <div className="grid grid-cols-2 gap-1">
-                      <select
-                        value={repSelectedMonth}
-                        onChange={e => setRepSelectedMonth(e.target.value)}
-                        className="w-full bg-gray-950 border border-gray-700 rounded p-1 text-[10px] text-white"
+                    <div className="flex justify-end gap-2 pt-1">
+                      <button
+                        type="button"
+                        onClick={() => setShowNewClientForm(false)}
+                        className="bg-gray-800 px-3 py-1 rounded text-xs text-gray-300 font-bold"
                       >
-                        {(MONTHS_LIST[lang] || MONTHS_LIST.SK).map((m, idx) => (
-                          <option key={idx} value={idx}>{m.substring(0, 3)}</option>
-                        ))}
-                      </select>
+                        {t.cancelBtn}
+                      </button>
+                      <button
+                        type="submit"
+                        className="bg-amber-500 text-gray-950 px-3 py-1 rounded text-xs font-bold"
+                      >
+                        {t.saveChangesBtn}
+                      </button>
+                    </div>
+                  </form>
+                )}
+
+                {/* Formulár novej lokácie */}
+                {addingProjectClientId && (
+                  <form onSubmit={handleAddProject} className="bg-gray-900 border border-amber-500/60 rounded-xl p-3 space-y-2">
+                    <div className="font-bold text-amber-400 text-xs">{lang === "SK" ? "Nová Lokácia / Dielňa" : "New Location / Shop"}</div>
+                    <input
+                      type="text"
+                      required
+                      value={newProjectName}
+                      onChange={e => setNewProjectName(e.target.value)}
+                      placeholder="Názov dielne (napr. Opel Paríž)"
+                      className="w-full bg-gray-950 border border-gray-700 rounded p-1.5 text-xs text-white"
+                    />
+                    <input
+                      type="text"
+                      value={newProjectAddress}
+                      onChange={e => setNewProjectAddress(e.target.value)}
+                      placeholder={t.clientAddressPlaceholder}
+                      className="w-full bg-gray-950 border border-gray-700 rounded p-1.5 text-xs text-white"
+                    />
+                    <div className="grid grid-cols-2 gap-2">
                       <input
-                        type="number"
-                        value={repSelectedYear}
-                        onChange={e => setRepSelectedYear(e.target.value)}
-                        className="w-full bg-gray-950 border border-gray-700 rounded p-1 text-[10px] text-white"
+                        type="text"
+                        value={newProjectCity}
+                        onChange={e => setNewProjectCity(e.target.value)}
+                        placeholder={t.cityPlaceholder}
+                        className="w-full bg-gray-950 border border-gray-700 rounded p-1.5 text-xs text-white"
+                      />
+                      <input
+                        type="text"
+                        value={newProjectPostalCode}
+                        onChange={e => setNewProjectPostalCode(e.target.value)}
+                        placeholder={t.postalCodePlaceholder}
+                        className="w-full bg-gray-950 border border-gray-700 rounded p-1.5 text-xs text-white"
                       />
                     </div>
-                  )}
-                </div>
+                    <CountryPicker
+                      selectedCode={newProjectCountry}
+                      onSelect={c => {
+                        setNewProjectCountry(c.code);
+                        setNewProjectPhone(c.dial);
+                      }}
+                      lang={lang}
+                      placeholder={t.countryPlaceholder}
+                    />
+                    <div className="grid grid-cols-2 gap-2">
+                      <input
+                        type="text"
+                        value={newProjectContactPerson}
+                        onChange={e => setNewProjectContactPerson(e.target.value)}
+                        placeholder={t.contactPersonPlaceholder}
+                        className="w-full bg-gray-950 border border-gray-700 rounded p-1.5 text-xs text-white"
+                      />
+                      <input
+                        type="text"
+                        value={newProjectPhone}
+                        onChange={e => setNewProjectPhone(sanitizePhone(e.target.value))}
+                        placeholder={t.phonePlaceholder}
+                        className="w-full bg-gray-950 border border-gray-700 rounded p-1.5 text-xs text-white"
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="text-[9px] text-gray-400">{t.defaultPdrPercentLabel}</label>
+                        <input
+                          type="number"
+                          value={newProjectTechPdrPercent}
+                          onChange={e => setNewProjectTechPdrPercent(e.target.value)}
+                          placeholder="Podľa klienta"
+                          className="w-full bg-gray-950 border border-gray-700 rounded p-1 text-xs text-white font-bold"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[9px] text-gray-400">{t.defaultRiPercentLabel}</label>
+                        <input
+                          type="number"
+                          value={newProjectTechRiPercent}
+                          onChange={e => setNewProjectTechRiPercent(e.target.value)}
+                          placeholder="Podľa klienta"
+                          className="w-full bg-gray-950 border border-gray-700 rounded p-1 text-xs text-white font-bold"
+                        />
+                      </div>
+                    </div>
 
-                <input
-                  type="text"
-                  value={repSearchQuery}
-                  onChange={e => setRepSearchQuery(e.target.value)}
-                  placeholder={t.searchPlaceholder}
-                  className="w-full bg-gray-950 border border-gray-700 rounded p-1.5 text-xs text-white"
-                />
-              </div>
+                    {/* Cenový model lokácie */}
+                    <div className="space-y-1.5 pt-1 border-t border-gray-800">
+                      <label className="text-[10px] text-gray-400 font-bold uppercase">{t.pricingModeLabel}</label>
+                      <div className="grid grid-cols-3 gap-1">
+                        <button
+                          type="button"
+                          onClick={() => setNewProjectPricingMode("free")}
+                          className={`p-1.5 rounded text-xs font-bold border ${newProjectPricingMode === "free" ? "bg-amber-500/20 border-amber-500 text-amber-300" : "bg-gray-950 border-gray-800 text-gray-400"}`}
+                        >
+                          Voľná / AW
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setNewProjectPricingMode("fixed")}
+                          className={`p-1.5 rounded text-xs font-bold border ${newProjectPricingMode === "fixed" ? "bg-amber-500/20 border-amber-500 text-amber-300" : "bg-gray-950 border-gray-800 text-gray-400"}`}
+                        >
+                          Fixná
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setNewProjectPricingMode("categories")}
+                          className={`p-1.5 rounded text-xs font-bold border ${newProjectPricingMode === "categories" ? "bg-amber-500/20 border-amber-500 text-amber-300" : "bg-gray-950 border-gray-800 text-gray-400"}`}
+                        >
+                          Kategórie
+                        </button>
+                      </div>
 
-              {/* Exporty */}
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={exportPdf}
-                  className="flex-1 bg-amber-500 hover:bg-amber-600 text-gray-950 font-bold py-1.5 rounded-lg text-xs flex items-center justify-center gap-1.5"
-                >
-                  <i className="fa-solid fa-file-pdf"></i> {t.downloadPdfBtn}
-                </button>
-                <button
-                  type="button"
-                  onClick={exportCsv}
-                  className="bg-gray-800 hover:bg-gray-700 text-gray-200 px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5"
-                >
-                  <i className="fa-solid fa-file-csv"></i> {t.downloadCsvBtn}
-                </button>
-              </div>
+                      {newProjectPricingMode === "free" && (
+                        <div>
+                          <label className="text-[9px] text-gray-400">{t.awRateLabel}</label>
+                          <input
+                            type="number"
+                            value={newProjectAwRate}
+                            onChange={e => setNewProjectAwRate(e.target.value)}
+                            placeholder="Sadzba v EUR za 1 AW"
+                            className="w-full bg-gray-950 border border-gray-700 rounded p-1 text-xs text-white font-bold"
+                          />
+                        </div>
+                      )}
 
-              {/* Zoznam zaevidovaných áut s CO-OP odznakom a dvojitou cenou */}
-              <div className="space-y-1.5">
-                {filteredVehicles.length === 0 ? (
-                  <div className="text-center p-4 text-gray-500 text-xs">{t.noVehicles}</div>
-                ) : (
-                  filteredVehicles.map(v => {
-                    const vehicleCoops = coopRecords.filter(c => c.vehicle_id === v.id);
-                    const isCoop = vehicleCoops.length > 1;
-                    const myCoop = vehicleCoops.find(c => c.technician_id === currentUser?.id);
-                    const fraction = myCoop ? myCoop.split_fraction : 1;
+                      {newProjectPricingMode === "fixed" && (
+                        <div>
+                          <label className="text-[9px] text-gray-400">{t.fixedRateLabel}</label>
+                          <input
+                            type="number"
+                            value={newProjectFixedPrice}
+                            onChange={e => setNewProjectFixedPrice(e.target.value)}
+                            placeholder="Fixná cena za auto"
+                            className="w-full bg-gray-950 border border-gray-700 rounded p-1 text-xs text-white font-bold"
+                          />
+                        </div>
+                      )}
 
-                    const pdrVal = parseFloat(v.price) || 0;
-                    const riVal = parseFloat(v.ri_price) || 0;
-                    const myEarned = (pdrVal * ((v.tech_pdr_percent || 100) / 100) * fraction + riVal * ((v.tech_ri_percent || 100) / 100) * fraction).toFixed(2);
-                    const totalGross = (pdrVal + riVal).toFixed(2);
-
-                    return (
-                      <div
-                        key={v.id}
-                        onClick={() => setSelectedVehicleDetail(v)}
-                        className="bg-gray-900 border border-gray-800 hover:border-amber-500/60 p-2.5 rounded-xl flex justify-between items-center cursor-pointer transition-all"
-                      >
-                        <div className="space-y-0.5">
-                          <div className="font-bold text-gray-200 flex items-center gap-1.5">
-                            <span>{v.brand} {v.model}</span>
-                            {isCoop && (
-                              <span className="bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[9px] px-1.5 py-0.5 rounded font-black flex items-center gap-1">
-                                <span>🤝</span> {t.coopBadge} ({vehicleCoops.length})
-                              </span>
-                            )}
-                            {v.status === "pending_price" && (
-                              <span className="bg-red-500/20 text-red-400 border border-red-500/40 text-[9px] px-1 rounded font-bold">Cena ?</span>
-                            )}
+                      {newProjectPricingMode === "categories" && (
+                        <div className="space-y-1.5">
+                          <div className="flex gap-1.5">
+                            <input
+                              type="number"
+                              value={tempCategoryPrice}
+                              onChange={e => setTempCategoryPrice(e.target.value)}
+                              placeholder="Cena ďalšej Cat v EUR"
+                              className="w-full bg-gray-950 border border-gray-700 rounded p-1 text-xs text-white font-bold"
+                            />
+                            <button
+                              type="button"
+                              onClick={handleAddCategoryItem}
+                              className="bg-amber-500 text-gray-950 px-3 py-1 rounded text-xs font-bold whitespace-nowrap"
+                            >
+                              {t.addCatBtn}
+                            </button>
                           </div>
-                          <div className="text-[10px] font-mono text-gray-400">{v.ecv} | {v.vin.substring(0, 10)}...</div>
-                          <div className="text-[9px] text-gray-500">{new Date(v.created_at).toLocaleDateString()} | {v.internal_record_no}</div>
+                          <div className="grid grid-cols-2 gap-1 max-h-32 overflow-y-auto">
+                            {projectCategoriesList.map((cat, idx) => (
+                              <div key={idx} className="bg-gray-950 border border-gray-800 p-1 rounded flex justify-between items-center text-xs">
+                                <span>{cat.label}: {currSymbol}{cat.price}</span>
+                                <button type="button" onClick={() => handleRemoveCategoryItem(idx)} className="text-red-400 px-1 font-bold">×</button>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex justify-end gap-2 pt-1">
+                      <button
+                        type="button"
+                        onClick={() => setAddingProjectClientId(null)}
+                        className="bg-gray-800 px-3 py-1 rounded text-xs text-gray-300 font-bold"
+                      >
+                        {t.cancelBtn}
+                      </button>
+                      <button
+                        type="submit"
+                        className="bg-amber-500 text-gray-950 px-3 py-1 rounded text-xs font-bold"
+                      >
+                        {t.saveChangesBtn}
+                      </button>
+                    </div>
+                  </form>
+                )}
+
+                {/* Zoznam klientov a lokácií */}
+                <div className="space-y-2">
+                  {clients.map(c => {
+                    const clientProjects = projects.filter(p => p.client_id === c.id && (showArchivedProjects || p.is_active !== false));
+                    return (
+                      <div key={c.id} className="bg-gray-900 border border-gray-800 rounded-xl p-2.5 space-y-2">
+                        <div className="flex justify-between items-center">
+                          <button
+                            type="button"
+                            onClick={() => setActiveBottomSheet({ type: "client", id: c.id, data: c })}
+                            className="font-bold text-amber-400 hover:underline text-left text-xs flex items-center gap-1.5"
+                          >
+                            <span>{c.name}</span>
+                            <i className="fa-solid fa-circle-info text-[10px] text-gray-500"></i>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setAddingProjectClientId(c.id)}
+                            className="bg-gray-800 hover:bg-gray-700 text-gray-200 px-2 py-0.5 rounded text-[10px] font-bold"
+                          >
+                            + {t.addLocationBtn}
+                          </button>
                         </div>
 
-                        <div className="text-right space-y-0.5">
-                          {v.status === "pending_price" ? (
-                            <div className="font-black text-red-400 text-xs">Cena neznáma</div>
+                        <div className="space-y-1">
+                          {clientProjects.length === 0 ? (
+                            <div className="text-[10px] text-gray-500 italic p-1">{lang === "SK" ? "Žiadne lokácie" : "No locations"}</div>
                           ) : (
-                            <>
-                              <div className="font-black text-emerald-400 text-sm">
-                                {currSymbol}{myEarned}
+                            clientProjects.map(p => (
+                              <div
+                                key={p.id}
+                                onClick={() => setActiveBottomSheet({ type: "project", id: p.id, data: p })}
+                                className={`p-2 rounded-lg border flex justify-between items-center cursor-pointer ${p.is_active === false ? "bg-gray-950/40 border-gray-900 opacity-60" : "bg-gray-950 border-gray-800/80 hover:border-amber-500/40"}`}
+                              >
+                                <div className="space-y-0.5">
+                                  <div className="font-bold text-gray-200 flex items-center gap-1.5">
+                                    <span>{p.name}</span>
+                                    {p.is_active === false && <span className="text-[9px] text-red-400 font-normal">({t.archiveBtn})</span>}
+                                  </div>
+                                  <div className="text-[10px] text-gray-500">{p.city || "Bez adresy"}</div>
+                                </div>
+                                <div className="text-right">
+                                  <span className="bg-gray-900 text-amber-400 border border-gray-800 px-1.5 py-0.5 rounded text-[10px] font-mono">
+                                    {p.pricing_mode === "fixed" ? `${currSymbol}${p.fixed_price}` : (p.pricing_mode === "categories" ? "Kategórie" : "AW / Voľná")}
+                                  </span>
+                                </div>
                               </div>
-                              <div className="text-[9px] text-gray-400 font-mono">
-                                {t.coopTotalGross}: {currSymbol}{totalGross}
-                              </div>
-                            </>
+                            ))
                           )}
                         </div>
                       </div>
                     );
-                  })
-                )}
+                  })}
+                </div>
               </div>
-            </div>
-          )}
+            )}
+
+            {/* Záložka Register & Reports */}
+            {activeTab === "reports" && (
+              <div className="space-y-3">
+                {/* KPI Súhrny */}
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="bg-gray-900 border border-gray-800 p-2 rounded-xl text-center">
+                    <div className="text-[10px] text-gray-400 font-bold">{t.kpiVehicles}</div>
+                    <div className="text-base font-black text-white">{kpiStats.count}</div>
+                  </div>
+                  <div className="bg-gray-900 border border-gray-800 p-2 rounded-xl text-center">
+                    <div className="text-[10px] text-gray-400 font-bold">{t.kpiGross}</div>
+                    <div className="text-base font-black text-amber-400">{currSymbol}{kpiStats.gross}</div>
+                  </div>
+                  <div className="bg-gray-900 border border-gray-800 p-2 rounded-xl text-center">
+                    <div className="text-[10px] text-gray-400 font-bold">{t.kpiMyShare}</div>
+                    <div className="text-base font-black text-emerald-400">{currSymbol}{kpiStats.myShare}</div>
+                  </div>
+                </div>
+
+                {/* Filtre */}
+                <div className="bg-gray-900 border border-gray-800 rounded-xl p-2.5 space-y-2">
+                  <div className="grid grid-cols-2 gap-2">
+                    <select
+                      value={repClientFilter}
+                      onChange={e => {
+                        setRepClientFilter(e.target.value);
+                        setRepProjectFilter("all");
+                      }}
+                      className="w-full bg-gray-950 border border-gray-700 rounded p-1 text-xs text-white"
+                    >
+                      <option value="all">{t.allClients}</option>
+                      {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    </select>
+
+                    <select
+                      value={repProjectFilter}
+                      onChange={e => setRepProjectFilter(e.target.value)}
+                      className="w-full bg-gray-950 border border-gray-700 rounded p-1 text-xs text-white"
+                    >
+                      <option value="all">{t.allLocations}</option>
+                      {projects
+                        .filter(p => repClientFilter === "all" || p.client_id === repClientFilter)
+                        .map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                    </select>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <select
+                      value={repDateRange}
+                      onChange={e => setRepDateRange(e.target.value)}
+                      className="w-full bg-gray-950 border border-gray-700 rounded p-1 text-xs text-white"
+                    >
+                      <option value="all">{t.allDates}</option>
+                      <option value="7days">{t.last7Days}</option>
+                      <option value="thisMonth">{t.thisMonth}</option>
+                      <option value="lastMonth">{t.lastMonth}</option>
+                      <option value="customMonth">{t.customMonthYear}</option>
+                    </select>
+
+                    {repDateRange === "customMonth" && (
+                      <div className="grid grid-cols-2 gap-1">
+                        <select
+                          value={repSelectedMonth}
+                          onChange={e => setRepSelectedMonth(e.target.value)}
+                          className="w-full bg-gray-950 border border-gray-700 rounded p-1 text-[10px] text-white"
+                        >
+                          {(MONTHS_LIST[lang] || MONTHS_LIST.SK).map((m, idx) => (
+                            <option key={idx} value={idx}>{m.substring(0, 3)}</option>
+                          ))}
+                        </select>
+                        <input
+                          type="number"
+                          value={repSelectedYear}
+                          onChange={e => setRepSelectedYear(e.target.value)}
+                          className="w-full bg-gray-950 border border-gray-700 rounded p-1 text-[10px] text-white"
+                        />
+                      </div>
+                    )}
+                  </div>
+
+                  <input
+                    type="text"
+                    value={repSearchQuery}
+                    onChange={e => setRepSearchQuery(e.target.value)}
+                    placeholder={t.searchPlaceholder}
+                    className="w-full bg-gray-950 border border-gray-700 rounded p-1.5 text-xs text-white"
+                  />
+                </div>
+
+                {/* Exporty */}
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={exportPdf}
+                    className="flex-1 bg-amber-500 hover:bg-amber-600 text-gray-950 font-bold py-1.5 rounded-lg text-xs flex items-center justify-center gap-1.5"
+                  >
+                    <i className="fa-solid fa-file-pdf"></i> {t.downloadPdfBtn}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={exportCsv}
+                    className="bg-gray-800 hover:bg-gray-700 text-gray-200 px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5"
+                  >
+                    <i className="fa-solid fa-file-csv"></i> {t.downloadCsvBtn}
+                  </button>
+                </div>
+
+                {/* Zoznam zaevidovaných áut s CO-OP odznakom a dvojitou cenou */}
+                <div className="space-y-1.5">
+                  {filteredVehicles.length === 0 ? (
+                    <div className="text-center p-4 text-gray-500 text-xs">{t.noVehicles}</div>
+                  ) : (
+                    filteredVehicles.map(v => {
+                      const vehicleCoops = coopRecords.filter(c => c.vehicle_id === v.id);
+                      const isCoop = vehicleCoops.length > 1;
+                      const myCoop = vehicleCoops.find(c => c.technician_id === currentUser?.id);
+                      const fraction = myCoop ? myCoop.split_fraction : 1;
+
+                      const pdrVal = parseFloat(v.price) || 0;
+                      const riVal = parseFloat(v.ri_price) || 0;
+                      const myEarned = (pdrVal * ((v.tech_pdr_percent || 100) / 100) * fraction + riVal * ((v.tech_ri_percent || 100) / 100) * fraction).toFixed(2);
+                      const totalGross = (pdrVal + riVal).toFixed(2);
+
+                      return (
+                        <div
+                          key={v.id}
+                          onClick={() => setSelectedVehicleDetail(v)}
+                          className="bg-gray-900 border border-gray-800 hover:border-amber-500/60 p-2.5 rounded-xl flex justify-between items-center cursor-pointer transition-all"
+                        >
+                          <div className="space-y-0.5">
+                            <div className="font-bold text-gray-200 flex items-center gap-1.5">
+                              <span>{v.brand} {v.model}</span>
+                              {isCoop && (
+                                <span className="bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[9px] px-1.5 py-0.5 rounded font-black flex items-center gap-1">
+                                  <span>🤝</span> {t.coopBadge} ({vehicleCoops.length})
+                                </span>
+                              )}
+                              {v.status === "pending_price" && (
+                                <span className="bg-red-500/20 text-red-400 border border-red-500/40 text-[9px] px-1 rounded font-bold">Cena ?</span>
+                              )}
+                            </div>
+                            <div className="text-[10px] font-mono text-gray-400">{v.ecv} | {v.vin.substring(0, 10)}...</div>
+                            <div className="text-[9px] text-gray-500">{new Date(v.created_at).toLocaleDateString()} | {v.internal_record_no}</div>
+                          </div>
+
+                          <div className="text-right space-y-0.5">
+                            {v.status === "pending_price" ? (
+                              <div className="font-black text-red-400 text-xs">Cena neznáma</div>
+                            ) : (
+                              <>
+                                <div className="font-black text-emerald-400 text-sm">
+                                  {currSymbol}{myEarned}
+                                </div>
+                                <div className="text-[9px] text-gray-400 font-mono">
+                                  {t.coopTotalGross}: {currSymbol}{totalGross}
+                                </div>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
 
           {/* ========================================================================= */}
           {/* DETAIL VOZIDLA (MODÁL) S MOŽNOSŤOU DOPLNENIA CENY A ROZPADOM KOOPERÁCIE   */}
@@ -3720,7 +3720,7 @@
               </div>
             </div>
           )}
-        </>
+        </div>
       );
     }
 
