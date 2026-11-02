@@ -109,22 +109,22 @@
       "KNA": "Kia", "U5Y": "Kia"
     };
 
-    const COLOR_PALETTE = [
-      { id: "white", bg: "#FFFFFF", text: "#111827", border: "#D1D5DB", labels: { EN: "White", DE: "Weiß", SK: "Biela" } },
-      { id: "silver", bg: "#D1D5DB", text: "#111827", border: "#9CA3AF", labels: { EN: "Silver", DE: "Silber", SK: "Strieborná" } },
-      { id: "grey", bg: "#6B7280", text: "#FFFFFF", border: "#4B5563", labels: { EN: "Grey", DE: "Grau", SK: "Sivá" } },
-      { id: "black", bg: "#111827", text: "#FFFFFF", border: "#374151", labels: { EN: "Black", DE: "Schwarz", SK: "Čierna" } },
-      { id: "blue", bg: "#1D4ED8", text: "#FFFFFF", border: "#1E40AF", labels: { EN: "Blue", DE: "Blau", SK: "Modrá" } },
-      { id: "red", bg: "#DC2626", text: "#FFFFFF", border: "#B91C1C", labels: { EN: "Red", DE: "Rot", SK: "Červená" } },
-      { id: "green", bg: "#15803D", text: "#FFFFFF", border: "#166534", labels: { EN: "Green", DE: "Grün", SK: "Zelená" } },
-      { id: "yellow", bg: "#EAB308", text: "#111827", border: "#CA8A04", labels: { EN: "Yellow", DE: "Gelb", SK: "Žltá" } },
-      { id: "orange", bg: "#EA580C", text: "#FFFFFF", border: "#C2410C", labels: { EN: "Orange", DE: "Orange", SK: "Oranžová" } },
-      { id: "brown", bg: "#78350F", text: "#FFFFFF", border: "#582509", labels: { EN: "Brown", DE: "Braun", SK: "Hnedá" } },
-      { id: "gold_bronze", bg: "#B4833E", text: "#111827", border: "#926322", labels: { EN: "Gold/Brz", DE: "Gold/Brz", SK: "Zlatá/Brz" } },
-      { id: "burgundy", bg: "#831843", text: "#FFFFFF", border: "#601031", labels: { EN: "Burgundy", DE: "Bordeaux", SK: "Bordová" } },
-      { id: "wrap", bg: "#0D9488", text: "#FFFFFF", border: "#0F766E", labels: { EN: "Wrap", DE: "Folie", SK: "Fólia" } },
-      { id: "matt", bg: "#475569", text: "#FFFFFF", border: "#334155", labels: { EN: "Matt", DE: "Matt", SK: "Matt" } }
-    ];
+   const COLOR_PALETTE = [
+    { id: "white", bg: "#FFFFFF", text: "#111827", border: "#D1D5DB", rgb: [255, 255, 255], labels: { EN: "White", DE: "Weiß", SK: "Biela" } },
+    { id: "silver", bg: "#D1D5DB", text: "#111827", border: "#9CA3AF", rgb: [209, 213, 219], labels: { EN: "Silver", DE: "Silber", SK: "Strieborná" } },
+    { id: "grey", bg: "#6B7280", text: "#FFFFFF", border: "#4B5563", rgb: [107, 114, 128], labels: { EN: "Grey", DE: "Grau", SK: "Sivá" } },
+    { id: "black", bg: "#111827", text: "#FFFFFF", border: "#374151", rgb: [17, 24, 39], labels: { EN: "Black", DE: "Schwarz", SK: "Čierna" } },
+    { id: "blue", bg: "#1D4ED8", text: "#FFFFFF", border: "#1E40AF", rgb: [29, 78, 216], labels: { EN: "Blue", DE: "Blau", SK: "Modrá" } },
+    { id: "red", bg: "#DC2626", text: "#FFFFFF", border: "#B91C1C", rgb: [220, 38, 38], labels: { EN: "Red", DE: "Rot", SK: "Červená" } },
+    { id: "green", bg: "#15803D", text: "#FFFFFF", border: "#166534", rgb: [21, 128, 61], labels: { EN: "Green", DE: "Grün", SK: "Zelená" } },
+    { id: "yellow", bg: "#EAB308", text: "#111827", border: "#CA8A04", rgb: [234, 179, 8], labels: { EN: "Yellow", DE: "Gelb", SK: "Žltá" } },
+    { id: "orange", bg: "#EA580C", text: "#FFFFFF", border: "#C2410C", rgb: [234, 88, 12], labels: { EN: "Orange", DE: "Orange", SK: "Oranžová" } },
+    { id: "brown", bg: "#78350F", text: "#FFFFFF", border: "#582509", rgb: [120, 53, 15], labels: { EN: "Brown", DE: "Braun", SK: "Hnedá" } },
+    { id: "gold_bronze", bg: "#B4833E", text: "#111827", border: "#926322", rgb: [180, 131, 62], labels: { EN: "Gold/Brz", DE: "Gold/Brz", SK: "Zlatá/Brz" } },
+    { id: "burgundy", bg: "#831843", text: "#FFFFFF", border: "#601031", rgb: [131, 24, 67], labels: { EN: "Burgundy", DE: "Bordeaux", SK: "Bordová" } },
+    { id: "wrap", bg: "#0D9488", text: "#FFFFFF", border: "#0F766E", rgb: [13, 148, 136], labels: { EN: "Wrap", DE: "Folie", SK: "Fólia" } },
+    { id: "matt", bg: "#475569", text: "#FFFFFF", border: "#334155", rgb: [71, 85, 105], labels: { EN: "Matt", DE: "Matt", SK: "Matt" } }
+  ];
 
     const TRANSLATIONS = {
       EN: {
@@ -136,7 +136,8 @@
         tabProjects2: "Locations",
         tabReports1: "Register &",
         tabReports2: "Reports",
-        scanBtn: "Scan Car (VIN / Rear / Sheet)",
+       scanBtn: "Scan Car (Live Camera)",
+        scanGalleryBtn: "Upload from Gallery / Files",
         step1Label: "1. VIN Plate",
         step2Label: "2. Rear Photo",
         step3Label: "3. Calc Sheet",
@@ -3463,21 +3464,22 @@ const fileToBase64 = (file) => {
                         {/* Spodné riadky: ŠPZ, VIN a zákazka */}
                         <div className="text-[10px] font-mono text-gray-400">{v.ecv} | {v.vin ? v.vin.substring(0, 10) + "..." : "---"}</div>
                         <div className="text-[9px] text-gray-500">{new Date(v.created_at).toLocaleDateString()} | {v.internal_record_no}</div>
+                     </div>
+                      <div className="text-right shrink-0">
+                        {v.status === "pending_price" ? (
+                          <div className="font-black text-red-400 text-xs">Cena neznáma</div>
+                        ) : (
+                          <>
+                            <div className="font-black text-emerald-400 text-sm">
+                              {currSymbol}{myEarned}
+                            </div>
+                            <div className="text-[9px] text-gray-400 font-mono">
+                              {t.coopTotalGross}: {currSymbol}{totalGross}
+                            </div>
+                          </>
+                        )}
                       </div>
-                            {v.status === "pending_price" ? (
-                              <div className="font-black text-red-400 text-xs">Cena neznáma</div>
-                            ) : (
-                              <>
-                                <div className="font-black text-emerald-400 text-sm">
-                                  {currSymbol}{myEarned}
-                                </div>
-                                <div className="text-[9px] text-gray-400 font-mono">
-                                  {t.coopTotalGross}: {currSymbol}{totalGross}
-                                </div>
-                              </>
-                            )}
-                          </div>
-                        </div>
+                    </div>
                       );
                     })
                   )}
