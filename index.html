@@ -1474,9 +1474,12 @@ const fileToBase64 = (file) => {
 
           const vDate = new Date(v.created_at);
           const now = new Date();
-          if (repDateRange === "7days") {
-            const diffDays = (now - vDate) / (1000 * 60 * 60 * 24);
-            if (diffDays > 7) return false;
+         if (repDateRange === "thisWeek") {
+            const dayOfWeek = now.getDay() === 0 ? 6 : now.getDay() - 1; // 0 = pondelok
+            const startOfWeek = new Date(now);
+            startOfWeek.setDate(now.getDate() - dayOfWeek);
+            startOfWeek.setHours(0, 0, 0, 0);
+            if (vDate < startOfWeek) return false;
           } else if (repDateRange === "thisMonth") {
             if (vDate.getMonth() !== now.getMonth() || vDate.getFullYear() !== now.getFullYear()) return false;
           } else if (repDateRange === "lastMonth") {
@@ -1500,21 +1503,32 @@ const fileToBase64 = (file) => {
       }, [vehicles, projects, repClientFilter, repProjectFilter, repDateRange, repSelectedMonth, repSelectedYear, repSearchQuery]);
 
       const kpiStats = useMemo(() => {
-        let gross = 0;
-        let myShare = 0;
+        let totalMyShare = 0;
+        let lockedMyShare = 0;
+
         filteredVehicles.forEach(v => {
           const pdr = parseFloat(v.price) || 0;
           const ri = parseFloat(v.ri_price) || 0;
-          gross += (pdr + ri);
 
+          // Zistenie môjho podielu na tomto konkrétnom aute
           const coop = coopRecords.find(c => c.vehicle_id === v.id && c.technician_id === currentUser?.id);
           const fraction = coop ? coop.split_fraction : 1;
-          myShare += (pdr * ((v.tech_pdr_percent || 100) / 100) * fraction) + (ri * ((v.tech_ri_percent || 100) / 100) * fraction);
+          const myVehicleShare = (pdr * ((v.tech_pdr_percent || 100) / 100) * fraction) + 
+                                 (ri * ((v.tech_ri_percent || 100) / 100) * fraction);
+
+          // Súčet za všetky autá
+          totalMyShare += myVehicleShare;
+
+          // Súčet iba za uzamknuté (hotové) autá
+          if (v.is_locked) {
+            lockedMyShare += myVehicleShare;
+          }
         });
+
         return {
           count: filteredVehicles.length,
-          gross: gross.toFixed(2),
-          myShare: myShare.toFixed(2)
+          myShare: totalMyShare.toFixed(2),
+          lockedShare: lockedMyShare.toFixed(2)
         };
       }, [filteredVehicles, coopRecords, currentUser]);
 
@@ -3261,19 +3275,19 @@ const fileToBase64 = (file) => {
             {/* Záložka Register & Reports */}
             {activeTab === "reports" && (
               <div className="space-y-3">
-                {/* KPI Súhrny */}
-                <div className="grid grid-cols-3 gap-2">
-                  <div className="bg-gray-900 border border-gray-800 p-2 rounded-xl text-center">
-                    <div className="text-[10px] text-gray-400 font-bold">{t.kpiVehicles}</div>
-                    <div className="text-base font-black text-white">{kpiStats.count}</div>
+                {/* Kompaktné KPI boxy s čistým podielom technika */}
+                <div className="grid grid-cols-3 gap-1.5">
+                  <div className="bg-gray-900 border border-gray-800 py-1.5 px-2 rounded-xl text-center">
+                    <div className="text-[9px] text-gray-400 font-bold uppercase truncate">{t.kpiVehicles}</div>
+                    <div className="text-sm font-black text-white">{kpiStats.count}</div>
                   </div>
-                  <div className="bg-gray-900 border border-gray-800 p-2 rounded-xl text-center">
-                    <div className="text-[10px] text-gray-400 font-bold">{t.kpiGross}</div>
-                    <div className="text-base font-black text-amber-400">{currSymbol}{kpiStats.gross}</div>
+                  <div className="bg-gray-900 border border-gray-800 py-1.5 px-2 rounded-xl text-center">
+                    <div className="text-[9px] text-amber-400 font-bold uppercase truncate">Môj podiel</div>
+                    <div className="text-sm font-black text-amber-400">{currSymbol}{kpiStats.myShare}</div>
                   </div>
-                  <div className="bg-gray-900 border border-gray-800 p-2 rounded-xl text-center">
-                    <div className="text-[10px] text-gray-400 font-bold">{t.kpiMyShare}</div>
-                    <div className="text-base font-black text-emerald-400">{currSymbol}{kpiStats.myShare}</div>
+                  <div className="bg-gray-900 border border-emerald-900/40 bg-emerald-950/10 py-1.5 px-2 rounded-xl text-center">
+                    <div className="text-[9px] text-emerald-400 font-bold uppercase truncate">Uzavreté</div>
+                    <div className="text-sm font-black text-emerald-400">{currSymbol}{kpiStats.lockedShare}</div>
                   </div>
                 </div>
 
@@ -3311,7 +3325,7 @@ const fileToBase64 = (file) => {
                       className="w-full bg-gray-950 border border-gray-700 rounded p-1 text-xs text-white"
                     >
                       <option value="all">{t.allDates}</option>
-                      <option value="7days">{t.last7Days}</option>
+                      <option value="thisWeek">Aktuálny týždeň</option>
                       <option value="thisMonth">{t.thisMonth}</option>
                       <option value="lastMonth">{t.lastMonth}</option>
                       <option value="customMonth">{t.customMonthYear}</option>
@@ -3381,15 +3395,28 @@ const fileToBase64 = (file) => {
                       const myEarned = (pdrVal * ((v.tech_pdr_percent || 100) / 100) * fraction + riVal * ((v.tech_ri_percent || 100) / 100) * fraction).toFixed(2);
                       const totalGross = (pdrVal + riVal).toFixed(2);
 
+                      // Zistenie názvu projektu a klienta pre mikro-hlavičku
+                      const proj = projects.find(p => p.id === v.project_id);
+                      const client = clients.find(c => c.id === proj?.client_id);
+                      const clientName = client?.name || "Klient";
+                      const locationName = proj?.name || "Lokácia";
+
                       return (
                         <div
                           key={v.id}
                           onClick={() => setSelectedVehicleDetail(v)}
                           className="bg-gray-900 border border-gray-800 hover:border-amber-500/60 p-2.5 rounded-xl flex justify-between items-center cursor-pointer transition-all"
                         >
-                          <div className="space-y-0.5">
+                          <div className="space-y-0.5 min-w-0 flex-1 pr-2">
+                            {/* Mikro-hlavička: Klient • Lokácia */}
+                            <div className="text-[10px] text-gray-400 font-medium truncate flex items-center gap-1">
+                              <span className="truncate">{clientName}</span>
+                              <span className="text-gray-600 font-bold">•</span>
+                              <span className="truncate text-gray-300">{locationName}</span>
+                            </div>
+
                             <div className="font-bold text-gray-200 flex items-center gap-1.5">
-                              <span>{v.brand} {v.model}</span>
+                              <span className="truncate">{v.brand} {v.model}</span>
                               {isCoop && (
                                 <span className="bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[9px] px-1.5 py-0.5 rounded font-black flex items-center gap-1">
                                   <span>🤝</span> {t.coopBadge} ({vehicleCoops.length})
