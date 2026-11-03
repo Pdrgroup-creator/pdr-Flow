@@ -868,7 +868,7 @@ const fileToBase64 = (file) => {
       const [sheetEditData, setSheetEditData] = useState({});
       const [sheetEditCategories, setSheetEditCategories] = useState([]);
       const [sheetEditTempCatPrice, setSheetEditTempCatPrice] = useState("");
-
+const [sentCoopInvites, setSentCoopInvites] = useState([]);
       const [selectedVehicleDetail, setSelectedVehicleDetail] = useState(null);
       const [isEditingVehicle, setIsEditingVehicle] = useState(false);
       const [editVehicleData, setEditVehicleData] = useState({});
@@ -1027,41 +1027,56 @@ const fileToBase64 = (file) => {
       };
 
       const loadPartnerships = async () => {
-        if (!currentUser) return;
-        try {
-          const { data: accepted } = await supabase
-            .from("technician_partners")
-            .select("*")
-            .or(`sender_id.eq.${currentUser.id},recipient_id.eq.${currentUser.id}`)
-            .eq("status", "accepted");
+    if (!currentUser) return;
+    try {
+      // 1. Načítanie všetkých partnerstiev týkajúcich sa prihláseného technika
+      const { data, error } = await supabase
+        .from("technician_partners")
+        .select("*");
 
-          if (accepted) {
-            const list = accepted.map(p => {
-              const isSender = p.sender_id === currentUser.id;
-              return {
-                id: p.id,
-                partnerId: isSender ? p.recipient_id : p.sender_id,
-                partnerEmail: isSender ? p.recipient_email : (p.sender_email || "Partner")
-              };
-            });
-            setCoopPartners(list);
-          }
+      if (error) throw error;
 
-          const { data: pending } = await supabase
-            .from("technician_partners")
-            .select("*")
-            .eq("recipient_email", currentUser.email.toLowerCase())
-            .eq("status", "pending");
+      if (data) {
+        const myEmail = (currentUser.email || "").toLowerCase();
 
-          if (pending) setPendingCoopInvites(pending);
+        // Odoslané pozvánky čakajúce na schválenie
+        const sent = data.filter(p => 
+          p.sender_id === currentUser.id && p.status === "pending"
+        );
+        setSentCoopInvites(sent);
 
-          const { data: coops } = await supabase.from("vehicle_coops").select("*");
-          if (coops) setCoopRecords(coops);
-        } catch (err) {
-          console.warn(err);
-        }
-      };
+        // Prijaté pozvánky čakajúce na moje schválenie
+        const pending = data.filter(p => 
+          (p.recipient_id === currentUser.id || (p.recipient_email && p.recipient_email.toLowerCase() === myEmail)) &&
+          p.sender_id !== currentUser.id &&
+          p.status === "pending"
+        );
+        setPendingCoopInvites(pending);
 
+        // Aktívni partneri na dielni
+        const active = data.filter(p => p.status === "accepted").map(p => {
+          const isSender = p.sender_id === currentUser.id;
+          return {
+            ...p,
+            partnerEmail: isSender ? p.recipient_email : (p.sender_email || "Partner"),
+            partnerId: isSender ? p.recipient_id : p.sender_id
+          };
+        });
+        setCoopPartners(active);
+      }
+
+      // 2. Načítanie záznamov o kooperáciách na autách
+      const { data: coops, error: coopsErr } = await supabase
+        .from("vehicle_coops")
+        .select("*");
+
+      if (!coopsErr && coops) {
+        setCoopRecords(coops);
+      }
+    } catch (err) {
+      console.warn("Chyba načítania partnerstiev:", err);
+    }
+  };
       useEffect(() => {
         if (currentUser) loadData();
       }, [currentUser]);
@@ -1266,7 +1281,21 @@ const fileToBase64 = (file) => {
         if (!error) loadPartnerships();
         else alert(error.message);
       };
+const handleRemoveOrRejectPartner = async (partnershipId) => {
+        if (!confirm("Naozaj chcete zrušiť túto spoluprácu / pozvánku?")) return;
+        try {
+          const { error } = await supabase
+            .from("technician_partners")
+            .delete()
+            .eq("id", partnershipId);
 
+          if (error) throw error;
+
+          await loadPartnerships();
+        } catch (err) {
+          alert("Chyba pri rušení spolupráce: " + err.message);
+        }
+      };
       const handleAuthSubmit = async (e) => {
         e.preventDefault();
         setAuthError("");
@@ -4145,33 +4174,82 @@ const fileToBase64 = (file) => {
                   </div>
                 </form>
 
-                {pendingCoopInvites.length > 0 && (
-                  <div className="space-y-1 pt-2 border-t border-gray-800">
-                    <label className="text-[10px] text-amber-400 font-bold uppercase">{t.pendingPartnersLabel}:</label>
+                {/* 1. PRIJATÉ POZVÁNKY (Čakajú na moje potvrdenie) */}
+                {pendingCoopInvites && pendingCoopInvites.length > 0 && (
+                  <div className="space-y-1.5 pt-2 border-t border-gray-800">
+                    <label className="text-[10px] text-amber-400 font-bold uppercase tracking-wide">
+                      {t.pendingPartnersLabel || "Prijaté pozvánky"}:
+                    </label>
                     {pendingCoopInvites.map(inv => (
-                      <div key={inv.id} className="bg-gray-900 p-2 rounded border border-amber-500/40 flex justify-between items-center">
-                        <span className="font-mono text-gray-200">{inv.sender_email || "Kolega"}</span>
+                      <div key={inv.id} className="bg-gray-900 p-2 rounded-xl border border-amber-500/40 flex justify-between items-center">
+                        <span className="font-mono text-xs text-gray-200">{inv.sender_email || inv.recipient_email || "Kolega"}</span>
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => handleAcceptCoopInvite(inv.id)}
+                            className="bg-emerald-600 hover:bg-emerald-500 text-white px-2.5 py-1 rounded-lg text-[10px] font-bold"
+                          >
+                            Prijať
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveOrRejectPartner(inv.id)}
+                            className="bg-gray-800 hover:bg-red-950 text-gray-400 hover:text-red-400 px-2 py-1 rounded-lg text-[10px] font-bold border border-gray-700"
+                          >
+                            Odmietnuť
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* 2. ODOSLANÉ POZVÁNKY (Čakajú na schválenie druhou stranou) */}
+                {sentCoopInvites && sentCoopInvites.length > 0 && (
+                  <div className="space-y-1.5 pt-2 border-t border-gray-800">
+                    <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wide">
+                      Odoslané pozvánky:
+                    </label>
+                    {sentCoopInvites.map(inv => (
+                      <div key={inv.id} className="bg-gray-900/60 p-2 rounded-xl border border-gray-800 flex justify-between items-center">
+                        <div className="flex items-center gap-1.5 font-mono text-xs text-gray-400">
+                          <i className="fa-regular fa-clock text-[10px] text-amber-400"></i>
+                          <span>{inv.recipient_email}</span>
+                        </div>
                         <button
                           type="button"
-                          onClick={() => handleAcceptCoopInvite(inv.id)}
-                          className="bg-emerald-600 text-white px-2 py-0.5 rounded text-[10px] font-bold"
+                          onClick={() => handleRemoveOrRejectPartner(inv.id)}
+                          className="text-gray-500 hover:text-red-400 text-[10px] font-bold px-2 py-0.5 rounded hover:bg-red-500/10 transition-colors"
                         >
-                          Prijať
+                          Zrušiť
                         </button>
                       </div>
                     ))}
                   </div>
                 )}
 
-                <div className="space-y-1 pt-2 border-t border-gray-800">
-                  <label className="text-[10px] text-gray-400 font-bold uppercase">{t.activePartnersLabel}:</label>
-                  {coopPartners.length === 0 ? (
-                    <div className="text-gray-500 italic p-1">{t.noPartnersMsg}</div>
+                {/* 3. AKTÍVNI PARTNERI NA DIELNI */}
+                <div className="space-y-1.5 pt-2 border-t border-gray-800">
+                  <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wide">
+                    {t.activePartnersLabel}:
+                  </label>
+                  {(!coopPartners || coopPartners.length === 0) ? (
+                    <div className="text-gray-500 italic p-1 text-xs">{t.noPartnersMsg}</div>
                   ) : (
                     coopPartners.map(p => (
-                      <div key={p.id} className="bg-gray-900 p-1.5 rounded border border-gray-800 flex justify-between items-center">
-                        <span className="font-bold text-gray-200">{p.partnerEmail}</span>
-                        <span className="bg-emerald-500/20 text-emerald-400 text-[9px] px-1.5 py-0.5 rounded font-bold">Aktívny</span>
+                      <div key={p.id} className="bg-gray-900 p-2 rounded-xl border border-gray-800 flex justify-between items-center">
+                        <div className="flex items-center gap-2">
+                          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                          <span className="font-bold text-gray-200 text-xs">{p.partnerEmail || p.recipient_email}</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveOrRejectPartner(p.id)}
+                          className="text-gray-500 hover:text-red-400 text-[10px] font-bold px-2 py-1 rounded border border-transparent hover:border-red-500/30 hover:bg-red-500/10 transition-all"
+                          title="Ukončiť spoluprácu"
+                        >
+                          Odpojiť
+                        </button>
                       </div>
                     ))
                   )}
