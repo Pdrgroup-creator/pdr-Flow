@@ -2038,6 +2038,24 @@ const fileToBase64 = (file) => {
           alert("Error: " + err.message);
         }
       };
+      const handleToggleLock = async (vehicleId, currentStatus) => {
+        const nextStatus = !currentStatus;
+        try {
+          const { error } = await supabase
+            .from("vehicles")
+            .update({ is_locked: nextStatus })
+            .eq("id", vehicleId);
+
+          if (error) throw error;
+
+          setVehicles(prev => prev.map(v => v.id === vehicleId ? { ...v, is_locked: nextStatus } : v));
+          if (selectedVehicleDetail && selectedVehicleDetail.id === vehicleId) {
+            setSelectedVehicleDetail(prev => ({ ...prev, is_locked: nextStatus }));
+          }
+        } catch (err) {
+          alert("Chyba pri zmene zámku: " + err.message);
+        }
+      };
 // Správa kategórií pri tvorbe novej lokácie
       const handleAddCategoryItem = () => {
         const p = parseFloat(tempCategoryPrice);
@@ -3445,18 +3463,36 @@ const fileToBase64 = (file) => {
                             <div className="text-[9px] text-gray-500">{new Date(v.created_at).toLocaleDateString()} | {v.internal_record_no}</div>
                           </div>
 
-                          <div className="text-right space-y-0.5">
+                          <div className="text-right flex flex-col items-end justify-between">
+                            {/* Bublinka / Zámok nad cenou */}
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleToggleLock(v.id, v.is_locked);
+                              }}
+                              className={`mb-1 px-1.5 py-0.5 rounded text-[9px] font-bold flex items-center gap-1 transition-all border ${
+                                v.is_locked
+                                  ? "bg-emerald-950/60 border-emerald-500/50 text-emerald-400"
+                                  : "bg-gray-800/80 border-gray-700 text-gray-400 hover:text-amber-400 hover:border-amber-500/40"
+                              }`}
+                              title={v.is_locked ? "Uzavreté (kliknutím odomknete)" : "Otvorené (kliknutím uzamknete)"}
+                            >
+                              <i className={`fa-solid ${v.is_locked ? "fa-lock text-emerald-400" : "fa-lock-open text-gray-400"}`}></i>
+                              <span>{v.is_locked ? "Uzavreté" : "Otvorené"}</span>
+                            </button>
+
                             {v.status === "pending_price" ? (
                               <div className="font-black text-red-400 text-xs">Cena neznáma</div>
                             ) : (
-                              <>
+                              <div className="space-y-0.5">
                                 <div className="font-black text-emerald-400 text-sm">
                                   {currSymbol}{myEarned}
                                 </div>
                                 <div className="text-[9px] text-gray-400 font-mono">
                                   {t.coopTotalGross}: {currSymbol}{totalGross}
                                 </div>
-                              </>
+                              </div>
                             )}
                           </div>
                         </div>
