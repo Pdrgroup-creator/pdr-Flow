@@ -1676,7 +1676,7 @@ const fileToBase64 = (file) => {
           } finally {
             setIsAnalyzingOcr(false);
           }
-      } else if (scanStep === 2) {
+       } else if (scanStep === 2) {
           setRearFile(file);
           setRearPreview(URL.createObjectURL(file));
           setActiveOcrModal("rear");
@@ -1699,7 +1699,6 @@ const fileToBase64 = (file) => {
             });
             const resultData = await res.json();
             const textAnnotations = resultData?.responses?.[0]?.textAnnotations || [];
-            const fullText = textAnnotations[0]?.description || "";
 
             // Čierna listina nápisov a modelov (striktne ignorovať chrómové emblémy)
             const blacklistWords = ["PASSAT", "GOLF", "OCTAVIA", "SUPERB", "FABIA", "TIGUAN", "TOUAREG", "TDI", "TSI", "4MOTION", "QUATTRO", "HYBRID", "TURBO", "KOMBI", "ALLTRACK", "VOLKSWAGEN", "SKODA", "AUDI", "SEAT"];
@@ -1707,88 +1706,36 @@ const fileToBase64 = (file) => {
             let bestPlate = "";
             let plateBox = null;
 
-            // KROK A: Globálna analýza celého textu cez európske regex vzory (spája okres + erb/medzeru + telo)
-            const fullTextLines = fullText.split("\n");
-            for (const rawLine of fullTextLines) {
-              const lineUpper = rawLine.toUpperCase();
-              if (blacklistWords.some(b => lineUpper.includes(b))) continue;
+            // Prehľadávanie jednotlivých blokov textu (od indexu 1, kde sú jednotlivé slová)
+            for (let i = 1; i < textAnnotations.length; i++) {
+              const item = textAnnotations[i];
+              const cleanedWord = (item.description || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
 
-              // 1. Slovenská / Česká / Poľská / Maďarská štruktúra (napr. PU 676CI, PU-676CI, BA 123AB, 1AB 2345)
-              const matchSK_CZ = lineUpper.match(/\b([A-Z0-9]{2,3})[\s\-\.\:\|]+([0-9A-Z]{4,5})\b/);
-              if (matchSK_CZ) {
-                const combined = (matchSK_CZ[1] + matchSK_CZ[2]).replace(/[^A-Z0-9]/g, "");
-                if (combined.length >= 6 && combined.length <= 8 && /[A-Z]/.test(combined) && /[0-9]/.test(combined)) {
-                  bestPlate = combined;
-                  break;
-                }
-              }
+              // Ignorovať slová z čiernej listiny a príliš krátke/dlhé texty
+              if (blacklistWords.some(b => cleanedWord.includes(b))) continue;
+              if (cleanedWord.length < 5 || cleanedWord.length > 8) continue;
 
-              // 2. Nemecká / Rakúska štruktúra (okres 1-3 písmená + medzera/erb + 1-2 písmená + 1-4 čísla, napr. M XY 1234, W 12345 A)
-              const matchDE_AT = lineUpper.match(/\b([A-Z]{1,3})[\s\-\.\:\|]+([A-Z]{1,2}[\s\-]?[0-9]{1,4}[A-Z]?)\b/);
-              if (matchDE_AT) {
-                const combined = (matchDE_AT[1] + matchDE_AT[2]).replace(/[^A-Z0-9]/g, "");
-                if (combined.length >= 5 && combined.length <= 9 && /[A-Z]/.test(combined) && /[0-9]/.test(combined)) {
-                  bestPlate = combined;
-                  break;
-                }
+              // Vzor pre európsku ŠPZ (aspoň 1 písmeno a aspoň 1 číslo)
+              if (/[A-Z]/.test(cleanedWord) && /[0-9]/.test(cleanedWord)) {
+                bestPlate = cleanedWord;
+                plateBox = item.boundingPoly?.vertices || null;
+                break;
               }
             }
 
-            // KROK B: Horizontálne priestorové zlúčenie susediacich blokov (Bounding Poly)
-            // Ak sú okres (napr. PU) a číslo (napr. 676CI) v dvoch osobitných blokoch vedľa seba v rovnakej výške
-            if (!bestPlate && textAnnotations.length > 2) {
-              for (let i = 1; i < textAnnotations.length; i++) {
-                const boxA = textAnnotations[i].boundingPoly?.vertices || [];
-                const wordA = (textAnnotations[i].description || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
-                if (!wordA || wordA.length < 1 || wordA.length > 4) continue;
-                if (blacklistWords.some(b => wordA.includes(b))) continue;
-
-                const yA = (boxA[0]?.y + boxA[2]?.y) / 2 || 0;
-                const hA = Math.abs((boxA[2]?.y || 0) - (boxA[0]?.y || 0));
-                const rightA = Math.max(...boxA.map(v => v.x || 0));
-
-                for (let j = 1; j < textAnnotations.length; j++) {
-                  if (i === j) continue;
-                  const boxB = textAnnotations[j].boundingPoly?.vertices || [];
-                  const wordB = (textAnnotations[j].description || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
-                  if (!wordB || wordB.length < 3 || wordB.length > 6) continue;
-                  if (blacklistWords.some(b => wordB.includes(b))) continue;
-
-                  const yB = (boxB[0]?.y + boxB[2]?.y) / 2 || 0;
-                  const leftB = Math.min(...boxB.map(v => v.x || 0));
-
-                  // Overenie, či ležia v rovnakom riadku (Y) a blok B nasleduje tesne za blokom A (X vzdialenosť do 1.8-násobku výšky)
-                  const sameRow = Math.abs(yA - yB) < (hA * 0.5);
-                  const isNextTo = leftB >= rightA && (leftB - rightA) < (hA * 1.8);
-
-                  if (sameRow && isNextTo) {
-                    const merged = wordA + wordB;
-                    if (merged.length >= 6 && merged.length <= 8 && /[A-Z]/.test(merged) && /[0-9]/.test(merged)) {
-                      bestPlate = merged;
-                      plateBox = [boxA[0], boxB[1], boxB[2], boxA[3]];
-                      break;
-                    }
-                  }
-                }
-                if (bestPlate) break;
-              }
-            }
-
-            // KROK C: Fallback na jedno kompaktné slovo (napr. nová slovenská ŠPZ bez znaku, holandská, francúzska)
-            if (!bestPlate) {
-              for (let i = 1; i < textAnnotations.length; i++) {
-                const item = textAnnotations[i];
-                const cleanedWord = (item.description || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
-                if (blacklistWords.some(b => cleanedWord.includes(b))) continue;
-                if (cleanedWord.length >= 5 && cleanedWord.length <= 8 && /[A-Z]/.test(cleanedWord) && /[0-9]/.test(cleanedWord)) {
-                  bestPlate = cleanedWord;
-                  plateBox = item.boundingPoly?.vertices || null;
+            // Fallback na pôvodný regex ak sa nenašiel presný blok
+            if (!bestPlate && textAnnotations[0]) {
+              const allClean = textAnnotations[0].description.toUpperCase().replace(/[^A-Z0-9\n]/g, " ");
+              const words = allClean.split(/\s+/);
+              for (const w of words) {
+                if (blacklistWords.some(b => w.includes(b))) continue;
+                if (w.length >= 5 && w.length <= 8 && /[A-Z]/.test(w) && /[0-9]/.test(w)) {
+                  bestPlate = w;
                   break;
                 }
               }
             }
 
-            // Nastavenie nájdenej ŠPZ do stavu
             if (bestPlate) {
               setTempOcrEcv(bestPlate);
               setTempOcrHasNoEcv(false);
@@ -1874,6 +1821,7 @@ const fileToBase64 = (file) => {
           } finally {
             setIsAnalyzingOcr(false);
           }
+        }
         } else if (scanStep === 3) {
           setSheetFile(file);
           setSheetPreview(URL.createObjectURL(file));
