@@ -1259,6 +1259,7 @@ const [sentCoopInvites, setSentCoopInvites] = useState([]);
 
         const { error } = await supabase.from("technician_partners").insert([{
           sender_id: currentUser.id,
+          sender_email: (currentUser.email || "").toLowerCase(),
           recipient_email: email,
           status: "pending"
         }]);
