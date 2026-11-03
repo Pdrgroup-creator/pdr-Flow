@@ -917,6 +917,7 @@ const fileToBase64 = (file) => {
       const [repSelectedMonth, setRepSelectedMonth] = useState(() => new Date().getMonth());
       const [repSelectedYear, setRepSelectedYear] = useState(() => new Date().getFullYear());
       const [repSearchQuery, setRepSearchQuery] = useState("");
+      const [repStatusFilter, setRepStatusFilter] = useState("all"); // "all", "open", "closed"
 
       const cameraInputRef = useRef(null);
       const damagePhotoInputRef = useRef(null);
@@ -1489,7 +1490,9 @@ const fileToBase64 = (file) => {
           } else if (repDateRange === "customMonth") {
             if (vDate.getMonth() !== parseInt(repSelectedMonth, 10) || vDate.getFullYear() !== parseInt(repSelectedYear, 10)) return false;
           }
-
+// Filter podľa stavu: Otvorené vs Uzavreté
+          if (repStatusFilter === "open" && v.is_locked) return false;
+          if (repStatusFilter === "closed" && !v.is_locked) return false;
           if (repSearchQuery.trim()) {
             const q = repSearchQuery.toLowerCase();
             const matchVin = (v.vin || "").toLowerCase().includes(q);
@@ -1500,7 +1503,7 @@ const fileToBase64 = (file) => {
           }
           return true;
         });
-      }, [vehicles, projects, repClientFilter, repProjectFilter, repDateRange, repSelectedMonth, repSelectedYear, repSearchQuery]);
+      }, [vehicles, projects, repClientFilter, repProjectFilter, repDateRange, repSelectedMonth, repSelectedYear, repSearchQuery, repStatusFilter]);
 
       const kpiStats = useMemo(() => {
         let totalMyShare = 0;
@@ -3319,17 +3322,29 @@ const fileToBase64 = (file) => {
                   </div>
 
                   <div className="grid grid-cols-2 gap-2">
-                    <select
-                      value={repDateRange}
-                      onChange={e => setRepDateRange(e.target.value)}
-                      className="w-full bg-gray-950 border border-gray-700 rounded p-1 text-xs text-white"
-                    >
-                      <option value="all">{t.allDates}</option>
-                      <option value="thisWeek">Aktuálny týždeň</option>
-                      <option value="thisMonth">{t.thisMonth}</option>
-                      <option value="lastMonth">{t.lastMonth}</option>
-                      <option value="customMonth">{t.customMonthYear}</option>
-                    </select>
+                  <select
+                    value={repDateRange}
+                    onChange={e => setRepDateRange(e.target.value)}
+                    className="w-full bg-gray-950 border border-gray-700 rounded p-1 text-xs text-white"
+                  >
+                    <option value="all">{t.allDates}</option>
+                    <option value="thisWeek">Aktuálny týždeň</option>
+                    <option value="thisMonth">{t.thisMonth}</option>
+                    <option value="lastMonth">{t.lastMonth}</option>
+                    <option value="customMonth">{t.customMonthYear}</option>
+                  </select>
+
+                  <select
+                    value={repStatusFilter}
+                    onChange={e => setRepStatusFilter(e.target.value)}
+                    className="w-full bg-gray-950 border border-gray-700 rounded p-1 text-xs text-white"
+                  >
+                    <option value="all">Všetky stavy</option>
+                    <option value="open">Otvorené</option>
+                    <option value="closed">Uzavreté</option>
+                  </select>
+                </div>
+                  
 
                     {repDateRange === "customMonth" && (
                       <div className="grid grid-cols-2 gap-1">
