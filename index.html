@@ -870,6 +870,8 @@ const fileToBase64 = (file) => {
       const [sheetEditTempCatPrice, setSheetEditTempCatPrice] = useState("");
 
       const [selectedVehicleDetail, setSelectedVehicleDetail] = useState(null);
+      const [isEditingVehicle, setIsEditingVehicle] = useState(false);
+      const [editVehicleData, setEditVehicleData] = useState({});
       const [isUploading, setIsUploading] = useState(false);
       const [uploadStatusText, setUploadStatusText] = useState("");
       const [latePriceInput, setLatePriceInput] = useState("");
@@ -2054,6 +2056,39 @@ const fileToBase64 = (file) => {
           }
         } catch (err) {
           alert("Chyba pri zmene zámku: " + err.message);
+        }
+      };
+      const handleUpdateVehicleData = async (e) => {
+        e.preventDefault();
+        if (!selectedVehicleDetail) return;
+
+        try {
+          const updatedPayload = {
+            brand: editVehicleData.brand || "N/A",
+            model: editVehicleData.model || "N/A",
+            vin: sanitizeVin(editVehicleData.vin || ""),
+            ecv: editVehicleData.has_no_ecv ? (lang === "SK" ? "Bez ŠPZ" : (lang === "DE" ? "Ohne KZ" : "No Plate")) : (editVehicleData.ecv || "N/A"),
+            has_no_ecv: Boolean(editVehicleData.has_no_ecv),
+            color: editVehicleData.color || selectedVehicleDetail.color,
+            client_calc_no: editVehicleData.client_calc_no || null,
+            price: parseFloat(editVehicleData.price) || 0,
+            ri_price: parseFloat(editVehicleData.ri_price) || 0,
+            note: editVehicleData.note ? editVehicleData.note.trim() : null
+          };
+
+          const { error } = await supabase
+            .from("vehicles")
+            .update(updatedPayload)
+            .eq("id", selectedVehicleDetail.id);
+
+          if (error) throw error;
+
+          setVehicles(prev => prev.map(v => v.id === selectedVehicleDetail.id ? { ...v, ...updatedPayload } : v));
+          setSelectedVehicleDetail(prev => ({ ...prev, ...updatedPayload }));
+          setIsEditingVehicle(false);
+          alert(t.saveChangesBtn);
+        } catch (err) {
+          alert("Chyba pri ukladaní zmien: " + err.message);
         }
       };
 // Správa kategórií pri tvorbe novej lokácie
@@ -3510,24 +3545,191 @@ const fileToBase64 = (file) => {
           {selectedVehicleDetail && (
             <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
               <div className="w-full max-w-sm bg-gray-950 border border-amber-500/80 rounded-2xl p-4 shadow-2xl space-y-3 max-h-[90vh] overflow-y-auto text-xs">
-                <div className="flex justify-between items-center border-b border-gray-800 pb-2">
-                  <div className="font-bold text-amber-400 text-sm flex items-center gap-1.5">
+               <div className="flex justify-between items-center border-b border-gray-800 pb-2">
+                  <div className="font-bold text-amber-400 text-sm flex items-center gap-1.5 truncate">
                     <span>{selectedVehicleDetail.brand} {selectedVehicleDetail.model}</span>
+                    {selectedVehicleDetail.is_locked && (
+                      <span className="text-[10px] text-emerald-400 bg-emerald-950/60 border border-emerald-500/40 px-1.5 py-0.5 rounded flex items-center gap-1">
+                        <i className="fa-solid fa-lock"></i> Uzavreté
+                      </span>
+                    )}
                   </div>
-                  <button type="button" onClick={() => setSelectedVehicleDetail(null)} className="text-gray-500 hover:text-white">
-                    <i className="fa-solid fa-xmark text-base"></i>
-                  </button>
+
+                  <div className="flex items-center gap-2.5">
+                    {/* Tlačidlo Upraviť / Zrušiť s poistkou proti zamknutým autám */}
+                    {selectedVehicleDetail.is_locked ? (
+                      <span className="text-[10px] text-gray-500 italic">Uzamknuté</span>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (!isEditingVehicle) {
+                            setEditVehicleData({
+                              ...selectedVehicleDetail,
+                              has_no_ecv: selectedVehicleDetail.has_no_ecv || selectedVehicleDetail.ecv === "Bez ŠPZ" || selectedVehicleDetail.ecv === "Ohne KZ" || selectedVehicleDetail.ecv === "No Plate"
+                            });
+                            setIsEditingVehicle(true);
+                          } else {
+                            setIsEditingVehicle(false);
+                          }
+                        }}
+                        className="text-amber-400 text-xs font-bold hover:underline"
+                      >
+                        {isEditingVehicle ? t.cancelBtn : t.editBtn}
+                      </button>
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedVehicleDetail(null);
+                        setIsEditingVehicle(false);
+                      }}
+                      className="text-gray-500 hover:text-white"
+                    >
+                      <i className="fa-solid fa-xmark text-base"></i>
+                    </button>
+                  </div>
                 </div>
 
-                <div className="space-y-1.5 font-mono">
-                  <div><span className="text-gray-500">VIN:</span> <span className="text-white font-bold">{selectedVehicleDetail.vin}</span></div>
-                  <div><span className="text-gray-500">ŠPZ:</span> <span className="text-white font-bold">{selectedVehicleDetail.ecv}</span></div>
-                  <div><span className="text-gray-500">Farba:</span> <span className="text-white">{selectedVehicleDetail.color}</span></div>
-                  <div><span className="text-gray-500">Dátum:</span> <span className="text-gray-300">{new Date(selectedVehicleDetail.created_at).toLocaleString()}</span></div>
-                  <div><span className="text-gray-500">Číslo kalkulácie:</span> <span className="text-amber-300 font-bold">{selectedVehicleDetail.client_calc_no || "N/A"}</span></div>
-                  <div><span className="text-gray-500">PDR Cena (100%):</span> <span className="text-amber-400 font-bold">{currSymbol}{selectedVehicleDetail.price}</span></div>
-                  <div><span className="text-gray-500">R&I Cena (100%):</span> <span className="text-gray-300">{currSymbol}{selectedVehicleDetail.ri_price}</span></div>
-                </div>
+                {/* Prepínanie: Formulár úpravy vs. Pasívne zobrazenie */}
+                {isEditingVehicle ? (
+                  <form onSubmit={handleUpdateVehicleData} className="space-y-2 text-xs">
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="text-[9px] text-gray-400 font-bold uppercase">{t.brand}</label>
+                        <input
+                          type="text"
+                          value={editVehicleData.brand || ""}
+                          onChange={e => setEditVehicleData({ ...editVehicleData, brand: e.target.value })}
+                          className="w-full bg-gray-900 border border-gray-700 rounded p-1.5 text-xs text-white"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[9px] text-gray-400 font-bold uppercase">{t.model}</label>
+                        <input
+                          type="text"
+                          value={editVehicleData.model || ""}
+                          onChange={e => setEditVehicleData({ ...editVehicleData, model: e.target.value })}
+                          className="w-full bg-gray-900 border border-gray-700 rounded p-1.5 text-xs text-white"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="text-[9px] text-gray-400 font-bold uppercase">{t.vin}</label>
+                        <input
+                          type="text"
+                          value={editVehicleData.vin || ""}
+                          onChange={e => setEditVehicleData({ ...editVehicleData, vin: sanitizeVin(e.target.value) })}
+                          className="w-full bg-gray-900 border border-gray-700 rounded p-1.5 text-xs text-white font-mono font-bold"
+                        />
+                      </div>
+                      <div>
+                        <div className="flex justify-between items-center">
+                          <label className="text-[9px] text-gray-400 font-bold uppercase">{t.ecv}</label>
+                          <label className="flex items-center gap-1 text-[8px] text-gray-400">
+                            <input
+                              type="checkbox"
+                              checked={Boolean(editVehicleData.has_no_ecv)}
+                              onChange={e => setEditVehicleData({
+                                ...editVehicleData,
+                                has_no_ecv: e.target.checked,
+                                ecv: e.target.checked ? "" : editVehicleData.ecv
+                              })}
+                            />
+                            <span>{t.noEcvCheckbox}</span>
+                          </label>
+                        </div>
+                        <input
+                          type="text"
+                          disabled={editVehicleData.has_no_ecv}
+                          value={editVehicleData.has_no_ecv ? (lang === "SK" ? "Bez ŠPZ" : (lang === "DE" ? "Ohne KZ" : "No Plate")) : (editVehicleData.ecv || "")}
+                          onChange={e => setEditVehicleData({ ...editVehicleData, ecv: e.target.value.toUpperCase() })}
+                          className={`w-full border rounded p-1.5 text-xs font-bold ${editVehicleData.has_no_ecv ? "bg-gray-800 text-gray-500 border-gray-800" : "bg-gray-900 text-white border-gray-700"}`}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="text-[9px] text-gray-400 font-bold uppercase">{t.calcNumberLabel}</label>
+                        <input
+                          type="text"
+                          value={editVehicleData.client_calc_no || ""}
+                          onChange={e => setEditVehicleData({ ...editVehicleData, client_calc_no: e.target.value })}
+                          className="w-full bg-gray-900 border border-gray-700 rounded p-1.5 text-xs text-amber-300 font-mono font-bold"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[9px] text-gray-400 font-bold uppercase">{t.color}</label>
+                        <input
+                          type="text"
+                          value={editVehicleData.color || ""}
+                          onChange={e => setEditVehicleData({ ...editVehicleData, color: e.target.value })}
+                          className="w-full bg-gray-900 border border-gray-700 rounded p-1.5 text-xs text-white"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="text-[9px] text-gray-400 font-bold uppercase">{t.priceLabel} (PDR)</label>
+                        <div className="relative">
+                          <input
+                            type="number"
+                            inputMode="decimal"
+                            value={editVehicleData.price ?? ""}
+                            onChange={e => setEditVehicleData({ ...editVehicleData, price: e.target.value })}
+                            className="w-full bg-gray-900 border border-gray-700 rounded p-1.5 text-xs text-amber-300 font-bold"
+                          />
+                          <span className="absolute right-2 top-1.5 text-[10px] text-gray-500">{currSymbol}</span>
+                        </div>
+                      </div>
+                      <div>
+                        <label className="text-[9px] text-gray-400 font-bold uppercase">{t.riPriceLabel}</label>
+                        <div className="relative">
+                          <input
+                            type="number"
+                            inputMode="decimal"
+                            value={editVehicleData.ri_price ?? ""}
+                            onChange={e => setEditVehicleData({ ...editVehicleData, ri_price: e.target.value })}
+                            className="w-full bg-gray-900 border border-gray-700 rounded p-1.5 text-xs text-white font-bold"
+                          />
+                          <span className="absolute right-2 top-1.5 text-[10px] text-gray-500">{currSymbol}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="text-[9px] text-gray-400 font-bold uppercase">{t.damageNoteLabel}</label>
+                      <input
+                        type="text"
+                        value={editVehicleData.note || ""}
+                        onChange={e => setEditVehicleData({ ...editVehicleData, note: e.target.value })}
+                        className="w-full bg-gray-900 border border-gray-700 rounded p-1.5 text-xs text-white"
+                      />
+                    </div>
+
+                    <button
+                      type="submit"
+                      className="w-full bg-amber-500 hover:bg-amber-600 text-gray-950 font-black py-2 rounded-xl text-xs shadow transition-all active:scale-95"
+                    >
+                      {t.saveChangesBtn}
+                    </button>
+                  </form>
+                ) : (
+                  <div className="space-y-1.5 font-mono">
+                    <div><span className="text-gray-500">VIN:</span> <span className="text-white font-bold">{selectedVehicleDetail.vin}</span></div>
+                    <div><span className="text-gray-500">ŠPZ:</span> <span className="text-white font-bold">{selectedVehicleDetail.ecv}</span></div>
+                    <div><span className="text-gray-500">Farba:</span> <span className="text-white">{selectedVehicleDetail.color}</span></div>
+                    <div><span className="text-gray-500">Dátum:</span> <span className="text-gray-300">{new Date(selectedVehicleDetail.created_at).toLocaleString()}</span></div>
+                    <div><span className="text-gray-500">Číslo kalkulácie:</span> <span className="text-amber-300 font-bold">{selectedVehicleDetail.client_calc_no || "N/A"}</span></div>
+                    <div><span className="text-gray-500">PDR Cena (100%):</span> <span className="text-amber-400 font-bold">{currSymbol}{selectedVehicleDetail.price}</span></div>
+                    <div><span className="text-gray-500">R&I Cena (100%):</span> <span className="text-gray-300">{currSymbol}{selectedVehicleDetail.ri_price}</span></div>
+                  </div>
+                )}
 
                 {/* Rozpad technikov zapojených do kooperácie */}
                 {(() => {
