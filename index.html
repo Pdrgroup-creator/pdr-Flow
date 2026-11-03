@@ -109,22 +109,22 @@
       "KNA": "Kia", "U5Y": "Kia"
     };
 
-   const COLOR_PALETTE = [
-    { id: "white", bg: "#FFFFFF", text: "#111827", border: "#D1D5DB", rgb: [255, 255, 255], labels: { EN: "White", DE: "Weiß", SK: "Biela" } },
-    { id: "silver", bg: "#D1D5DB", text: "#111827", border: "#9CA3AF", rgb: [209, 213, 219], labels: { EN: "Silver", DE: "Silber", SK: "Strieborná" } },
-    { id: "grey", bg: "#6B7280", text: "#FFFFFF", border: "#4B5563", rgb: [107, 114, 128], labels: { EN: "Grey", DE: "Grau", SK: "Sivá" } },
-    { id: "black", bg: "#111827", text: "#FFFFFF", border: "#374151", rgb: [17, 24, 39], labels: { EN: "Black", DE: "Schwarz", SK: "Čierna" } },
-    { id: "blue", bg: "#1D4ED8", text: "#FFFFFF", border: "#1E40AF", rgb: [29, 78, 216], labels: { EN: "Blue", DE: "Blau", SK: "Modrá" } },
-    { id: "red", bg: "#DC2626", text: "#FFFFFF", border: "#B91C1C", rgb: [220, 38, 38], labels: { EN: "Red", DE: "Rot", SK: "Červená" } },
-    { id: "green", bg: "#15803D", text: "#FFFFFF", border: "#166534", rgb: [21, 128, 61], labels: { EN: "Green", DE: "Grün", SK: "Zelená" } },
-    { id: "yellow", bg: "#EAB308", text: "#111827", border: "#CA8A04", rgb: [234, 179, 8], labels: { EN: "Yellow", DE: "Gelb", SK: "Žltá" } },
-    { id: "orange", bg: "#EA580C", text: "#FFFFFF", border: "#C2410C", rgb: [234, 88, 12], labels: { EN: "Orange", DE: "Orange", SK: "Oranžová" } },
-    { id: "brown", bg: "#78350F", text: "#FFFFFF", border: "#582509", rgb: [120, 53, 15], labels: { EN: "Brown", DE: "Braun", SK: "Hnedá" } },
-    { id: "gold_bronze", bg: "#B4833E", text: "#111827", border: "#926322", rgb: [180, 131, 62], labels: { EN: "Gold/Brz", DE: "Gold/Brz", SK: "Zlatá/Brz" } },
-    { id: "burgundy", bg: "#831843", text: "#FFFFFF", border: "#601031", rgb: [131, 24, 67], labels: { EN: "Burgundy", DE: "Bordeaux", SK: "Bordová" } },
-    { id: "wrap", bg: "#0D9488", text: "#FFFFFF", border: "#0F766E", rgb: [13, 148, 136], labels: { EN: "Wrap", DE: "Folie", SK: "Fólia" } },
-    { id: "matt", bg: "#475569", text: "#FFFFFF", border: "#334155", rgb: [71, 85, 105], labels: { EN: "Matt", DE: "Matt", SK: "Matt" } }
-  ];
+    const COLOR_PALETTE = [
+      { id: "white", bg: "#FFFFFF", text: "#111827", border: "#D1D5DB", labels: { EN: "White", DE: "Weiß", SK: "Biela" } },
+      { id: "silver", bg: "#D1D5DB", text: "#111827", border: "#9CA3AF", labels: { EN: "Silver", DE: "Silber", SK: "Strieborná" } },
+      { id: "grey", bg: "#6B7280", text: "#FFFFFF", border: "#4B5563", labels: { EN: "Grey", DE: "Grau", SK: "Sivá" } },
+      { id: "black", bg: "#111827", text: "#FFFFFF", border: "#374151", labels: { EN: "Black", DE: "Schwarz", SK: "Čierna" } },
+      { id: "blue", bg: "#1D4ED8", text: "#FFFFFF", border: "#1E40AF", labels: { EN: "Blue", DE: "Blau", SK: "Modrá" } },
+      { id: "red", bg: "#DC2626", text: "#FFFFFF", border: "#B91C1C", labels: { EN: "Red", DE: "Rot", SK: "Červená" } },
+      { id: "green", bg: "#15803D", text: "#FFFFFF", border: "#166534", labels: { EN: "Green", DE: "Grün", SK: "Zelená" } },
+      { id: "yellow", bg: "#EAB308", text: "#111827", border: "#CA8A04", labels: { EN: "Yellow", DE: "Gelb", SK: "Žltá" } },
+      { id: "orange", bg: "#EA580C", text: "#FFFFFF", border: "#C2410C", labels: { EN: "Orange", DE: "Orange", SK: "Oranžová" } },
+      { id: "brown", bg: "#78350F", text: "#FFFFFF", border: "#582509", labels: { EN: "Brown", DE: "Braun", SK: "Hnedá" } },
+      { id: "gold_bronze", bg: "#B4833E", text: "#111827", border: "#926322", labels: { EN: "Gold/Brz", DE: "Gold/Brz", SK: "Zlatá/Brz" } },
+      { id: "burgundy", bg: "#831843", text: "#FFFFFF", border: "#601031", labels: { EN: "Burgundy", DE: "Bordeaux", SK: "Bordová" } },
+      { id: "wrap", bg: "#0D9488", text: "#FFFFFF", border: "#0F766E", labels: { EN: "Wrap", DE: "Folie", SK: "Fólia" } },
+      { id: "matt", bg: "#475569", text: "#FFFFFF", border: "#334155", labels: { EN: "Matt", DE: "Matt", SK: "Matt" } }
+    ];
 
     const TRANSLATIONS = {
       EN: {
@@ -136,8 +136,7 @@
         tabProjects2: "Locations",
         tabReports1: "Register &",
         tabReports2: "Reports",
-       scanBtn: "Scan Car (Live Camera)",
-        scanGalleryBtn: "Upload from Gallery / Files",
+        scanBtn: "Scan Car (VIN / Rear / Sheet)",
         step1Label: "1. VIN Plate",
         step2Label: "2. Rear Photo",
         step3Label: "3. Calc Sheet",
@@ -924,7 +923,6 @@ const fileToBase64 = (file) => {
       const [repSearchQuery, setRepSearchQuery] = useState("");
 
       const cameraInputRef = useRef(null);
-      const galleryInputRef = useRef(null);
       const damagePhotoInputRef = useRef(null);
 
       // Stavy skenovania a overovania (Variant 2)
@@ -1641,14 +1639,14 @@ const fileToBase64 = (file) => {
         doc.save(`pdr_summary_${Date.now()}.pdf`);
       };
       // Spustenie jednotlivých krokov skenovania
-      const triggerScanStep = (stepNumber, source = "camera") => {
+      const triggerScanStep = (stepNumber) => {
         setScanStep(stepNumber);
-        const targetRef = source === "gallery" ? galleryInputRef : cameraInputRef;
-        if (targetRef.current) {
-          targetRef.current.value = "";
-          targetRef.current.click();
+        if (cameraInputRef.current) {
+          cameraInputRef.current.value = "";
+          cameraInputRef.current.click();
         }
       };
+
       // Spracovanie odfoteného obrázka cez Google Vision
       const handlePhotoCapture = async (e) => {
         const file = e.target.files[0];
@@ -2284,21 +2282,18 @@ const fileToBase64 = (file) => {
 
       return (
         <div className="w-full max-w-md bg-gray-950 border border-gray-800 rounded-2xl shadow-2xl flex flex-col overflow-hidden text-xs">
-         {/* Header - Dominantné logo, decentná rola a meno pod ním */}
+          {/* Header - Dvojfarebné logo PDR FlowBoard, vedľa rola a napravo v jednom riadku email/user */}
           <div className="bg-gray-900/80 border-b border-gray-800 p-2.5 flex items-center justify-between">
-            <div className="flex flex-col min-w-0">
-              <span className="font-black text-white tracking-wider text-base whitespace-nowrap">
+            <div className="flex items-center gap-1.5 min-w-0">
+              <span className="font-black text-white tracking-wider text-sm whitespace-nowrap">
                 PDR <span className="text-amber-500">FlowBoard</span>
               </span>
-              <div className="flex items-center gap-1.5 text-[10px] text-gray-400 font-mono pt-0.5">
-                <span className="uppercase text-gray-400">
-                  {currentUser.role === "manager" ? t.roleManagerLabel : t.roleTechLabel}
-                </span>
-                <span className="text-gray-600">|</span>
-                <span className="truncate max-w-[150px]" title={currentUser.email}>
-                  {currentUser.email.split("@")[0]}
-                </span>
-              </div>
+              <span className="bg-amber-500/20 text-amber-400 font-bold px-1.5 py-0.5 rounded text-[9px] uppercase whitespace-nowrap">
+                {currentUser.role === "manager" ? t.roleManagerLabel : t.roleTechLabel}
+              </span>
+              <span className="text-[10px] text-gray-400 font-mono truncate max-w-[125px]" title={currentUser.email}>
+                {currentUser.email.split("@")[0]}
+              </span>
             </div>
             <div className="flex items-center gap-2">
               <button
@@ -2424,41 +2419,20 @@ const fileToBase64 = (file) => {
                   <input
                     type="file"
                     accept="image/*"
+                    capture="environment"
+                    ref={cameraInputRef}
+                    onChange={handlePhotoCapture}
+                    className="hidden"
+                  />
 
-                   ref={cameraInputRef}
-                  capture="environment"
-                  onChange={handlePhotoCapture}
-                  className="hidden"
-                />
-
-                {/* Skrytý input čisto pre výber z galérie / pamäte mobilu */}
-                <input
-                  type="file"
-                  accept="image/*"
-                  ref={galleryInputRef}
-                  onChange={handlePhotoCapture}
-                  className="hidden"
-                />
-
-                {/* 1. Hlavné tlačidlo pre dielňu - Živá kamera bez dialógu */}
-                <button
-                  type="button"
-                  onClick={() => triggerScanStep(1, "camera")}
-                  className="w-full bg-amber-500 hover:bg-amber-600 active:scale-95 text-gray-950 font-black py-2.5 rounded-xl text-sm flex items-center justify-center gap-2 shadow-lg transition-all"
-                >
-                  <i className="fa-solid fa-camera text-base"></i>
-                  <span>{t.scanBtn}</span>
-                </button>
-
-                {/* 2. Sekundárne tlačidlo - Výber z galérie / súborov */}
-                <button
-                  type="button"
-                  onClick={() => triggerScanStep(1, "gallery")}
-                  className="w-full bg-gray-950 hover:bg-gray-800 active:scale-95 text-gray-300 hover:text-white border border-gray-700 hover:border-amber-500/60 font-bold py-1.5 rounded-xl text-xs flex items-center justify-center gap-2 shadow transition-all"
-                >
-                  <i className="fa-solid fa-images text-xs text-amber-400"></i>
-                  <span>{t.scanGalleryBtn}</span>
-                </button>
+                  <button
+                    type="button"
+                    onClick={() => triggerScanStep(1)}
+                    className="w-full bg-amber-500 hover:bg-amber-600 active:scale-95 text-gray-950 font-black py-2.5 rounded-xl text-sm flex items-center justify-center gap-2 shadow-lg transition-all"
+                  >
+                    <i className="fa-solid fa-camera text-base"></i>
+                    <span>{t.scanBtn}</span>
+                  </button>
 
                   <div className="grid grid-cols-3 gap-1.5 text-center text-[10px] text-gray-400">
                     <button
@@ -3448,60 +3422,44 @@ const fileToBase64 = (file) => {
                       const riVal = parseFloat(v.ri_price) || 0;
                       const myEarned = (pdrVal * ((v.tech_pdr_percent || 100) / 100) * fraction + riVal * ((v.tech_ri_percent || 100) / 100) * fraction).toFixed(2);
                       const totalGross = (pdrVal + riVal).toFixed(2);
-// Vyhľadanie lokácie a klienta pre hornú mikro-hlavičku
-                  const proj = projects.find(p => p.id === v.project_id);
-                  const client = clients.find(c => c.id === proj?.client_id);
-                  const clientName = client?.name || "Neznámy klient";
-                  const locationName = proj?.name || "Neznáma lokácia";
 
-                  return (
-                    <div
-                      key={v.id}
-                      onClick={() => setSelectedVehicleDetail(v)}
-                      className="bg-gray-900 border border-gray-800 hover:border-amber-500/60 p-2.5 rounded-xl flex justify-between items-center cursor-pointer"
-                    >
-                      <div className="space-y-0.5 min-w-0 flex-1 pr-2">
-                        {/* Horná mikro-hlavička: Klient • Lokácia */}
-                        <div className="text-[10px] text-gray-400 font-medium truncate flex items-center gap-1" title={`${clientName} • ${locationName}`}>
-                          <span className="truncate">{clientName}</span>
-                          <span className="text-gray-600 font-bold">•</span>
-                          <span className="truncate text-gray-300">{locationName}</span>
-                        </div>
-
-                        {/* Hlavný riadok: Model vozidla a prípadné štítky */}
-                        <div className="font-bold text-gray-100 flex items-center gap-1.5 truncate">
-                          <span className="truncate">{v.brand} {v.model}</span>
-                          {isCoop && (
-                            <span className="bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[9px] px-1.5 py-0.5 rounded font-black flex items-center gap-1 shrink-0">
-                              <span>🤝</span> {t.coopBadge} ({vehicleCoops.length})
-                            </span>
-                          )}
-                          {v.status === "pending_price" && (
-                            <span className="bg-red-500/20 text-red-400 text-[9px] px-1.5 py-0.5 rounded font-bold shrink-0">
-                              Cena ?
-                            </span>
-                          )}
-                        </div>
-
-                        {/* Spodné riadky: ŠPZ, VIN a zákazka */}
-                        <div className="text-[10px] font-mono text-gray-400">{v.ecv} | {v.vin ? v.vin.substring(0, 10) + "..." : "---"}</div>
-                        <div className="text-[9px] text-gray-500">{new Date(v.created_at).toLocaleDateString()} | {v.internal_record_no}</div>
-                     </div>
-                      <div className="text-right shrink-0">
-                        {v.status === "pending_price" ? (
-                          <div className="font-black text-red-400 text-xs">Cena neznáma</div>
-                        ) : (
-                          <>
-                            <div className="font-black text-emerald-400 text-sm">
-                              {currSymbol}{myEarned}
+                      return (
+                        <div
+                          key={v.id}
+                          onClick={() => setSelectedVehicleDetail(v)}
+                          className="bg-gray-900 border border-gray-800 hover:border-amber-500/60 p-2.5 rounded-xl flex justify-between items-center cursor-pointer transition-all"
+                        >
+                          <div className="space-y-0.5">
+                            <div className="font-bold text-gray-200 flex items-center gap-1.5">
+                              <span>{v.brand} {v.model}</span>
+                              {isCoop && (
+                                <span className="bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[9px] px-1.5 py-0.5 rounded font-black flex items-center gap-1">
+                                  <span>🤝</span> {t.coopBadge} ({vehicleCoops.length})
+                                </span>
+                              )}
+                              {v.status === "pending_price" && (
+                                <span className="bg-red-500/20 text-red-400 border border-red-500/40 text-[9px] px-1 rounded font-bold">Cena ?</span>
+                              )}
                             </div>
-                            <div className="text-[9px] text-gray-400 font-mono">
-                              {t.coopTotalGross}: {currSymbol}{totalGross}
-                            </div>
-                          </>
-                        )}
-                      </div>
-                    </div>
+                            <div className="text-[10px] font-mono text-gray-400">{v.ecv} | {v.vin.substring(0, 10)}...</div>
+                            <div className="text-[9px] text-gray-500">{new Date(v.created_at).toLocaleDateString()} | {v.internal_record_no}</div>
+                          </div>
+
+                          <div className="text-right space-y-0.5">
+                            {v.status === "pending_price" ? (
+                              <div className="font-black text-red-400 text-xs">Cena neznáma</div>
+                            ) : (
+                              <>
+                                <div className="font-black text-emerald-400 text-sm">
+                                  {currSymbol}{myEarned}
+                                </div>
+                                <div className="text-[9px] text-gray-400 font-mono">
+                                  {t.coopTotalGross}: {currSymbol}{totalGross}
+                                </div>
+                              </>
+                            )}
+                          </div>
+                        </div>
                       );
                     })
                   )}
