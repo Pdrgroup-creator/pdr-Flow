@@ -1401,7 +1401,27 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
         if (!canCloseRecord) {
           return alert(t.missingAwRateAlert);
         }
+// Kontrola duplicity VIN pred spustením nahrávania
+    const cleanVin = (vin || "").trim().toUpperCase();
+    if (cleanVin && cleanVin !== "N/A") {
+      try {
+        const { data: existingVin, error: vinCheckErr } = await supabase
+          .from("vehicles")
+          .select("id, internal_record_no, ecv, brand, model")
+          .eq("vin", cleanVin)
+          .limit(1);
 
+        if (!vinCheckErr && existingVin && existingVin.length > 0) {
+          const dup = existingVin[0];
+          const dupMsg = lang === "SK"
+            ? `Vozidlo s týmto VIN už existuje v systéme!\nZáznam: ${dup.internal_record_no || ""}\nAuto: ${dup.brand} ${dup.model} (${dup.ecv})`
+            : `Vehicle with this VIN already exists!\nRecord: ${dup.internal_record_no || ""}\nCar: ${dup.brand} ${dup.model} (${dup.ecv})`;
+          return alert(dupMsg);
+        }
+      } catch (err) {
+        console.warn("Chyba kontroly VIN:", err);
+      }
+    }
         setIsUploading(true);
         setUploadStatusText(t.savingVehicleStatus);
 
@@ -1471,17 +1491,22 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
             }
           ];
 
-          selectedCoopPartners.forEach(p => {
-            if (p.partnerId) {
+         selectedCoopPartners.forEach(p => {
+            // Zistenie skutočného ID a emailu partnera
+            const partnerTechId = p.partnerId || (p.sender_id === currentUser.id ? p.recipient_id : p.sender_id);
+            const partnerTechEmail = p.partnerEmail || (p.sender_id === currentUser.id ? p.recipient_email : p.sender_email);
+
+            if (partnerTechId) {
               coopInserts.push({
                 vehicle_id: insertedVehicle.id,
-                technician_id: p.partnerId,
-                technician_email: p.partnerEmail,
+                technician_id: partnerTechId,
+                technician_email: partnerTechEmail,
                 split_fraction: coopSplitFraction,
                 is_owner: false
               });
             }
           });
+      
 
           await supabase.from("vehicle_coops").insert(coopInserts);
 
@@ -1504,7 +1529,7 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
           setVinPreview(null);
           setRearPreview(null);
           setSheetPreview(null);
-          setSelectedCoopPartners([]);
+          // setSelectedCoopPartners([]);
           loadPartnerships();
         } catch (err) {
           alert("Error: " + err.message);
