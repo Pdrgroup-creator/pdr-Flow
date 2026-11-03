@@ -2237,27 +2237,30 @@ const fileToBase64 = (file) => {
 
       return (
         <div className="w-full max-w-md bg-gray-950 border border-gray-800 rounded-2xl shadow-2xl flex flex-col overflow-hidden text-xs">
-          {/* Header - Dvojfarebné logo PDR FlowBoard, vedľa rola a napravo v jednom riadku email/user */}
+          {/* Header - Dominantné zväčšené logo, decentná rola a meno pod ním, farebné ikony */}
           <div className="bg-gray-900/80 border-b border-gray-800 p-2.5 flex items-center justify-between">
-            <div className="flex items-center gap-1.5 min-w-0">
-              <span className="font-black text-white tracking-wider text-sm whitespace-nowrap">
-                PDR <span className="text-amber-500">FlowBoard</span>
+            <div className="flex flex-col min-w-0">
+              <span className="font-black text-white tracking-wider text-base whitespace-nowrap">
+                PDR <span className="text-amber-500">FlowDesk</span>
               </span>
-              <span className="bg-amber-500/20 text-amber-400 font-bold px-1.5 py-0.5 rounded text-[9px] uppercase whitespace-nowrap">
-                {currentUser.role === "manager" ? t.roleManagerLabel : t.roleTechLabel}
-              </span>
-              <span className="text-[10px] text-gray-400 font-mono truncate max-w-[125px]" title={currentUser.email}>
-                {currentUser.email.split("@")[0]}
-              </span>
+              <div className="flex items-center gap-1.5 text-[10px] text-gray-400 font-mono pt-0.5">
+                <span className="uppercase text-gray-400">
+                  {currentUser.role === "manager" ? t.roleManagerLabel : t.roleTechLabel}
+                </span>
+                <span className="text-gray-600">|</span>
+                <span className="truncate max-w-[150px]" title={currentUser.email}>
+                  {currentUser.email.split("@")[0]}
+                </span>
+              </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2.5">
               <button
                 type="button"
                 onClick={() => setShowCoopModal(true)}
-                className="relative text-gray-400 hover:text-amber-400 p-1"
+                className="relative text-emerald-400 hover:text-emerald-300 p-1"
                 title={t.coopTitle}
               >
-                <i className="fa-solid fa-handshake text-sm"></i>
+                <i className="fa-solid fa-handshake text-base"></i>
                 {pendingCoopInvites.length > 0 && (
                   <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full animate-ping"></span>
                 )}
@@ -2273,7 +2276,7 @@ const fileToBase64 = (file) => {
               <button
                 type="button"
                 onClick={() => supabase.auth.signOut()}
-                className="text-gray-400 hover:text-red-400 p-1"
+                className="text-red-400 hover:text-red-300 p-1"
                 title="Sign Out"
               >
                 <i className="fa-solid fa-right-from-bracket text-sm"></i>
