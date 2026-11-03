@@ -2282,18 +2282,21 @@ const fileToBase64 = (file) => {
 
       return (
         <div className="w-full max-w-md bg-gray-950 border border-gray-800 rounded-2xl shadow-2xl flex flex-col overflow-hidden text-xs">
-          {/* Header - Dvojfarebné logo PDR FlowBoard, vedľa rola a napravo v jednom riadku email/user */}
+         {/* Header - Dominantné logo, decentná rola a meno pod ním */}
           <div className="bg-gray-900/80 border-b border-gray-800 p-2.5 flex items-center justify-between">
-            <div className="flex items-center gap-1.5 min-w-0">
-              <span className="font-black text-white tracking-wider text-sm whitespace-nowrap">
+            <div className="flex flex-col min-w-0">
+              <span className="font-black text-white tracking-wider text-base whitespace-nowrap">
                 PDR <span className="text-amber-500">FlowBoard</span>
               </span>
-              <span className="bg-amber-500/20 text-amber-400 font-bold px-1.5 py-0.5 rounded text-[9px] uppercase whitespace-nowrap">
-                {currentUser.role === "manager" ? t.roleManagerLabel : t.roleTechLabel}
-              </span>
-              <span className="text-[10px] text-gray-400 font-mono truncate max-w-[125px]" title={currentUser.email}>
-                {currentUser.email.split("@")[0]}
-              </span>
+              <div className="flex items-center gap-1.5 text-[10px] text-gray-400 font-mono pt-0.5">
+                <span className="uppercase text-gray-400">
+                  {currentUser.role === "manager" ? t.roleManagerLabel : t.roleTechLabel}
+                </span>
+                <span className="text-gray-600">|</span>
+                <span className="truncate max-w-[150px]" title={currentUser.email}>
+                  {currentUser.email.split("@")[0]}
+                </span>
+              </div>
             </div>
             <div className="flex items-center gap-2">
               <button
@@ -2419,7 +2422,7 @@ const fileToBase64 = (file) => {
                   <input
                     type="file"
                     accept="image/*"
-                    capture="environment"
+
                     ref={cameraInputRef}
                     onChange={handlePhotoCapture}
                     className="hidden"
@@ -3422,30 +3425,45 @@ const fileToBase64 = (file) => {
                       const riVal = parseFloat(v.ri_price) || 0;
                       const myEarned = (pdrVal * ((v.tech_pdr_percent || 100) / 100) * fraction + riVal * ((v.tech_ri_percent || 100) / 100) * fraction).toFixed(2);
                       const totalGross = (pdrVal + riVal).toFixed(2);
+// Vyhľadanie lokácie a klienta pre hornú mikro-hlavičku
+                  const proj = projects.find(p => p.id === v.project_id);
+                  const client = clients.find(c => c.id === proj?.client_id);
+                  const clientName = client?.name || "Neznámy klient";
+                  const locationName = proj?.name || "Neznáma lokácia";
 
-                      return (
-                        <div
-                          key={v.id}
-                          onClick={() => setSelectedVehicleDetail(v)}
-                          className="bg-gray-900 border border-gray-800 hover:border-amber-500/60 p-2.5 rounded-xl flex justify-between items-center cursor-pointer transition-all"
-                        >
-                          <div className="space-y-0.5">
-                            <div className="font-bold text-gray-200 flex items-center gap-1.5">
-                              <span>{v.brand} {v.model}</span>
-                              {isCoop && (
-                                <span className="bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[9px] px-1.5 py-0.5 rounded font-black flex items-center gap-1">
-                                  <span>🤝</span> {t.coopBadge} ({vehicleCoops.length})
-                                </span>
-                              )}
-                              {v.status === "pending_price" && (
-                                <span className="bg-red-500/20 text-red-400 border border-red-500/40 text-[9px] px-1 rounded font-bold">Cena ?</span>
-                              )}
-                            </div>
-                            <div className="text-[10px] font-mono text-gray-400">{v.ecv} | {v.vin.substring(0, 10)}...</div>
-                            <div className="text-[9px] text-gray-500">{new Date(v.created_at).toLocaleDateString()} | {v.internal_record_no}</div>
-                          </div>
+                  return (
+                    <div
+                      key={v.id}
+                      onClick={() => setSelectedVehicleDetail(v)}
+                      className="bg-gray-900 border border-gray-800 hover:border-amber-500/60 p-2.5 rounded-xl flex justify-between items-center cursor-pointer"
+                    >
+                      <div className="space-y-0.5 min-w-0 flex-1 pr-2">
+                        {/* Horná mikro-hlavička: Klient • Lokácia */}
+                        <div className="text-[10px] text-gray-400 font-medium truncate flex items-center gap-1" title={`${clientName} • ${locationName}`}>
+                          <span className="truncate">{clientName}</span>
+                          <span className="text-gray-600 font-bold">•</span>
+                          <span className="truncate text-gray-300">{locationName}</span>
+                        </div>
 
-                          <div className="text-right space-y-0.5">
+                        {/* Hlavný riadok: Model vozidla a prípadné štítky */}
+                        <div className="font-bold text-gray-100 flex items-center gap-1.5 truncate">
+                          <span className="truncate">{v.brand} {v.model}</span>
+                          {isCoop && (
+                            <span className="bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[9px] px-1.5 py-0.5 rounded font-black flex items-center gap-1 shrink-0">
+                              <span>🤝</span> {t.coopBadge} ({vehicleCoops.length})
+                            </span>
+                          )}
+                          {v.status === "pending_price" && (
+                            <span className="bg-red-500/20 text-red-400 text-[9px] px-1.5 py-0.5 rounded font-bold shrink-0">
+                              Cena ?
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Spodné riadky: ŠPZ, VIN a zákazka */}
+                        <div className="text-[10px] font-mono text-gray-400">{v.ecv} | {v.vin ? v.vin.substring(0, 10) + "..." : "---"}</div>
+                        <div className="text-[9px] text-gray-500">{new Date(v.created_at).toLocaleDateString()} | {v.internal_record_no}</div>
+                      </div>
                             {v.status === "pending_price" ? (
                               <div className="font-black text-red-400 text-xs">Cena neznáma</div>
                             ) : (
