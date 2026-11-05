@@ -586,6 +586,41 @@
   return clean.slice(0, 17);
 };
 
+    // ---- Súkromné fotky: v DB je len cesta k súboru, zobrazenie cez dočasný podpísaný odkaz ----
+    const photoUrlCache = new Map();
+    const toPhotoPath = (v) => {
+      if (!v) return null;
+      const str = String(v);
+      const m = str.match(/\/vehicle-photos\/(.+?)(?:\?.*)?$/); // starý verejný odkaz -> cesta
+      return m ? decodeURIComponent(m[1]) : str;
+    };
+    function SignedPhoto({ value, alt }) {
+      const path = toPhotoPath(value);
+      const [url, setUrl] = useState(null);
+      useEffect(() => {
+        let alive = true;
+        if (!path) { setUrl(null); return; }
+        const hit = photoUrlCache.get(path);
+        if (hit && hit.exp > Date.now()) { setUrl(hit.url); return; }
+        supabase.storage.from("vehicle-photos").createSignedUrl(path, 3600).then(({ data, error }) => {
+          if (!alive) return;
+          if (error || !data) { setUrl(null); return; }
+          photoUrlCache.set(path, { url: data.signedUrl, exp: Date.now() + 50 * 60 * 1000 });
+          setUrl(data.signedUrl);
+        });
+        return () => { alive = false; };
+      }, [path]);
+      const box = "aspect-video bg-gray-900 rounded border border-gray-800 overflow-hidden";
+      if (!url) {
+        return <div className={box + " flex items-center justify-center text-gray-600 text-[10px]"}><i className="fa-solid fa-image"></i></div>;
+      }
+      return (
+        <a href={url} target="_blank" rel="noreferrer" className={box}>
+          <img src={url} alt={alt} className="w-full h-full object-cover" />
+        </a>
+      );
+    }
+
     function CountryPicker({ selectedCode, onSelect, lang, placeholder }) {
       const [isOpen, setIsOpen] = useState(false);
       const [searchQuery, setSearchQuery] = useState("");
@@ -1390,8 +1425,7 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
           upsert: true
         });
         if (error) throw error;
-        const { data } = supabase.storage.from("vehicle-photos").getPublicUrl(path);
-        return data.publicUrl;
+        return path; // bucket je súkromný, odkaz sa generuje pri zobrazení
       };
 
       const handleSaveVehicle = async (e) => {
@@ -1466,8 +1500,9 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
             price: isPricePending ? 0 : (Number(price) || 0),
             is_price_pending: isPricePending,
             aw_count: (currentSelectedProject?.pricing_mode === "free" && awCount) ? parseFloat(awCount) : null,
-            tech_pdr_percent: effectivePdrPercent,
-            tech_ri_percent: effectiveRiPercent,
+            // ukladáme ZÁKLADNÉ % (bez CO-OP delenia); podiel CO-OP je v vehicle_coops.split_fraction
+            tech_pdr_percent: basePdrPercent,
+            tech_ri_percent: baseRiPercent,
             note: damageNote.trim() || null,
             note_created_at: damageNote.trim() ? new Date().toISOString() : null,
             photo_vin_url: vinUrl,
@@ -1493,10 +1528,10 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
 
          selectedCoopPartners.forEach(p => {
             // Zistenie skutočného ID a emailu partnera
-            const partnerTechId = p.partnerId || (p.sender_id === currentUser.id ? p.recipient_id : p.sender_id);
-            const partnerTechEmail = p.partnerEmail || (p.sender_id === currentUser.id ? p.recipient_email : p.sender_email);
+            const partnerTechId = p.partnerId || (p.sender_id === currentUser.id ? p.recipient_id : p.sender_id) || null;
+            const partnerTechEmail = (p.partnerEmail || (p.sender_id === currentUser.id ? p.recipient_email : p.sender_email) || "").toLowerCase();
 
-            if (partnerTechId) {
+            if (partnerTechId || partnerTechEmail) {
               coopInserts.push({
                 vehicle_id: insertedVehicle.id,
                 technician_id: partnerTechId,
@@ -1508,14 +1543,24 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
           });
       
 
-        const { error: coopInsertErr } = await supabase.from("vehicle_coops").insert(coopInserts);
-          if (coopInsertErr) {
-            console.error("Chyba zápisu kooperácie:", coopInsertErr);
-          }
+        const { data: savedCoops, error: coopInsertErr } = await supabase
+            .from("vehicle_coops")
+            .insert(coopInserts)
+            .select();
 
           setVehicles(prev => [insertedVehicle, ...prev]);
-          setCoopRecords(prev => [...coopInserts, ...prev]);
-          alert(t.savedSuccessMsg);
+
+          if (coopInsertErr) {
+            // Kooperácia sa NEULOŽILA (typicky RLS politika v Supabase) -> nehlásiť falošný úspech
+            console.error("Chyba zápisu kooperácie:", coopInsertErr);
+            alert(
+              "Auto bolo uložené, ALE spolupráca (CO-OP) sa nezapísala, preto ju kolega neuvidí.\n\nDôvod: " +
+              coopInsertErr.message
+            );
+          } else {
+            setCoopRecords(prev => [...(savedCoops || coopInserts), ...prev]);
+            alert(t.savedSuccessMsg);
+          }
 
           setVin("");
           setEcv("");
@@ -1543,6 +1588,16 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
         }
       };
 
+     // Riadok kooperácie patrí prihlásenému technikovi: podľa ID ALEBO podľa emailu (email = identita)
+     const isMyCoopRow = (c) => {
+        if (!c || !currentUser) return false;
+        const myEmail = (currentUser.email || "").toLowerCase();
+        return (
+          (c.technician_id && c.technician_id === currentUser.id) ||
+          (!!c.technician_email && c.technician_email.toLowerCase() === myEmail)
+        );
+      };
+
      const filteredVehicles = useMemo(() => {
         if (!currentUser) return [];
         const myEmail = (currentUser.email || "").toLowerCase();
@@ -1550,12 +1605,7 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
         return vehicles.filter(v => {
           // Vidím len svoje autá alebo autá, kde som v kooperácii
           const isCreator = v.created_by === currentUser.id;
-          const isInCoop = coopRecords.some(c => 
-            String(c.vehicle_id) === String(v.id) && (
-              c.technician_id === currentUser.id || 
-              (c.technician_email && c.technician_email.toLowerCase() === myEmail)
-            )
-          );
+          const isInCoop = coopRecords.some(c => String(c.vehicle_id) === String(v.id) && isMyCoopRow(c));
 
           if (!isCreator && !isInCoop) return false;
           if (repClientFilter !== "all") {
@@ -1605,7 +1655,7 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
           const ri = parseFloat(v.ri_price) || 0;
 
           // Zistenie môjho podielu na tomto konkrétnom aute
-          const coop = coopRecords.find(c => c.vehicle_id === v.id && c.technician_id === currentUser?.id);
+          const coop = coopRecords.find(c => String(c.vehicle_id) === String(v.id) && isMyCoopRow(c));
           const fraction = coop ? coop.split_fraction : 1;
           const myVehicleShare = (pdr * ((v.tech_pdr_percent || 100) / 100) * fraction) + 
                                  (ri * ((v.tech_ri_percent || 100) / 100) * fraction);
@@ -1629,7 +1679,7 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
       const exportCsv = () => {
         const headers = ["Internal No", "Client Calc No", "Date", "VIN", "Plate", "Make", "Model", "Color", "PDR Price", "R&I Price", "My Share", "Currency", "Status"];
         const rows = filteredVehicles.map(v => {
-          const coop = coopRecords.find(c => c.vehicle_id === v.id && c.technician_id === currentUser?.id);
+          const coop = coopRecords.find(c => String(c.vehicle_id) === String(v.id) && isMyCoopRow(c));
           const fraction = coop ? coop.split_fraction : 1;
           const pdr = parseFloat(v.price) || 0;
           const ri = parseFloat(v.ri_price) || 0;
@@ -1676,7 +1726,7 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
         doc.text(`Vehicles: ${kpiStats.count} | Total Gross: ${currSymbol}${kpiStats.gross} | My Share: ${currSymbol}${kpiStats.myShare}`, 14, 26);
 
         const tableRows = filteredVehicles.map(v => {
-          const coop = coopRecords.find(c => c.vehicle_id === v.id && c.technician_id === currentUser?.id);
+          const coop = coopRecords.find(c => String(c.vehicle_id) === String(v.id) && isMyCoopRow(c));
           const fraction = coop ? coop.split_fraction : 1;
           const pdr = parseFloat(v.price) || 0;
           const ri = parseFloat(v.ri_price) || 0;
@@ -1983,7 +2033,7 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
             address: newClientAddress,
             city: newClientCity,
             postal_code: newClientPostalCode,
-            country: newClientCountry,
+            country_code: newClientCountry,
             contact_person: newClientContactPerson,
             phone: newClientPhone,
             ico: newClientIco,
@@ -2019,7 +2069,7 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
             address: newProjectAddress,
             city: newProjectCity,
             postal_code: newProjectPostalCode,
-            country: newProjectCountry,
+            country_code: newProjectCountry,
             contact_person: newProjectContactPerson,
             phone: newProjectPhone,
             pricing_mode: newProjectPricingMode,
@@ -2058,7 +2108,7 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
               address: sheetEditData.address,
               city: sheetEditData.city,
               postal_code: sheetEditData.postal_code,
-              country: sheetEditData.country,
+              country_code: sheetEditData.country_code,
               contact_person: sheetEditData.contact_person,
               phone: sheetEditData.phone,
               ico: sheetEditData.ico,
@@ -2073,7 +2123,7 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
               address: sheetEditData.address,
               city: sheetEditData.city,
               postal_code: sheetEditData.postal_code,
-              country: sheetEditData.country,
+              country_code: sheetEditData.country_code,
               contact_person: sheetEditData.contact_person,
               phone: sheetEditData.phone,
               pricing_mode: sheetEditData.pricing_mode,
@@ -3561,10 +3611,7 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
                       const myEmail = (currentUser?.email || "").toLowerCase();
                       const vehicleCoops = coopRecords.filter(c => String(c.vehicle_id) === String(v.id));
                       const isCoop = vehicleCoops.length > 1;
-                      const myCoop = vehicleCoops.find(c => 
-                        c.technician_id === currentUser?.id || 
-                        (c.technician_email && c.technician_email.toLowerCase() === myEmail)
-                      );
+                      const myCoop = vehicleCoops.find(isMyCoopRow);
                       const fraction = myCoop ? myCoop.split_fraction : 1;
 
                       const pdrVal = parseFloat(v.price) || 0;
@@ -3842,7 +3889,7 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
 
                 {/* Rozpad technikov zapojených do kooperácie */}
                 {(() => {
-                  const coops = coopRecords.filter(c => c.vehicle_id === selectedVehicleDetail.id);
+                  const coops = coopRecords.filter(c => String(c.vehicle_id) === String(selectedVehicleDetail.id));
                   if (coops.length === 0) return null;
                   return (
                     <div className="bg-gray-900 border border-gray-800 rounded-xl p-2.5 space-y-1.5">
@@ -3854,7 +3901,7 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
                           const pdr = parseFloat(selectedVehicleDetail.price) || 0;
                           const ri = parseFloat(selectedVehicleDetail.ri_price) || 0;
                           const techShare = (pdr * ((selectedVehicleDetail.tech_pdr_percent || 100) / 100) * c.split_fraction + ri * ((selectedVehicleDetail.tech_ri_percent || 100) / 100) * c.split_fraction).toFixed(2);
-                          const isMe = c.technician_id === currentUser?.id;
+                          const isMe = isMyCoopRow(c);
                           return (
                             <div key={i} className={`p-1.5 rounded flex justify-between items-center text-[10px] ${isMe ? "bg-amber-500/20 text-amber-300 font-bold" : "bg-gray-950 text-gray-300"}`}>
                               <span className="truncate">{c.technician_email}</span>
@@ -3894,19 +3941,13 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
                 {/* Náhľady fotiek auta */}
                 <div className="grid grid-cols-3 gap-1.5 pt-1">
                   {selectedVehicleDetail.photo_vin_url && (
-                    <a href={selectedVehicleDetail.photo_vin_url} target="_blank" rel="noreferrer" className="aspect-video bg-gray-900 rounded border border-gray-800 overflow-hidden">
-                      <img src={selectedVehicleDetail.photo_vin_url} alt="VIN" className="w-full h-full object-cover" />
-                    </a>
+                    <SignedPhoto value={selectedVehicleDetail.photo_vin_url} alt="VIN" />
                   )}
                   {selectedVehicleDetail.photo_rear_url && (
-                    <a href={selectedVehicleDetail.photo_rear_url} target="_blank" rel="noreferrer" className="aspect-video bg-gray-900 rounded border border-gray-800 overflow-hidden">
-                      <img src={selectedVehicleDetail.photo_rear_url} alt="Rear" className="w-full h-full object-cover" />
-                    </a>
+                    <SignedPhoto value={selectedVehicleDetail.photo_rear_url} alt="Rear" />
                   )}
                   {selectedVehicleDetail.photo_sheet_url && (
-                    <a href={selectedVehicleDetail.photo_sheet_url} target="_blank" rel="noreferrer" className="aspect-video bg-gray-900 rounded border border-gray-800 overflow-hidden">
-                      <img src={selectedVehicleDetail.photo_sheet_url} alt="Sheet" className="w-full h-full object-cover" />
-                    </a>
+                    <SignedPhoto value={selectedVehicleDetail.photo_sheet_url} alt="Sheet" />
                   )}
                 </div>
 
@@ -3916,9 +3957,7 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
                     <div className="text-[10px] text-gray-400 font-bold uppercase">{t.damagePhotosCount} ({selectedVehicleDetail.damage_photos.length}):</div>
                     <div className="grid grid-cols-3 gap-1.5">
                       {selectedVehicleDetail.damage_photos.map((dUrl, idx) => (
-                        <a key={idx} href={dUrl} target="_blank" rel="noreferrer" className="aspect-video bg-gray-900 rounded border border-gray-800 overflow-hidden">
-                          <img src={dUrl} alt={`Dmg ${idx}`} className="w-full h-full object-cover" />
-                        </a>
+                        <SignedPhoto key={idx} value={dUrl} alt={`Dmg ${idx}`} />
                       ))}
                     </div>
                   </div>
@@ -4010,8 +4049,8 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
                       />
                     </div>
                     <CountryPicker
-                      selectedCode={sheetEditData.country || "DE"}
-                      onSelect={c => setSheetEditData({ ...sheetEditData, country: c.code })}
+                      selectedCode={sheetEditData.country_code || "DE"}
+                      onSelect={c => setSheetEditData({ ...sheetEditData, country_code: c.code })}
                       lang={lang}
                       placeholder={t.countryPlaceholder}
                     />
