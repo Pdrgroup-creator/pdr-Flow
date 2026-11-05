@@ -1298,10 +1298,14 @@ const [sentCoopInvites, setSentCoopInvites] = useState([]);
         return 100;
       }, [currentSelectedProject, currentSelectedClient]);
 
+      const mgrJobOwnerId = (currentSelectedProject?.created_by && currentSelectedProject.created_by !== currentUser?.id) ? currentSelectedProject.created_by : null;
+      const visibleCoopPartners = (coopPartners || []).filter(p => !mgrJobOwnerId || (p.partnerId || (p.sender_id === currentUser?.id ? p.recipient_id : p.sender_id)) !== mgrJobOwnerId);
+      const activeCoopPartners = selectedCoopPartners.filter(p => visibleCoopPartners.some(v => v.id === p.id));
+
       const coopSplitFraction = useMemo(() => {
-        const totalTechs = 1 + selectedCoopPartners.length;
+        const totalTechs = 1 + activeCoopPartners.length;
         return 1 / totalTechs;
-      }, [selectedCoopPartners]);
+      }, [activeCoopPartners.length]);
 
       const effectivePdrPercent = useMemo(() => {
         return (basePdrPercent * coopSplitFraction);
@@ -1656,7 +1660,7 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
             }
           ];
 
-         selectedCoopPartners.forEach(p => {
+         activeCoopPartners.forEach(p => {
             // Zistenie skutočného ID a emailu partnera
             const partnerTechId = p.partnerId || (p.sender_id === currentUser.id ? p.recipient_id : p.sender_id) || null;
             const partnerTechEmail = (p.partnerEmail || (p.sender_id === currentUser.id ? p.recipient_email : p.sender_email) || "").toLowerCase();
@@ -2991,7 +2995,7 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
                     </div>
 
          {/* VÝBER SPOLUPRACOVNÍKOV NA TOMTO AUTE */}
-              {coopPartners && coopPartners.length > 0 && (
+              {visibleCoopPartners.length > 0 && (
                 <div className="bg-gray-900/80 p-2 rounded-xl border border-gray-800 space-y-1.5 my-2">
                   <div className="flex justify-between items-center text-[10px] text-gray-400 font-bold uppercase tracking-wide">
                     <span className="flex items-center gap-1.5">
@@ -2999,11 +3003,11 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
                       Spolupráca na zákazke:
                     </span>
                     <span className="text-[9px] text-gray-500 font-normal">
-                      {selectedCoopPartners.length === 0 ? "Iba ja (100%)" : `Rovným dielom (${selectedCoopPartners.length + 1} technici)`}
+                      {activeCoopPartners.length === 0 ? "Iba ja (100%)" : `Rovným dielom (${activeCoopPartners.length + 1} technici)`}
                     </span>
                   </div>
                   <div className="flex flex-wrap gap-1.5 pt-0.5">
-                    {coopPartners.map(p => {
+                    {visibleCoopPartners.map(p => {
                       const fullEmail = p.partnerEmail || p.recipient_email || "";
                       const shortName = fullEmail.split("@")[0];
                       const isSelected = selectedCoopPartners.some(sp => sp.id === p.id);
