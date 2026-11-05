@@ -1083,6 +1083,83 @@ const [sentCoopInvites, setSentCoopInvites] = useState([]);
         return pdr * ((v.tech_pdr_percent || 100) / 100) * (1 - cp / 100) * fraction + ri * ((v.tech_ri_percent || 100) / 100) * (1 - cr / 100) * fraction;
       };
 
+      // ===== Manažérsky pohľad (Technici / Reporty) =====
+      const [mgrSub, setMgrSub] = useState("techs");
+      const [mgrFClient, setMgrFClient] = useState("");
+      const [mgrFTech, setMgrFTech] = useState("");
+      const [mgrFPeriod, setMgrFPeriod] = useState("all");
+      const [mgrQ, setMgrQ] = useState("");
+      const [mgrOpenTech, setMgrOpenTech] = useState(null);
+      const fmtEur = (n) => "€" + (Number(n) || 0).toFixed(2);
+
+      const mgrVehStats = (v) => {
+        const pdr = parseFloat(v.price) || 0, ri = parseFloat(v.ri_price) || 0;
+        const rows = coopRecords.filter(c => String(c.vehicle_id) === String(v.id));
+        const list = rows.length ? rows : [{ technician_id: v.created_by, technician_email: "", split_fraction: 1 }];
+        let payout = 0, comm = 0;
+        const per = [];
+        list.forEach(c => {
+          const f = parseFloat(c.split_fraction) || 1;
+          const cm = commOf(v.id, c.technician_id);
+          const cp = cm ? (parseFloat(cm.commission_pdr) || 0) : 0;
+          const cr = cm ? (parseFloat(cm.commission_ri) || 0) : 0;
+          const bp = pdr * ((v.tech_pdr_percent || 100) / 100) * f;
+          const br = ri * ((v.tech_ri_percent || 100) / 100) * f;
+          const cmm = bp * cp / 100 + br * cr / 100;
+          per.push({ id: c.technician_id, email: c.technician_email, payout: bp + br - cmm, comm: cmm });
+          payout += bp + br - cmm;
+          comm += cmm;
+        });
+        return { gross: pdr + ri, payout, comm, per };
+      };
+
+      const mgrTeam = teamRows.filter(r => r.manager_id === currentUser?.id && r.status === "accepted" && r.member_id);
+      const mgrTechName = (id) => {
+        const r = mgrTeam.find(x => x.member_id === id);
+        return r ? String(r.member_email || "").split("@")[0] : "";
+      };
+
+      const mgrFiltered = mgrVehicles.filter(v => {
+        const proj = projects.find(p => p.id === v.project_id);
+        if (mgrFClient && (!proj || proj.client_id !== mgrFClient)) return false;
+        if (mgrFTech && v.created_by !== mgrFTech && !coopRecords.some(c => String(c.vehicle_id) === String(v.id) && String(c.technician_id) === mgrFTech)) return false;
+        if (mgrFPeriod !== "all") {
+          const d = new Date(v.created_at), now = new Date();
+          const m = mgrFPeriod === "month" ? 0 : 1;
+          const ref = new Date(now.getFullYear(), now.getMonth() - m, 1);
+          if (d.getFullYear() !== ref.getFullYear() || d.getMonth() !== ref.getMonth()) return false;
+        }
+        const q = mgrQ.trim().toLowerCase();
+        if (q) {
+          const hay = [v.vin, v.ecv, v.brand, v.model, proj?.name, v.client_calc_no].join(" ").toLowerCase();
+          if (!hay.includes(q)) return false;
+        }
+        return true;
+      });
+
+      const mgrTotals = mgrFiltered.reduce((a, v) => {
+        const s = mgrVehStats(v);
+        a.count += 1; a.gross += s.gross; a.payout += s.payout; a.comm += s.comm;
+        return a;
+      }, { count: 0, gross: 0, payout: 0, comm: 0 });
+
+      const mgrExportCsv = () => {
+        const head = ["Datum", "Klient", "Zakazka", "Auto", "VIN", "SPZ", "Technici", "Obrat", "Vyplata technikov", "Moja provizia"];
+        const rows = mgrFiltered.map(v => {
+          const proj = projects.find(p => p.id === v.project_id);
+          const cl = clients.find(c => c.id === proj?.client_id);
+          const s = mgrVehStats(v);
+          const techs = s.per.map(p => p.email || mgrTechName(p.id)).join(" + ");
+          return [new Date(v.created_at).toLocaleDateString("sk-SK"), cl?.name || "", proj?.name || "", `${v.brand || ""} ${v.model || ""}`.trim(), v.vin || "", v.ecv || "", techs, s.gross.toFixed(2), s.payout.toFixed(2), s.comm.toFixed(2)]
+            .map(x => `"${String(x).replace(/"/g, '""')}"`).join(";");
+        });
+        const blob = new Blob(["﻿" + [head.join(";"), ...rows].join("\n")], { type: "text/csv;charset=utf-8" });
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = "manazer_report.csv";
+        a.click();
+      };
+
       const loadProfileRole = async () => {
         if (!currentUser) return;
         try {
@@ -2639,7 +2716,7 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
           </div>
 
           {/* Navigácia 3 záložiek */}
-          <div className="grid grid-cols-3 border-b border-gray-800 text-center font-bold text-[11px]">
+          <div className={`grid ${effRole === "manager" ? "grid-cols-4" : "grid-cols-3"} border-b border-gray-800 text-center font-bold text-[11px]`}>
             <button
               onClick={() => setActiveTab("vehicles")}
               className={`py-2 border-b-2 flex flex-col items-center justify-center ${activeTab === "vehicles" ? "border-amber-500 text-amber-400 bg-amber-500/10" : "border-transparent text-gray-400 hover:text-gray-200"}`}
@@ -2661,6 +2738,15 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
               <span>{t.tabReports1}</span>
               <span className="text-[9px] font-normal">{t.tabReports2}</span>
             </button>
+            {effRole === "manager" && (
+              <button
+                onClick={() => setActiveTab("manager")}
+                className={`py-2 border-b-2 flex flex-col items-center justify-center ${activeTab === "manager" ? "border-sky-500 text-sky-400 bg-sky-500/10" : "border-transparent text-sky-500/70 hover:text-sky-300"}`}
+              >
+                <span>Manažér</span>
+                <span className="text-[9px] font-normal">Technici / Reporty</span>
+              </button>
+            )}
           </div>
 
           {/* Telo aplikácie */}
@@ -3663,6 +3749,122 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
                     );
                   })}
                 </div>
+              </div>
+            )}
+
+            {/* Záložka Manažér: Technici / Reporty */}
+            {activeTab === "manager" && effRole === "manager" && (
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-1.5">
+                  {[["techs", "Technici"], ["reports", "Reporty"]].map(([k, label]) => (
+                    <button key={k} onClick={() => setMgrSub(k)} className={`py-1.5 rounded-lg text-xs font-bold border ${mgrSub === k ? "bg-sky-600/20 border-sky-500 text-sky-300" : "bg-gray-900 border-gray-800 text-gray-400"}`}>{label}</button>
+                  ))}
+                </div>
+
+                {mgrSub === "techs" && (
+                  <div className="space-y-2">
+                    {mgrTeam.length === 0 && (
+                      <div className="text-xs text-gray-500 text-center py-6">Zatiaľ nemáš v tíme žiadneho technika. Pozvi ho cez ikonu Tím v hlavičke.</div>
+                    )}
+                    {mgrTeam.map(m => {
+                      const mine = mgrVehicles.filter(v => mgrVehStats(v).per.some(p => p.id === m.member_id));
+                      let payout = 0, comm = 0;
+                      const byJob = {};
+                      mine.forEach(v => {
+                        const p = mgrVehStats(v).per.find(x => x.id === m.member_id);
+                        payout += p.payout; comm += p.comm;
+                        const proj = projects.find(pp => pp.id === v.project_id);
+                        const cl = clients.find(c => c.id === proj?.client_id);
+                        const key = v.project_id;
+                        byJob[key] = byJob[key] || { name: `${cl?.name || "?"} • ${proj?.name || "?"}`, n: 0, payout: 0, comm: 0 };
+                        byJob[key].n += 1; byJob[key].payout += p.payout; byJob[key].comm += p.comm;
+                      });
+                      const assigned = assignRows.filter(a => a.technician_id === m.member_id).map(a => projects.find(pp => pp.id === a.project_id)).filter(Boolean);
+                      const open = mgrOpenTech === m.member_id;
+                      return (
+                        <div key={m.id} className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
+                          <button onClick={() => setMgrOpenTech(open ? null : m.member_id)} className="w-full text-left p-2.5 flex items-center justify-between gap-2">
+                            <div className="min-w-0">
+                              <div className="text-sm font-bold text-white truncate">{String(m.member_email).split("@")[0]}</div>
+                              <div className="text-[10px] text-gray-500 truncate">{m.member_email}</div>
+                            </div>
+                            <div className="text-right shrink-0">
+                              <div className="text-[10px] text-gray-400">{mine.length} áut</div>
+                              <div className="text-xs font-black text-sky-400">{fmtEur(comm)}</div>
+                            </div>
+                          </button>
+                          {open && (
+                            <div className="border-t border-gray-800 p-2.5 space-y-2 text-xs">
+                              <div className="grid grid-cols-3 gap-1.5 text-center">
+                                <div className="bg-gray-950 rounded-lg py-1.5"><div className="text-[9px] text-gray-400 uppercase">Opravil</div><div className="font-black text-white">{mine.length}</div></div>
+                                <div className="bg-gray-950 rounded-lg py-1.5"><div className="text-[9px] text-gray-400 uppercase">Jeho výplata</div><div className="font-black text-emerald-400">{fmtEur(payout)}</div></div>
+                                <div className="bg-gray-950 rounded-lg py-1.5"><div className="text-[9px] text-gray-400 uppercase">Zarobil mi</div><div className="font-black text-sky-400">{fmtEur(comm)}</div></div>
+                              </div>
+                              <div>
+                                <div className="text-[10px] text-gray-400 font-bold uppercase mb-1">Priradené zákazky</div>
+                                {assigned.length === 0 ? <div className="text-gray-500">Žiadne</div> : assigned.map(pp => (
+                                  <div key={pp.id} className="text-gray-300">• {clients.find(c => c.id === pp.client_id)?.name || "?"} / {pp.name}</div>
+                                ))}
+                              </div>
+                              <div>
+                                <div className="text-[10px] text-gray-400 font-bold uppercase mb-1">Zárobok podľa zákazky</div>
+                                {Object.values(byJob).length === 0 ? <div className="text-gray-500">Zatiaľ žiadne autá</div> : Object.values(byJob).map((j, i) => (
+                                  <div key={i} className="flex justify-between gap-2 text-gray-300"><span className="truncate">{j.name} ({j.n}×)</span><span className="text-sky-400 font-bold shrink-0">{fmtEur(j.comm)}</span></div>
+                                ))}
+                              </div>
+                              <button onClick={() => { setMgrFTech(m.member_id); setMgrSub("reports"); }} className="w-full py-1.5 rounded-lg bg-sky-600/20 border border-sky-500 text-sky-300 font-bold">Zobraziť jeho autá</button>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {mgrSub === "reports" && (
+                  <div className="space-y-2">
+                    <div className="grid grid-cols-2 gap-1.5">
+                      <select value={mgrFClient} onChange={e => setMgrFClient(e.target.value)} className="bg-gray-900 border border-gray-700 rounded p-1.5 text-xs text-white">
+                        <option value="">Všetci klienti</option>
+                        {clients.filter(c => c.created_by === currentUser.id).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                      </select>
+                      <select value={mgrFTech} onChange={e => setMgrFTech(e.target.value)} className="bg-gray-900 border border-gray-700 rounded p-1.5 text-xs text-white">
+                        <option value="">Všetci technici</option>
+                        {mgrTeam.map(m => <option key={m.id} value={m.member_id}>{String(m.member_email).split("@")[0]}</option>)}
+                      </select>
+                      <select value={mgrFPeriod} onChange={e => setMgrFPeriod(e.target.value)} className="bg-gray-900 border border-gray-700 rounded p-1.5 text-xs text-white">
+                        <option value="all">Celé obdobie</option>
+                        <option value="month">Tento mesiac</option>
+                        <option value="prev">Minulý mesiac</option>
+                      </select>
+                      <input value={mgrQ} onChange={e => setMgrQ(e.target.value)} placeholder="VIN / ŠPZ / zákazka" className="bg-gray-900 border border-gray-700 rounded p-1.5 text-xs text-white" />
+                    </div>
+                    <div className="grid grid-cols-4 gap-1.5 text-center">
+                      <div className="bg-gray-900 border border-gray-800 rounded-xl py-1.5"><div className="text-[9px] text-gray-400 uppercase">Autá</div><div className="text-sm font-black text-white">{mgrTotals.count}</div></div>
+                      <div className="bg-gray-900 border border-gray-800 rounded-xl py-1.5"><div className="text-[9px] text-gray-400 uppercase">Obrat</div><div className="text-sm font-black text-white">{fmtEur(mgrTotals.gross)}</div></div>
+                      <div className="bg-gray-900 border border-gray-800 rounded-xl py-1.5"><div className="text-[9px] text-gray-400 uppercase">Technici</div><div className="text-sm font-black text-emerald-400">{fmtEur(mgrTotals.payout)}</div></div>
+                      <div className="bg-gray-900 border border-gray-800 rounded-xl py-1.5"><div className="text-[9px] text-gray-400 uppercase">Provízia</div><div className="text-sm font-black text-sky-400">{fmtEur(mgrTotals.comm)}</div></div>
+                    </div>
+                    <button onClick={mgrExportCsv} className="w-full py-1.5 rounded-lg bg-gray-800 border border-gray-700 text-xs font-bold text-gray-200">CSV export</button>
+                    {mgrFiltered.length === 0 && <div className="text-xs text-gray-500 text-center py-6">Žiadne autá podľa filtra.</div>}
+                    {mgrFiltered.map(v => {
+                      const proj = projects.find(p => p.id === v.project_id);
+                      const cl = clients.find(c => c.id === proj?.client_id);
+                      const s = mgrVehStats(v);
+                      return (
+                        <div key={v.id} className="bg-gray-900 border border-gray-800 rounded-xl p-2.5 text-xs space-y-0.5">
+                          <div className="flex justify-between gap-2">
+                            <span className="font-bold text-white truncate">{v.brand} {v.model}</span>
+                            <span className="text-sky-400 font-black shrink-0">{fmtEur(s.comm)}</span>
+                          </div>
+                          <div className="text-gray-400 truncate">{cl?.name || "?"} • {proj?.name || "?"}</div>
+                          <div className="text-gray-500 truncate">{v.ecv} | {v.vin} | {new Date(v.created_at).toLocaleDateString("sk-SK")}</div>
+                          <div className="text-gray-400">Obrat {fmtEur(s.gross)} • technik(ci): {s.per.map(p => `${p.email ? String(p.email).split("@")[0] : mgrTechName(p.id)} ${fmtEur(p.payout)}`).join(", ")}</div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             )}
 
