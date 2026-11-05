@@ -888,6 +888,10 @@ const fileToBase64 = (file) => {
       const [teamRows, setTeamRows] = useState([]);
       const [teamInviteEmail, setTeamInviteEmail] = useState("");
       const [teamMsg, setTeamMsg] = useState("");
+      const [clientComm, setClientComm] = useState({});
+      const [assignRows, setAssignRows] = useState([]);
+      const [newClientCommPdr, setNewClientCommPdr] = useState("");
+      const [newClientCommRi, setNewClientCommRi] = useState("");
       const [coopPartners, setCoopPartners] = useState([]);
       const [pendingCoopInvites, setPendingCoopInvites] = useState([]);
       const [newPartnerEmail, setNewPartnerEmail] = useState("");
@@ -1113,6 +1117,51 @@ const [sentCoopInvites, setSentCoopInvites] = useState([]);
         if (error) { setTeamMsg("Chyba: " + error.message); setTimeout(() => setTeamMsg(""), 3500); }
         loadTeam();
       };
+
+      const loadManagerData = async () => {
+        if (!currentUser) return;
+        try {
+          const [cc, pt] = await Promise.all([
+            supabase.from("client_commissions").select("*"),
+            supabase.from("project_technicians").select("*")
+          ]);
+          const m = {};
+          (cc.data || []).forEach(r => { m[r.client_id] = { pdr: r.default_commission_pdr, ri: r.default_commission_ri }; });
+          setClientComm(m);
+          setAssignRows(pt.data || []);
+        } catch (e) { console.warn("Manager data:", e.message); }
+      };
+
+      const clampPct = (v) => Math.min(100, Math.max(0, parseFloat(v) || 0));
+
+      const saveClientCommission = async (clientId, pdr, ri) => {
+        const p = clampPct(pdr), r = clampPct(ri);
+        const { error } = await supabase.from("client_commissions").upsert({ client_id: clientId, default_commission_pdr: p, default_commission_ri: r }, { onConflict: "client_id" });
+        if (error) alert("Provízia sa neuložila: " + error.message);
+        else setClientComm(prev => ({ ...prev, [clientId]: { pdr: p, ri: r } }));
+      };
+
+      const toggleAssign = async (projectId, techId) => {
+        const ex = assignRows.find(a => a.project_id === projectId && a.technician_id === techId);
+        if (ex) {
+          const { error } = await supabase.from("project_technicians").delete().eq("id", ex.id);
+          if (error) alert("Chyba: " + error.message);
+          else setAssignRows(assignRows.filter(a => a.id !== ex.id));
+        } else {
+          const { data, error } = await supabase.from("project_technicians").insert([{ project_id: projectId, technician_id: techId, assigned_by: currentUser.id }]).select();
+          if (error) alert("Chyba: " + error.message);
+          else setAssignRows([...assignRows, ...(data || [])]);
+        }
+      };
+
+      const saveAssignOverride = async (rowId, field, value) => {
+        const val = value === "" ? null : clampPct(value);
+        const { error } = await supabase.from("project_technicians").update({ [field]: val }).eq("id", rowId);
+        if (error) alert("Chyba: " + error.message);
+        else setAssignRows(prev => prev.map(a => a.id === rowId ? { ...a, [field]: val } : a));
+      };
+
+      useEffect(() => { if (effRole === "manager" && currentUser && currentUser.id) loadManagerData(); }, [effRole, currentUser && currentUser.id]);
 
       useEffect(() => {
         if (currentUser && currentUser.id) { loadProfileRole(); loadTeam(); }
@@ -2117,6 +2166,7 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
           const { data, error } = await supabase.from("clients").insert([newClient]).select();
           if (error) throw error;
           setClients([...clients, data[0]]);
+          if (effRole === "manager") { await saveClientCommission(data[0].id, newClientCommPdr, newClientCommRi); setNewClientCommPdr(""); setNewClientCommRi(""); }
           setShowNewClientForm(false);
           setNewClientName("");
           setNewClientAddress("");
@@ -2186,6 +2236,7 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
               default_ri_percent: sheetEditData.default_ri_percent ? parseFloat(sheetEditData.default_ri_percent) : 100
             }).eq("id", activeBottomSheet.data.id);
             if (error) throw error;
+            if (effRole === "manager") await saveClientCommission(activeBottomSheet.data.id, sheetEditData.comm_pdr, sheetEditData.comm_ri);
             setClients(clients.map(c => c.id === activeBottomSheet.data.id ? { ...c, ...sheetEditData } : c));
           } else {
             const { error } = await supabase.from("projects").update({
@@ -3278,6 +3329,18 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
                         />
                       </div>
                     </div>
+                    {effRole === "manager" && (
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="text-[9px] text-sky-400">Provízia manažéra PDR (%)</label>
+                          <input type="number" min="0" max="100" value={newClientCommPdr} onChange={e => setNewClientCommPdr(e.target.value)} placeholder="0" className="w-full bg-gray-950 border border-sky-700 rounded p-1 text-xs text-white font-bold" />
+                        </div>
+                        <div>
+                          <label className="text-[9px] text-sky-400">Provízia manažéra R&I (%)</label>
+                          <input type="number" min="0" max="100" value={newClientCommRi} onChange={e => setNewClientCommRi(e.target.value)} placeholder="0" className="w-full bg-gray-950 border border-sky-700 rounded p-1 text-xs text-white font-bold" />
+                        </div>
+                      </div>
+                    )}
                     <div className="pt-1 border-t border-gray-800 space-y-1.5">
                       <label className="flex items-center gap-1.5 text-xs text-gray-300">
                         <input
@@ -4075,9 +4138,10 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
                   <div className="flex items-center gap-3">
                     <button
                       type="button"
+                      hidden={activeBottomSheet.data.created_by !== currentUser.id}
                       onClick={() => {
                         if (!isEditingSheet) {
-                          setSheetEditData({ ...activeBottomSheet.data });
+                          setSheetEditData({ ...activeBottomSheet.data, comm_pdr: (clientComm[activeBottomSheet.data.id] || {}).pdr ?? 0, comm_ri: (clientComm[activeBottomSheet.data.id] || {}).ri ?? 0 });
                           if (activeBottomSheet.type === "project") {
                             setSheetEditCategories(activeBottomSheet.data.pricing_categories || []);
                           }
@@ -4190,6 +4254,19 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
                         />
                       </div>
                     </div>
+
+                    {activeBottomSheet.type === "client" && effRole === "manager" && (
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="text-[9px] text-sky-400">Provízia manažéra PDR (%)</label>
+                          <input type="number" min="0" max="100" value={sheetEditData.comm_pdr ?? ""} onChange={e => setSheetEditData({ ...sheetEditData, comm_pdr: e.target.value })} className="w-full bg-gray-900 border border-sky-700 rounded p-1 text-xs text-white font-bold" />
+                        </div>
+                        <div>
+                          <label className="text-[9px] text-sky-400">Provízia manažéra R&I (%)</label>
+                          <input type="number" min="0" max="100" value={sheetEditData.comm_ri ?? ""} onChange={e => setSheetEditData({ ...sheetEditData, comm_ri: e.target.value })} className="w-full bg-gray-900 border border-sky-700 rounded p-1 text-xs text-white font-bold" />
+                        </div>
+                      </div>
+                    )}
 
                     {activeBottomSheet.type === "project" && (
                       <div className="space-y-1.5 pt-1 border-t border-gray-800">
@@ -4318,7 +4395,44 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
                       </div>
                     )}
 
-                    {activeBottomSheet.type === "project" && (
+                    {activeBottomSheet.type === "client" && effRole === "manager" && activeBottomSheet.data.created_by === currentUser.id && (
+                      <div className="text-sky-300 font-bold">Provízia manažéra: PDR {(clientComm[activeBottomSheet.data.id] || {}).pdr ?? 0} % | R&I {(clientComm[activeBottomSheet.data.id] || {}).ri ?? 0} %</div>
+                    )}
+
+                    {activeBottomSheet.type === "project" && effRole === "manager" && activeBottomSheet.data.created_by === currentUser.id && (
+                      <div className="pt-2 border-t border-gray-800 space-y-1.5">
+                        <div className="text-[10px] text-sky-400 font-bold uppercase tracking-wide">Technici na zákazke</div>
+                        {teamRows.filter(r => r.manager_id === currentUser.id && r.status === "accepted" && r.member_id).length === 0 && (
+                          <div className="text-gray-500">Najprv pozvite technikov do tímu (ikona Tím).</div>
+                        )}
+                        {teamRows.filter(r => r.manager_id === currentUser.id && r.status === "accepted" && r.member_id).map(m => {
+                          const row = assignRows.find(a => a.project_id === activeBottomSheet.data.id && a.technician_id === m.member_id);
+                          const cc = clientComm[activeBottomSheet.data.client_id] || { pdr: 0, ri: 0 };
+                          return (
+                            <div key={m.id} className="bg-gray-900 rounded-xl border border-gray-800 p-2 space-y-1.5">
+                              <label className="flex items-center gap-2 text-gray-200">
+                                <input type="checkbox" checked={!!row} onChange={() => toggleAssign(activeBottomSheet.data.id, m.member_id)} />
+                                <span className="font-mono truncate">{m.member_email}</span>
+                              </label>
+                              {row && (
+                                <div className="grid grid-cols-2 gap-2">
+                                  <div>
+                                    <label className="text-[9px] text-gray-400">Provízia PDR % (prázdne = {cc.pdr})</label>
+                                    <input key={"p" + row.id + String(row.commission_pdr)} type="number" min="0" max="100" defaultValue={row.commission_pdr ?? ""} onBlur={e => saveAssignOverride(row.id, "commission_pdr", e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded p-1 text-xs text-white font-bold" />
+                                  </div>
+                                  <div>
+                                    <label className="text-[9px] text-gray-400">Provízia R&I % (prázdne = {cc.ri})</label>
+                                    <input key={"r" + row.id + String(row.commission_ri)} type="number" min="0" max="100" defaultValue={row.commission_ri ?? ""} onBlur={e => saveAssignOverride(row.id, "commission_ri", e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded p-1 text-xs text-white font-bold" />
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+
+                    {activeBottomSheet.type === "project" && activeBottomSheet.data.created_by === currentUser.id && (
                       <div className="pt-2 border-t border-gray-800">
                         <button
                           type="button"
