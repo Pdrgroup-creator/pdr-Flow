@@ -1435,6 +1435,9 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
         if (!canCloseRecord) {
           return alert(t.missingAwRateAlert);
         }
+        if (!/^[A-HJ-NPR-Z0-9]{17}$/.test((vin || "").trim().toUpperCase())) {
+          return alert(lang === "SK" ? "Zadajte platný VIN kód (17 znakov, bez písmen I, O, Q)." : (lang === "DE" ? "Bitte eine gültige FIN eingeben (17 Zeichen, ohne I, O, Q)." : "Enter a valid VIN (17 characters, no I, O, Q)."));
+        }
 // Kontrola duplicity VIN pred spustením nahrávania
     const cleanVin = (vin || "").trim().toUpperCase();
     if (cleanVin && cleanVin !== "N/A") {
