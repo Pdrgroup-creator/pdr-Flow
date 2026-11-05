@@ -954,6 +954,7 @@ const [sentCoopInvites, setSentCoopInvites] = useState([]);
       const [repStatusFilter, setRepStatusFilter] = useState("all"); // "all", "open", "closed"
 
       const cameraInputRef = useRef(null);
+      const galleryInputRef = useRef(null);
       const damagePhotoInputRef = useRef(null);
 
       // Stavy skenovania a overovania (Variant 2)
@@ -1870,6 +1871,15 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
         }
       };
 
+      // Nahratie fotky z galérie: berie prvý ešte nespracovaný krok (VIN -> zadok -> kalkulácia)
+      const triggerGalleryScan = () => {
+        setScanStep(!vinPreview ? 1 : (!rearPreview ? 2 : (!sheetPreview ? 3 : 1)));
+        if (galleryInputRef.current) {
+          galleryInputRef.current.value = "";
+          galleryInputRef.current.click();
+        }
+      };
+
       // Spracovanie odfoteného obrázka cez Google Vision
       const handlePhotoCapture = async (e) => {
         const file = e.target.files[0];
@@ -2699,6 +2709,13 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
                     onChange={handlePhotoCapture}
                     className="hidden"
                   />
+                  <input
+                    type="file"
+                    accept="image/*"
+                    ref={galleryInputRef}
+                    onChange={handlePhotoCapture}
+                    className="hidden"
+                  />
 
                   <button
                     type="button"
@@ -2707,6 +2724,15 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
                   >
                     <i className="fa-solid fa-camera text-base"></i>
                     <span>{t.scanBtn}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={triggerGalleryScan}
+                    className="w-full bg-gray-800 hover:bg-gray-700 active:scale-95 text-gray-300 font-bold py-1.5 rounded-lg text-xs border border-gray-700 flex items-center justify-center gap-2 transition-all"
+                  >
+                    <i className="fa-solid fa-image text-sm"></i>
+                    <span>{lang === "SK" ? "Nahrať z galérie" : (lang === "DE" ? "Aus Galerie scannen" : "Scan from gallery")}</span>
                   </button>
 
                   <div className="grid grid-cols-3 gap-1.5 text-center text-[10px] text-gray-400">
