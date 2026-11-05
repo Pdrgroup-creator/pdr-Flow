@@ -1508,10 +1508,13 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
           });
       
 
-         await supabase.from("vehicle_coops").insert(coopInserts);
+        const { error: coopInsertErr } = await supabase.from("vehicle_coops").insert(coopInserts);
+          if (coopInsertErr) {
+            console.error("Chyba zápisu kooperácie:", coopInsertErr);
+          }
 
-          setVehicles([insertedVehicle, ...vehicles]);
-          setCoopRecords(prev => [...coopInserts, ...prev]); // <-- TENTO RIADOK ZABEZPEČÍ OKAMŽITÝ ODZNAK CO-OP
+          setVehicles(prev => [insertedVehicle, ...prev]);
+          setCoopRecords(prev => [...coopInserts, ...prev]);
           alert(t.savedSuccessMsg);
 
           setVin("");
@@ -1540,8 +1543,21 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
         }
       };
 
-      const filteredVehicles = useMemo(() => {
+     const filteredVehicles = useMemo(() => {
+        if (!currentUser) return [];
+        const myEmail = (currentUser.email || "").toLowerCase();
+
         return vehicles.filter(v => {
+          // Vidím len svoje autá alebo autá, kde som v kooperácii
+          const isCreator = v.created_by === currentUser.id;
+          const isInCoop = coopRecords.some(c => 
+            String(c.vehicle_id) === String(v.id) && (
+              c.technician_id === currentUser.id || 
+              (c.technician_email && c.technician_email.toLowerCase() === myEmail)
+            )
+          );
+
+          if (!isCreator && !isInCoop) return false;
           if (repClientFilter !== "all") {
             const clientProjectIds = projects.filter(p => p.client_id === repClientFilter).map(p => p.id);
             if (!clientProjectIds.includes(v.project_id)) return false;
@@ -1578,7 +1594,7 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
           }
           return true;
         });
-      }, [vehicles, projects, repClientFilter, repProjectFilter, repDateRange, repSelectedMonth, repSelectedYear, repSearchQuery, repStatusFilter]);
+      }, [vehicles, projects, repClientFilter, repProjectFilter, repDateRange, repSelectedMonth, repSelectedYear, repSearchQuery, repStatusFilter, currentUser, coopRecords]);
 
       const kpiStats = useMemo(() => {
         let totalMyShare = 0;
@@ -3542,9 +3558,13 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
                     <div className="text-center p-4 text-gray-500 text-xs">{t.noVehicles}</div>
                   ) : (
                     filteredVehicles.map(v => {
-                      const vehicleCoops = coopRecords.filter(c => c.vehicle_id === v.id);
+                      const myEmail = (currentUser?.email || "").toLowerCase();
+                      const vehicleCoops = coopRecords.filter(c => String(c.vehicle_id) === String(v.id));
                       const isCoop = vehicleCoops.length > 1;
-                      const myCoop = vehicleCoops.find(c => c.technician_id === currentUser?.id);
+                      const myCoop = vehicleCoops.find(c => 
+                        c.technician_id === currentUser?.id || 
+                        (c.technician_email && c.technician_email.toLowerCase() === myEmail)
+                      );
                       const fraction = myCoop ? myCoop.split_fraction : 1;
 
                       const pdrVal = parseFloat(v.price) || 0;
