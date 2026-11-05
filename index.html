@@ -1051,7 +1051,12 @@ const [sentCoopInvites, setSentCoopInvites] = useState([]);
           if (pData) setProjects(pData);
 
           const { data: vData } = await supabase.from("vehicles").select("*").order("created_at", { ascending: false });
-          if (vData) setVehicles(vData);
+          if (vData) {
+            const isMgrView = (v) => v.manager_id && v.manager_id === currentUser.id && v.created_by !== currentUser.id;
+            setVehicles(vData.filter(v => !isMgrView(v)));
+            setMgrVehicles(vData.filter(isMgrView));
+          }
+          loadVehComm();
 
           loadPartnerships();
         } catch (e) {
@@ -1060,6 +1065,23 @@ const [sentCoopInvites, setSentCoopInvites] = useState([]);
       };
 
       const effRole = profileRole || (currentUser && currentUser.role) || "solo";
+
+      const [vehComm, setVehComm] = useState([]);
+      const [mgrVehicles, setMgrVehicles] = useState([]);
+      const loadVehComm = async () => {
+        try {
+          const { data } = await supabase.from("vehicle_commissions").select("*");
+          setVehComm(data || []);
+        } catch (e) { console.warn("Commissions:", e.message); }
+      };
+      const commOf = (vehicleId, techId) => vehComm.find(r => String(r.vehicle_id) === String(vehicleId) && String(r.technician_id) === String(techId));
+      const techShareValue = (v, fraction, techId) => {
+        const cm = commOf(v.id, techId);
+        const cp = cm ? (parseFloat(cm.commission_pdr) || 0) : 0;
+        const cr = cm ? (parseFloat(cm.commission_ri) || 0) : 0;
+        const pdr = parseFloat(v.price) || 0, ri = parseFloat(v.ri_price) || 0;
+        return pdr * ((v.tech_pdr_percent || 100) / 100) * (1 - cp / 100) * fraction + ri * ((v.tech_ri_percent || 100) / 100) * (1 - cr / 100) * fraction;
+      };
 
       const loadProfileRole = async () => {
         if (!currentUser) return;
@@ -1658,6 +1680,8 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
 
           setVehicles(prev => [insertedVehicle, ...prev]);
 
+          loadVehComm();
+
           if (coopInsertErr) {
             // Kooperácia sa NEULOŽILA (typicky RLS politika v Supabase) -> nehlásiť falošný úspech
             console.error("Chyba zápisu kooperácie:", coopInsertErr);
@@ -1765,8 +1789,7 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
           // Zistenie môjho podielu na tomto konkrétnom aute
           const coop = coopRecords.find(c => String(c.vehicle_id) === String(v.id) && isMyCoopRow(c));
           const fraction = coop ? coop.split_fraction : 1;
-          const myVehicleShare = (pdr * ((v.tech_pdr_percent || 100) / 100) * fraction) + 
-                                 (ri * ((v.tech_ri_percent || 100) / 100) * fraction);
+          const myVehicleShare = techShareValue(v, fraction, currentUser.id);
 
           // Súčet za všetky autá
           totalMyShare += myVehicleShare;
@@ -1791,7 +1814,7 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
           const fraction = coop ? coop.split_fraction : 1;
           const pdr = parseFloat(v.price) || 0;
           const ri = parseFloat(v.ri_price) || 0;
-          const share = (pdr * ((v.tech_pdr_percent || 100) / 100) * fraction + ri * ((v.tech_ri_percent || 100) / 100) * fraction).toFixed(2);
+          const share = techShareValue(v, fraction, currentUser.id).toFixed(2);
 
           return [
             `"${v.internal_record_no || ''}"`,
@@ -1838,7 +1861,7 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
           const fraction = coop ? coop.split_fraction : 1;
           const pdr = parseFloat(v.price) || 0;
           const ri = parseFloat(v.ri_price) || 0;
-          const share = (pdr * ((v.tech_pdr_percent || 100) / 100) * fraction + ri * ((v.tech_ri_percent || 100) / 100) * fraction).toFixed(2);
+          const share = techShareValue(v, fraction, currentUser.id).toFixed(2);
 
           return [
             v.internal_record_no || "",
@@ -3574,10 +3597,18 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
 
                 {/* Zoznam klientov a lokácií */}
                 <div className="space-y-2">
-                  {clients.map(c => {
+                  {[...clients].sort((a, b) => ((a.created_by === currentUser.id ? 0 : 1) - (b.created_by === currentUser.id ? 0 : 1)) || String(a.created_by).localeCompare(String(b.created_by))).map(c => {
                     const clientProjects = projects.filter(p => p.client_id === c.id && (showArchivedProjects || p.is_active !== false));
+                    const isForeign = c.created_by && c.created_by !== currentUser.id;
+                    const mgrRow = isForeign ? teamRows.find(r => r.manager_id === c.created_by && r.status === "accepted") : null;
                     return (
-                      <div key={c.id} className="bg-gray-900 border border-gray-800 rounded-xl p-2.5 space-y-2">
+                      <div key={c.id} className={`rounded-xl p-2.5 space-y-2 border ${isForeign ? "bg-sky-950/30 border-sky-700/60" : "bg-gray-900 border-gray-800"}`}>
+                        {isForeign && (
+                          <div className="text-[10px] font-bold uppercase tracking-wide text-sky-400 flex items-center gap-1.5">
+                            <i className="fa-solid fa-people-group"></i>
+                            <span>{mgrRow ? "Manažér: " + (mgrRow.manager_email || "") : "Zdieľané od kolegu"}</span>
+                          </div>
+                        )}
                         <div className="flex justify-between items-center">
                           <button
                             type="button"
@@ -3587,6 +3618,7 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
                             <span>{c.name}</span>
                             <i className="fa-solid fa-circle-info text-[10px] text-gray-500"></i>
                           </button>
+                          {!isForeign && (
                           <button
                             type="button"
                             onClick={() => setAddingProjectClientId(c.id)}
@@ -3594,6 +3626,7 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
                           >
                             + {t.addLocationBtn}
                           </button>
+                          )}
                         </div>
 
                         <div className="space-y-1">
@@ -3762,7 +3795,7 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
 
                       const pdrVal = parseFloat(v.price) || 0;
                       const riVal = parseFloat(v.ri_price) || 0;
-                      const myEarned = (pdrVal * ((v.tech_pdr_percent || 100) / 100) * fraction + riVal * ((v.tech_ri_percent || 100) / 100) * fraction).toFixed(2);
+                      const myEarned = techShareValue(v, fraction, currentUser.id).toFixed(2);
                       const totalGross = (pdrVal + riVal).toFixed(2);
 
                       // Zistenie názvu projektu a klienta pre mikro-hlavičku
@@ -4046,7 +4079,7 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
                         {coops.map((c, i) => {
                           const pdr = parseFloat(selectedVehicleDetail.price) || 0;
                           const ri = parseFloat(selectedVehicleDetail.ri_price) || 0;
-                          const techShare = (pdr * ((selectedVehicleDetail.tech_pdr_percent || 100) / 100) * c.split_fraction + ri * ((selectedVehicleDetail.tech_ri_percent || 100) / 100) * c.split_fraction).toFixed(2);
+                          const techShare = (selectedVehicleDetail.manager_id && !commOf(selectedVehicleDetail.id, c.technician_id || "x")) ? "—" : techShareValue(selectedVehicleDetail, c.split_fraction, c.technician_id).toFixed(2);
                           const isMe = isMyCoopRow(c);
                           return (
                             <div key={i} className={`p-1.5 rounded flex justify-between items-center text-[10px] ${isMe ? "bg-amber-500/20 text-amber-300 font-bold" : "bg-gray-950 text-gray-300"}`}>
