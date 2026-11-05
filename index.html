@@ -883,6 +883,11 @@ const fileToBase64 = (file) => {
       const [settingsMsg, setSettingsMsg] = useState("");
 
       const [showCoopModal, setShowCoopModal] = useState(false);
+      const [showTeamModal, setShowTeamModal] = useState(false);
+      const [profileRole, setProfileRole] = useState(null);
+      const [teamRows, setTeamRows] = useState([]);
+      const [teamInviteEmail, setTeamInviteEmail] = useState("");
+      const [teamMsg, setTeamMsg] = useState("");
       const [coopPartners, setCoopPartners] = useState([]);
       const [pendingCoopInvites, setPendingCoopInvites] = useState([]);
       const [newPartnerEmail, setNewPartnerEmail] = useState("");
@@ -1060,6 +1065,59 @@ const [sentCoopInvites, setSentCoopInvites] = useState([]);
           console.error(e);
         }
       };
+
+      const effRole = profileRole || (currentUser && currentUser.role) || "solo";
+
+      const loadProfileRole = async () => {
+        if (!currentUser) return;
+        try {
+          const { data } = await supabase.from("profiles").select("role").eq("id", currentUser.id).maybeSingle();
+          setProfileRole(data && data.role ? data.role : null);
+        } catch (e) { console.warn(e); }
+      };
+
+      const loadTeam = async () => {
+        if (!currentUser) return;
+        try {
+          const { data, error } = await supabase.from("manager_team_members").select("*").order("created_at", { ascending: true });
+          if (error) throw error;
+          setTeamRows(data || []);
+        } catch (e) { console.warn("Team load:", e.message); }
+      };
+
+      const handleInviteTeamMember = async (e) => {
+        e.preventDefault();
+        const em = teamInviteEmail.trim().toLowerCase();
+        if (!em) return;
+        const { error } = await supabase.from("manager_team_members").insert([{ manager_id: currentUser.id, member_email: em }]);
+        if (error) {
+          setTeamMsg(error.code === "23505" ? "Tento technik už je pozvaný." : "Chyba: " + error.message);
+        } else {
+          setTeamMsg("Pozvánka odoslaná.");
+          setTeamInviteEmail("");
+          loadTeam();
+        }
+        setTimeout(() => setTeamMsg(""), 3500);
+      };
+
+      const handleAcceptTeamInvite = async (id) => {
+        const { error } = await supabase.from("manager_team_members").update({ status: "accepted" }).eq("id", id);
+        setTeamMsg(error ? "Chyba: " + error.message : "Pozvánka prijatá.");
+        setTimeout(() => setTeamMsg(""), 3500);
+        loadTeam();
+      };
+
+      const handleRemoveTeamRow = async (id, confirmText) => {
+        if (confirmText && !window.confirm(confirmText)) return;
+        const { error } = await supabase.from("manager_team_members").delete().eq("id", id);
+        if (error) { setTeamMsg("Chyba: " + error.message); setTimeout(() => setTeamMsg(""), 3500); }
+        loadTeam();
+      };
+
+      useEffect(() => {
+        if (currentUser && currentUser.id) { loadProfileRole(); loadTeam(); }
+        else { setProfileRole(null); setTeamRows([]); }
+      }, [currentUser && currentUser.id]);
 
       const loadPartnerships = async () => {
     if (!currentUser) return;
@@ -2457,7 +2515,7 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
               </span>
               <div className="flex items-center gap-1.5 text-[10px] text-gray-400 font-mono pt-0.5">
                 <span className="uppercase text-gray-400">
-                  {currentUser.role === "manager" ? t.roleManagerLabel : t.roleTechLabel}
+                  {effRole === "manager" ? t.roleManagerLabel : t.roleTechLabel}
                 </span>
                 <span className="text-gray-600">|</span>
                 <span className="truncate max-w-[150px]" title={currentUser.email}>
@@ -2474,6 +2532,17 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
               >
                 <i className="fa-solid fa-handshake text-base"></i>
                 {pendingCoopInvites.length > 0 && (
+                  <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full animate-ping"></span>
+                )}
+              </button>
+              <button
+                type="button"
+                onClick={() => { setShowTeamModal(true); loadTeam(); }}
+                className="relative text-sky-400 hover:text-sky-300 p-1"
+                title="Tím"
+              >
+                <i className="fa-solid fa-people-group text-base"></i>
+                {teamRows.some(r => r.status === "pending" && r.manager_id !== currentUser.id) && (
                   <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full animate-ping"></span>
                 )}
               </button>
@@ -4260,6 +4329,82 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
           {/* ========================================================================= */}
           {/* MODÁL SPOLUPRÁCE & PARTNERI (KOOPERÁCIE)                                   */}
           {/* ========================================================================= */}
+          {showTeamModal && (
+            <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+              <div className="w-full max-w-sm bg-gray-950 border border-sky-500/80 rounded-2xl p-4 shadow-2xl space-y-3 text-xs max-h-[90vh] overflow-y-auto">
+                <div className="flex justify-between items-center border-b border-gray-800 pb-2">
+                  <div className="font-bold text-sky-400 flex items-center gap-2">
+                    <i className="fa-solid fa-people-group"></i>
+                    <span>Tím</span>
+                  </div>
+                  <button type="button" onClick={() => setShowTeamModal(false)} className="text-gray-500 hover:text-white">
+                    <i className="fa-solid fa-xmark text-base"></i>
+                  </button>
+                </div>
+
+                {teamMsg && (
+                  <div className="p-2 rounded bg-sky-500/20 text-sky-300 border border-sky-500/40 text-center font-bold">{teamMsg}</div>
+                )}
+
+                {teamRows.filter(r => r.manager_id !== currentUser.id && r.status === "pending").length > 0 && (
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] text-amber-400 font-bold uppercase tracking-wide">Pozvánky do tímu:</label>
+                    {teamRows.filter(r => r.manager_id !== currentUser.id && r.status === "pending").map(r => (
+                      <div key={r.id} className="bg-gray-900 p-2 rounded-xl border border-amber-500/40 flex justify-between items-center gap-2">
+                        <span className="font-mono text-xs text-gray-200 truncate">{r.manager_email || "Manažér"}</span>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <button type="button" onClick={() => handleAcceptTeamInvite(r.id)} className="bg-emerald-600 hover:bg-emerald-500 text-white px-2.5 py-1 rounded-lg text-[10px] font-bold">Prijať</button>
+                          <button type="button" onClick={() => handleRemoveTeamRow(r.id)} className="bg-gray-800 hover:bg-red-950 text-gray-400 hover:text-red-400 px-2 py-1 rounded-lg text-[10px] font-bold border border-gray-700">Odmietnuť</button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {teamRows.filter(r => r.manager_id !== currentUser.id && r.status === "accepted").length > 0 && (
+                  <div className="space-y-1.5 pt-2 border-t border-gray-800">
+                    <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wide">Moji manažéri:</label>
+                    {teamRows.filter(r => r.manager_id !== currentUser.id && r.status === "accepted").map(r => (
+                      <div key={r.id} className="bg-gray-900 p-2 rounded-xl border border-gray-800 flex justify-between items-center gap-2">
+                        <span className="font-mono text-xs text-gray-200 truncate">{r.manager_email || "Manažér"}</span>
+                        <button type="button" onClick={() => handleRemoveTeamRow(r.id, "Opustiť tento tím? Stratíte prístup k jeho zákazkám.")} className="text-gray-500 hover:text-red-400 px-2 py-1 text-[10px] font-bold">Opustiť</button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {effRole === "manager" && (
+                  <div className="space-y-2 pt-2 border-t border-gray-800">
+                    <form onSubmit={handleInviteTeamMember} className="space-y-1.5">
+                      <label className="text-[10px] text-gray-400 font-bold uppercase">Pozvať technika do tímu</label>
+                      <div className="flex gap-1.5">
+                        <input type="email" required value={teamInviteEmail} onChange={e => setTeamInviteEmail(e.target.value)} placeholder="technik@email.com" className="w-full bg-gray-900 border border-gray-700 rounded p-1.5 text-xs text-white" />
+                        <button type="submit" className="bg-sky-500 text-gray-950 px-3 py-1.5 rounded font-bold whitespace-nowrap">Pozvať</button>
+                      </div>
+                    </form>
+                    <label className="text-[10px] text-sky-400 font-bold uppercase tracking-wide">Môj tím:</label>
+                    {teamRows.filter(r => r.manager_id === currentUser.id).length === 0 && (
+                      <div className="text-gray-500 text-center py-2">Zatiaľ žiadni technici.</div>
+                    )}
+                    {teamRows.filter(r => r.manager_id === currentUser.id).map(r => (
+                      <div key={r.id} className="bg-gray-900 p-2 rounded-xl border border-gray-800 flex justify-between items-center gap-2">
+                        <div className="min-w-0">
+                          <div className="font-mono text-xs text-gray-200 truncate">{r.member_email}</div>
+                          <div className={`text-[10px] font-bold ${r.status === "accepted" ? "text-emerald-400" : "text-amber-400"}`}>{r.status === "accepted" ? "V tíme" : "Čaká na prijatie"}</div>
+                        </div>
+                        <button type="button" onClick={() => handleRemoveTeamRow(r.id, "Odstrániť technika z tímu? Zmizne mu aj priradenie k vašim zákazkám.")} className="text-gray-500 hover:text-red-400 px-2 py-1 text-[10px] font-bold">Odstrániť</button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {effRole !== "manager" && teamRows.length === 0 && (
+                  <div className="text-gray-500 text-center py-3">Zatiaľ nie ste v žiadnom tíme. Pozvánku vám pošle manažér na váš e-mail.</div>
+                )}
+              </div>
+            </div>
+          )}
+
           {showCoopModal && (
             <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
               <div className="w-full max-w-sm bg-gray-950 border border-amber-500/80 rounded-2xl p-4 shadow-2xl space-y-3 text-xs">
