@@ -1411,6 +1411,22 @@ const [sentCoopInvites, setSentCoopInvites] = useState([]);
           }
         })();
       }, [mgrJobOwnerId]);
+      // vlastná provízia technika na zákazke manažéra (vidí len svoju)
+      const [myComm, setMyComm] = useState({});
+      useEffect(() => {
+        if (!mgrJobOwnerId || !selectedProjectId || myComm[selectedProjectId]) return;
+        (async () => {
+          try {
+            const { data, error } = await supabase.rpc("pdr_my_commission", { pid: selectedProjectId });
+            if (error) throw error;
+            const r = (data || [])[0];
+            setMyComm(prev => ({ ...prev, [selectedProjectId]: { pdr: r ? (parseFloat(r.c_pdr) || 0) : 0, ri: r ? (parseFloat(r.c_ri) || 0) : 0 } }));
+          } catch (err) {
+            console.warn("My commission:", err.message);
+            setMyComm(prev => ({ ...prev, [selectedProjectId]: { pdr: 0, ri: 0 } }));
+          }
+        })();
+      }, [mgrJobOwnerId, selectedProjectId]);
       // na zákazke manažéra je CO-OP možný len s technikmi z jeho tímu
       const visibleCoopPartners = mgrJobOwnerId ? (teamPeers[mgrJobOwnerId] || []) : (coopPartners || []);
       const activeCoopPartners = selectedCoopPartners.filter(p => visibleCoopPartners.some(v => v.id === p.id));
@@ -1489,8 +1505,9 @@ const [sentCoopInvites, setSentCoopInvites] = useState([]);
         const riP = effectiveRiPercent / 100;
         const pdrVal = parseFloat(price) || 0;
         const riVal = parseFloat(riPrice) || 0;
-        return (pdrVal * pdrP + riVal * riP).toFixed(2);
-      }, [price, riPrice, effectivePdrPercent, effectiveRiPercent]);
+        const mc = (mgrJobOwnerId && myComm[selectedProjectId]) || { pdr: 0, ri: 0 };
+        return (pdrVal * pdrP * (1 - mc.pdr / 100) + riVal * riP * (1 - mc.ri / 100)).toFixed(2);
+      }, [price, riPrice, effectivePdrPercent, effectiveRiPercent, mgrJobOwnerId, myComm, selectedProjectId]);
 
       useEffect(() => {
         if (!selectedClientId) return;
