@@ -1168,6 +1168,46 @@ const [sentCoopInvites, setSentCoopInvites] = useState([]);
         a.click();
       };
 
+      const mgrExportPdf = () => {
+        const { jsPDF } = window.jspdf;
+        const asc = (x) => String(x == null ? "" : x).normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+        doc.setFontSize(14);
+        doc.setFont("helvetica", "bold");
+        doc.text("PDR FlowBoard Pro - Manager Report", 14, 15);
+        doc.setFontSize(9);
+        doc.setFont("helvetica", "normal");
+        const cName = mgrFClient ? (clients.find(c => c.id === mgrFClient)?.name || "") : "all";
+        const tName = mgrFTech ? mgrTechName(mgrFTech) : "all";
+        const per = mgrFPeriod === "month" ? "this month" : (mgrFPeriod === "prev" ? "previous month" : "all time");
+        doc.text(asc("Manager: " + currentUser?.email + " | Generated: " + new Date().toLocaleDateString()), 14, 21);
+        doc.text(asc("Client: " + cName + " | Technician: " + tName + " | Period: " + per), 14, 26);
+        doc.text("Vehicles: " + mgrTotals.count + " | Turnover: " + fmtEur(mgrTotals.gross) + " | Technicians: " + fmtEur(mgrTotals.payout) + " | My commission: " + fmtEur(mgrTotals.comm), 14, 31);
+        const body = mgrFiltered.map(v => {
+          const proj = projects.find(p => p.id === v.project_id);
+          const cl = clients.find(c => c.id === proj?.client_id);
+          const s = mgrVehStats(v);
+          return [
+            new Date(v.created_at).toLocaleDateString(),
+            asc((cl?.name || "") + "\n" + (proj?.name || "")),
+            asc(((v.brand || "") + " " + (v.model || "")).trim() + "\n" + (v.vin || "") + "\n" + (v.ecv || "")),
+            asc(s.per.map(p => (p.email ? String(p.email).split("@")[0] : mgrTechName(p.id)) + " " + fmtEur(p.payout)).join("\n")),
+            fmtEur(s.gross),
+            fmtEur(s.comm)
+          ];
+        });
+        doc.autoTable({
+          startY: 35,
+          head: [["Date", "Client / Job", "Vehicle / VIN / Plate", "Technician payout", "Turnover", "My commission"]],
+          body,
+          theme: "grid",
+          styles: { fontSize: 8, cellPadding: 2, textColor: [30, 41, 59] },
+          headStyles: { fillColor: [14, 165, 233], textColor: [255, 255, 255], fontStyle: "bold" },
+          margin: { left: 14, right: 14 }
+        });
+        doc.save("manager_report_" + Date.now() + ".pdf");
+      };
+
       const loadProfileRole = async () => {
         if (!currentUser) return;
         try {
@@ -3952,7 +3992,10 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
                       <div className="bg-gray-900 border border-gray-800 rounded-xl py-1.5"><div className="text-[9px] text-gray-400 uppercase">Technici</div><div className="text-sm font-black text-emerald-400">{fmtEur(mgrTotals.payout)}</div></div>
                       <div className="bg-gray-900 border border-gray-800 rounded-xl py-1.5"><div className="text-[9px] text-gray-400 uppercase">Provízia</div><div className="text-sm font-black text-sky-400">{fmtEur(mgrTotals.comm)}</div></div>
                     </div>
-                    <button onClick={mgrExportCsv} className="w-full py-1.5 rounded-lg bg-gray-800 border border-gray-700 text-xs font-bold text-gray-200">CSV export</button>
+                    <div className="grid grid-cols-2 gap-1.5">
+                      <button onClick={mgrExportPdf} className="py-1.5 rounded-lg bg-sky-600/20 border border-sky-500 text-xs font-bold text-sky-300">PDF export</button>
+                      <button onClick={mgrExportCsv} className="py-1.5 rounded-lg bg-gray-800 border border-gray-700 text-xs font-bold text-gray-200">CSV export</button>
+                    </div>
                     {mgrFiltered.length === 0 && <div className="text-xs text-gray-500 text-center py-6">Žiadne autá podľa filtra.</div>}
                     {mgrFiltered.map(v => {
                       const proj = projects.find(p => p.id === v.project_id);
