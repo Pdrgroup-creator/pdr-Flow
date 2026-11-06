@@ -1487,7 +1487,7 @@ const [sentCoopInvites, setSentCoopInvites] = useState([]);
         const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
         doc.setFontSize(14);
         doc.setFont("helvetica", "bold");
-        doc.text("PDR FlowBoard Pro - Manager Report", 14, 15);
+        doc.text("PDR FlowBoard - Manager Report", 14, 15);
         doc.setFontSize(9);
         doc.setFont("helvetica", "normal");
         const cName = mgrFClient ? (clients.find(c => c.id === mgrFClient)?.name || "") : "all";
@@ -2470,7 +2470,7 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
 
         doc.setFontSize(14);
         doc.setFont("helvetica", "bold");
-        doc.text("PDR FlowBoard Pro - Work Summary", 14, 15);
+        doc.text("PDR FlowBoard - Work Summary", 14, 15);
 
         doc.setFontSize(9);
         doc.setFont("helvetica", "normal");
@@ -3051,7 +3051,7 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
             {/* Dominantné zväčšené logo bez sivého podtitulku */}
             <div className="text-center py-1">
               <h1 className="text-2xl font-black text-white tracking-wider">
-                PDR <span className="text-amber-500">FlowDesk</span>
+                PDR <span className="text-amber-500">FlowBoard</span>
               </h1>
             </div>
 
@@ -3210,7 +3210,7 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
           <div className={`border-b p-2.5 flex items-center justify-between ${inMgr ? "bg-sky-950/50 border-sky-900/60" : "bg-gray-900/80 border-gray-800"}`}>
             <div className="flex flex-col min-w-0">
               <span className="font-black text-white tracking-wider text-base whitespace-nowrap">
-                PDR <span className={inMgr ? "text-sky-400" : "text-amber-500"}>FlowDesk</span>
+                PDR <span className={inMgr ? "text-sky-400" : "text-amber-500"}>FlowBoard</span>
               </span>
               <div className="flex items-center gap-1.5 text-[10px] text-gray-400 font-mono pt-0.5">
                 <span className="uppercase text-gray-400">
