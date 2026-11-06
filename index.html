@@ -1345,6 +1345,27 @@ const [sentCoopInvites, setSentCoopInvites] = useState([]);
       const handleProjectChange = (pId) => {
         setSelectedProjectId(pId);
         localStorage.setItem("pdr_last_project", pId);
+        rememberRecentProject(pId);
+      };
+
+      // naposledy použité lokality (rýchle bubliny v Intake)
+      const [recentProjectIds, setRecentProjectIds] = useState(() => {
+        try { return JSON.parse(localStorage.getItem("pdr_recent_projects") || "[]"); } catch (e) { return []; }
+      });
+      function rememberRecentProject(pId) {
+        if (!pId) return;
+        setRecentProjectIds(prev => {
+          const next = [pId, ...prev.filter(x => x !== pId)].slice(0, 6);
+          try { localStorage.setItem("pdr_recent_projects", JSON.stringify(next)); } catch (e) {}
+          return next;
+        });
+      }
+      const pickRecentProject = (p) => {
+        setSelectedClientId(p.client_id);
+        localStorage.setItem("pdr_last_client", p.client_id);
+        setSelectedProjectId(p.id);
+        localStorage.setItem("pdr_last_project", p.id);
+        rememberRecentProject(p.id);
       };
 
       const currentSelectedClient = useMemo(() => {
@@ -1376,7 +1397,22 @@ const [sentCoopInvites, setSentCoopInvites] = useState([]);
       }, [currentSelectedProject, currentSelectedClient]);
 
       const mgrJobOwnerId = (currentSelectedProject?.created_by && currentSelectedProject.created_by !== currentUser?.id) ? currentSelectedProject.created_by : null;
-      const visibleCoopPartners = (coopPartners || []).filter(p => !mgrJobOwnerId || (p.partnerId || (p.sender_id === currentUser?.id ? p.recipient_id : p.sender_id)) !== mgrJobOwnerId);
+      const [teamPeers, setTeamPeers] = useState({});
+      useEffect(() => {
+        if (!mgrJobOwnerId || teamPeers[mgrJobOwnerId]) return;
+        (async () => {
+          try {
+            const { data, error } = await supabase.rpc("pdr_team_peers", { mgr: mgrJobOwnerId });
+            if (error) throw error;
+            setTeamPeers(prev => ({ ...prev, [mgrJobOwnerId]: (data || []).map(r => ({ id: "peer:" + r.peer_id, partnerId: r.peer_id, partnerEmail: r.peer_email, recipient_email: r.peer_email })) }));
+          } catch (err) {
+            console.warn("Team peers:", err.message);
+            setTeamPeers(prev => ({ ...prev, [mgrJobOwnerId]: [] }));
+          }
+        })();
+      }, [mgrJobOwnerId]);
+      // na zákazke manažéra je CO-OP možný len s technikmi z jeho tímu
+      const visibleCoopPartners = mgrJobOwnerId ? (teamPeers[mgrJobOwnerId] || []) : (coopPartners || []);
       const activeCoopPartners = selectedCoopPartners.filter(p => visibleCoopPartners.some(v => v.id === p.id));
 
       const coopSplitFraction = useMemo(() => {
@@ -1628,12 +1664,25 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
 
       const uploadSingleFile = async (file, path) => {
         const compressedBlob = await compressImage(file);
-        const { error } = await supabase.storage.from("vehicle-photos").upload(path, compressedBlob, {
-          contentType: "image/jpeg",
-          upsert: true
-        });
-        if (error) throw error;
-        return path; // bucket je súkromný, odkaz sa generuje pri zobrazení
+        // pri slabom signáli skúsime nahrávanie opakovane (upsert, takže opakovanie je bezpečné)
+        let lastErr = null;
+        for (let attempt = 0; attempt < 4; attempt++) {
+          try {
+            const { error } = await supabase.storage.from("vehicle-photos").upload(path, compressedBlob, {
+              contentType: "image/jpeg",
+              upsert: true
+            });
+            if (!error) return path; // bucket je súkromný, odkaz sa generuje pri zobrazení
+            lastErr = error;
+          } catch (netErr) {
+            lastErr = netErr;
+          }
+          if (attempt < 3) {
+            setUploadStatusText((lang === "SK" ? "Slabý signál, opakujem nahrávanie fotky… (" : "Weak signal, retrying upload… (") + (attempt + 1) + "/3)");
+            await new Promise(r => setTimeout(r, 1500 * (attempt + 1)));
+          }
+        }
+        throw lastErr || new Error("Upload failed");
       };
 
       const handleSaveVehicle = async (e) => {
@@ -1688,7 +1737,14 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
 
           const currentYear = new Date().getFullYear();
           const techPrefix = (currentUser.email.split("@")[0].substring(0, 4)).toUpperCase();
-          const internalRecordNo = `${techPrefix}/${currentYear}/${String(vehicles.length + 1).padStart(3, "0")}`;
+          const recPrefix = `${techPrefix}/${currentYear}/`;
+          const maxRecNo = vehicles.reduce((m, v) => {
+            const s = String(v.internal_record_no || "");
+            if (v.created_by !== currentUser.id || !s.startsWith(recPrefix)) return m;
+            const n = parseInt(s.slice(recPrefix.length), 10);
+            return isNaN(n) ? m : Math.max(m, n);
+          }, 0);
+          const internalRecordNo = `${recPrefix}${String(maxRecNo + 1).padStart(3, "0")}`;
 
           const finalStatus = isPricePending ? "pending_price" : (isAwRateMissing ? "pending_rate" : "completed");
           const selectedColorObj = COLOR_PALETTE.find(c => c.id === selectedColorId);
@@ -1793,6 +1849,7 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
           setSheetPreview(null);
           // setSelectedCoopPartners([]);
           loadPartnerships();
+          rememberRecentProject(selectedProjectId);
         } catch (err) {
           alert("Error: " + err.message);
         } finally {
@@ -2767,6 +2824,20 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
                       </button>
                     )}
                   </div>
+                  {recentProjectIds.map(id => projects.find(p => p.id === id && p.is_active !== false)).filter(Boolean).length > 1 && (
+                    <div className="flex flex-wrap gap-1.5 pb-1">
+                      {recentProjectIds.map(id => projects.find(p => p.id === id && p.is_active !== false)).filter(Boolean).slice(0, 5).map(p => {
+                        const cl = clients.find(c => c.id === p.client_id);
+                        const active = p.id === selectedProjectId;
+                        return (
+                          <button key={p.id} type="button" onClick={() => pickRecentProject(p)}
+                            className={`px-2.5 py-1.5 rounded-full text-[11px] font-bold border max-w-[48%] truncate ${active ? "bg-amber-500/20 border-amber-500 text-amber-300" : "bg-gray-900 border-gray-700 text-gray-300"}`}>
+                            {cl ? cl.name + " • " : ""}{p.name}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
                   <select
                     value={selectedClientId}
                     onChange={e => handleClientChange(e.target.value)}
