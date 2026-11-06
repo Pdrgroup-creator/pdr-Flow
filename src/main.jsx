@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
-import ReactDOM from "react-dom";
+import { createRoot } from "react-dom/client";
 import { createClient } from "@supabase/supabase-js";
 
     
@@ -718,6 +718,13 @@ import { createClient } from "@supabase/supabase-js";
         reader.onerror = (err) => reject(err);
       });
     };
+// PDF knižnice sa načítajú až pri exporte (menší štart aplikácie)
+const loadPdfLib = async () => {
+  const [{ jsPDF }, { applyPlugin }] = await Promise.all([import("jspdf"), import("jspdf-autotable")]);
+  applyPlugin(jsPDF);
+  return { jsPDF };
+};
+
 const fileToBase64 = (file) => {
       return new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -938,6 +945,15 @@ const fileToBase64 = (file) => {
       const [showCoopModal, setShowCoopModal] = useState(false);
       const [showTeamModal, setShowTeamModal] = useState(false);
       const [profileRole, setProfileRole] = useState(null);
+      const [nameMap, setNameMap] = useState({});
+      const [myFirst, setMyFirst] = useState("");
+      const [myLast, setMyLast] = useState("");
+      const [nameLoaded, setNameLoaded] = useState(false);
+      const [showNameModal, setShowNameModal] = useState(false);
+      const [nameFirstIn, setNameFirstIn] = useState("");
+      const [nameLastIn, setNameLastIn] = useState("");
+      const [nameSaving, setNameSaving] = useState(false);
+      const [nameErr, setNameErr] = useState("");
       const [teamRows, setTeamRows] = useState([]);
       const [teamInviteEmail, setTeamInviteEmail] = useState("");
       const [teamMsg, setTeamMsg] = useState("");
@@ -1121,7 +1137,7 @@ const [sentCoopInvites, setSentCoopInvites] = useState([]);
             setVehicles(vData.filter(v => !isMgrView(v)));
             setMgrVehicles(vData.filter(isMgrView));
           }
-          loadVehComm(); loadChgMeta();
+          loadVehComm(); loadChgMeta(); loadNames();
 
           loadPartnerships();
         } catch (e) {
@@ -1397,7 +1413,7 @@ const [sentCoopInvites, setSentCoopInvites] = useState([]);
       const mgrTeam = teamRows.filter(r => r.manager_id === currentUser?.id && r.status === "accepted" && r.member_id);
       const mgrTechName = (id) => {
         const r = mgrTeam.find(x => x.member_id === id);
-        return r ? String(r.member_email || "").split("@")[0] : "";
+        return r ? dispName(r.member_email, true) : "";
       };
 
       const mgrRange = () => {
@@ -1453,7 +1469,7 @@ const [sentCoopInvites, setSentCoopInvites] = useState([]);
           const proj = projects.find(p => p.id === v.project_id);
           const cl = clients.find(c => c.id === proj?.client_id);
           const s = mgrVehStats(v);
-          const techs = s.per.map(p => p.email || mgrTechName(p.id)).join(" + ");
+          const techs = s.per.map(p => dispName(p.email) || mgrTechName(p.id)).join(" + ");
           return [new Date(v.created_at).toLocaleDateString("sk-SK"), cl?.name || "", proj?.name || "", `${v.brand || ""} ${v.model || ""}`.trim(), v.vin || "", v.ecv || "", techs, s.gross.toFixed(2), s.payout.toFixed(2), s.comm.toFixed(2)]
             .map(x => `"${String(x).replace(/"/g, '""')}"`).join(";");
         });
@@ -1464,8 +1480,8 @@ const [sentCoopInvites, setSentCoopInvites] = useState([]);
         a.click();
       };
 
-      const mgrExportPdf = () => {
-        const { jsPDF } = window.jspdf;
+      const mgrExportPdf = async () => {
+        const { jsPDF } = await loadPdfLib();
         const asc = (x) => String(x == null ? "" : x).normalize("NFD").replace(/[\u0300-\u036f]/g, "");
         const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
         doc.setFontSize(14);
@@ -1477,7 +1493,7 @@ const [sentCoopInvites, setSentCoopInvites] = useState([]);
         const tName = mgrFTech ? mgrTechName(mgrFTech) : "all";
         const per = ({ all: "all time", today: "today", week: "this week", prevweek: "previous week", "30d": "last 30 days", month: "this month", prev: "previous month", quarter: "this quarter", year: "this year", custom: (mgrFrom || "...") + " - " + (mgrTo || "...") })[mgrFPeriod] || "all time";
         const locName = mgrFProjs.length ? mgrFProjs.map(id => projects.find(p => p.id === id)?.name || "").join(", ") : "all";
-        doc.text(asc("Manager: " + currentUser?.email + " | Generated: " + new Date().toLocaleDateString()), 14, 21);
+        doc.text(asc("Manager: " + (myFullName() || currentUser?.email) + " | Generated: " + new Date().toLocaleDateString()), 14, 21);
         doc.text(asc("Client: " + cName + " | Location: " + locName), 14, 26);
         doc.text(asc("Technician: " + tName + " | Period: " + per), 14, 31);
         doc.text("Vehicles: " + mgrTotals.count + " | Turnover: " + fmtEur(mgrTotals.gross) + " | Technicians: " + fmtEur(mgrTotals.payout) + " | My commission: " + fmtEur(mgrTotals.comm), 14, 36);
@@ -1489,7 +1505,7 @@ const [sentCoopInvites, setSentCoopInvites] = useState([]);
             new Date(v.created_at).toLocaleDateString(),
             asc((cl?.name || "") + "\n" + (proj?.name || "")),
             asc(((v.brand || "") + " " + (v.model || "")).trim() + "\n" + (v.vin || "") + "\n" + (v.ecv || "")),
-            asc(s.per.map(p => (p.email ? String(p.email).split("@")[0] : mgrTechName(p.id)) + " " + fmtEur(p.payout)).join("\n")),
+            asc(s.per.map(p => (p.email ? dispName(p.email, true) : mgrTechName(p.id)) + " " + fmtEur(p.payout)).join("\n")),
             fmtEur(s.gross),
             fmtEur(s.comm)
           ];
@@ -1509,9 +1525,45 @@ const [sentCoopInvites, setSentCoopInvites] = useState([]);
       const loadProfileRole = async () => {
         if (!currentUser) return;
         try {
-          const { data } = await supabase.from("profiles").select("role").eq("id", currentUser.id).maybeSingle();
+          const { data } = await supabase.from("profiles").select("role, first_name, last_name").eq("id", currentUser.id).maybeSingle();
           setProfileRole(data && data.role ? data.role : null);
+          setMyFirst((data && data.first_name) || "");
+          setMyLast((data && data.last_name) || "");
+          if (data) setNameLoaded(true);
         } catch (e) { console.warn(e); }
+      };
+
+      // Mená ľudí, ktorých e-mail už vidíš (server vráti len povolené)
+      const loadNames = async () => {
+        if (!currentUser) return;
+        try {
+          const { data, error } = await supabase.rpc("pdr_names");
+          if (error) throw error;
+          const m = {};
+          (data || []).forEach(r => { if (r.email && r.full_name) m[String(r.email).toLowerCase()] = r.full_name; });
+          setNameMap(m);
+        } catch (e) { console.warn("Names load:", e.message); }
+      };
+      const dispName = (email, short) => {
+        const e = String(email || "").trim();
+        if (!e) return "";
+        const n = nameMap[e.toLowerCase()];
+        if (n) return n;
+        return short ? e.split("@")[0] : e;
+      };
+      const myFullName = () => ((myFirst || "").trim() && (myLast || "").trim()) ? (myFirst.trim() + " " + myLast.trim()) : "";
+      const needName = !!currentUser && nameLoaded && !myFullName();
+      const openNameEdit = () => { setNameFirstIn(myFirst); setNameLastIn(myLast); setNameErr(""); setShowNameModal(true); };
+      const saveName = async () => {
+        const f = nameFirstIn.trim().replace(/\s+/g, " "), l = nameLastIn.trim().replace(/\s+/g, " ");
+        if (f.length < 2 || l.length < 2) { setNameErr("Zadaj meno aj priezvisko (aspoň 2 znaky)."); return; }
+        if (f.length > 40 || l.length > 40) { setNameErr("Meno a priezvisko môžu mať najviac 40 znakov."); return; }
+        if (/[@0-9]/.test(f + l)) { setNameErr("Meno a priezvisko nesmú obsahovať číslice ani e-mail."); return; }
+        setNameSaving(true); setNameErr("");
+        const { error } = await supabase.from("profiles").update({ first_name: f, last_name: l }).eq("id", currentUser.id);
+        setNameSaving(false);
+        if (error) { setNameErr("Nepodarilo sa uložiť: " + error.message); return; }
+        setMyFirst(f); setMyLast(l); setShowNameModal(false); loadNames();
       };
 
       const loadTeam = async () => {
@@ -1598,8 +1650,8 @@ const [sentCoopInvites, setSentCoopInvites] = useState([]);
       useEffect(() => { if (effRole === "manager" && currentUser && currentUser.id) loadManagerData(); }, [effRole, currentUser && currentUser.id]);
 
       useEffect(() => {
-        if (currentUser && currentUser.id) { loadProfileRole(); loadTeam(); }
-        else { setProfileRole(null); setTeamRows([]); }
+        if (currentUser && currentUser.id) { loadProfileRole(); loadTeam(); loadNames(); }
+        else { setProfileRole(null); setTeamRows([]); setNameMap({}); setMyFirst(""); setMyLast(""); setNameLoaded(false); }
       }, [currentUser && currentUser.id]);
 
       const loadPartnerships = async () => {
@@ -2411,8 +2463,8 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
         document.body.removeChild(link);
       };
 
-      const exportPdf = () => {
-        const { jsPDF } = window.jspdf;
+      const exportPdf = async () => {
+        const { jsPDF } = await loadPdfLib();
         const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
 
         doc.setFontSize(14);
@@ -2421,7 +2473,7 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
 
         doc.setFontSize(9);
         doc.setFont("helvetica", "normal");
-        doc.text(`Technician: ${currentUser?.email} | ${t.pdfGenerated}: ${new Date().toLocaleDateString()}`, 14, 21);
+        doc.text(`Technician: ${myFullName() || currentUser?.email} | ${t.pdfGenerated}: ${new Date().toLocaleDateString()}`, 14, 21);
         doc.text(`Vehicles: ${kpiStats.count} | Total Gross: ${currSymbol}${kpiStats.gross} | My Share: ${currSymbol}${kpiStats.myShare}`, 14, 26);
 
         const tableRows = filteredVehicles.filter(v => v.status !== "cancelled").map(v => {
@@ -3165,7 +3217,7 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
                 </span>
                 <span className="text-gray-600">|</span>
                 <span className="truncate max-w-[150px]" title={currentUser.email}>
-                  {currentUser.email.split("@")[0]}
+                  {myFullName() || currentUser.email.split("@")[0]}
                 </span>
               </div>
             </div>
@@ -3669,7 +3721,7 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
                   <div className="flex flex-wrap gap-1.5 pt-0.5">
                     {visibleCoopPartners.map(p => {
                       const fullEmail = p.partnerEmail || p.recipient_email || "";
-                      const shortName = fullEmail.split("@")[0];
+                      const shortName = dispName(fullEmail, true);
                       const isSelected = selectedCoopPartners.some(sp => sp.id === p.id);
 
                       return (
@@ -4371,7 +4423,7 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
                         <div key={m.id} className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
                           <button onClick={() => setMgrOpenTech(open ? null : m.member_id)} className="w-full text-left p-2.5 flex items-center justify-between gap-2">
                             <div className="min-w-0">
-                              <div className="text-sm font-bold text-white truncate">{String(m.member_email).split("@")[0]}</div>
+                              <div className="text-sm font-bold text-white truncate">{dispName(m.member_email, true)}</div>
                               <div className="text-[10px] text-gray-500 truncate">{m.member_email}</div>
                             </div>
                             <div className="text-right shrink-0">
@@ -4416,7 +4468,7 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
                       </select>
                       <select value={mgrFTech} onChange={e => setMgrFTech(e.target.value)} className="bg-gray-900 border border-gray-700 rounded p-1.5 text-xs text-white">
                         <option value="">Všetci technici</option>
-                        {mgrTeam.map(m => <option key={m.id} value={m.member_id}>{String(m.member_email).split("@")[0]}</option>)}
+                        {mgrTeam.map(m => <option key={m.id} value={m.member_id}>{dispName(m.member_email, true)}</option>)}
                       </select>
                       <select value={mgrFPeriod} onChange={e => setMgrFPeriod(e.target.value)} className="bg-gray-900 border border-gray-700 rounded p-1.5 text-xs text-white">
                         <option value="all">Celé obdobie</option>
@@ -4486,7 +4538,7 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
                           </div>
                           <div className="text-gray-400 truncate">{cl?.name || "?"} • {proj?.name || "?"}</div>
                           <div className="text-gray-500 truncate">{v.ecv} | {v.vin} | {new Date(v.created_at).toLocaleDateString("sk-SK")}</div>
-                          <div className="text-gray-400">Obrat {fmtEur(s.gross)} • technik(ci): {s.per.map(p => `${p.email ? String(p.email).split("@")[0] : mgrTechName(p.id)} ${fmtEur(p.payout)}`).join(", ")}</div>
+                          <div className="text-gray-400">Obrat {fmtEur(s.gross)} • technik(ci): {s.per.map(p => `${p.email ? dispName(p.email, true) : mgrTechName(p.id)} ${fmtEur(p.payout)}`).join(", ")}</div>
                           <div className="flex flex-wrap gap-1.5 pt-1.5">
                             <button type="button" onClick={() => openHistory(v)} className="text-[10px] font-bold px-2 py-1 rounded border border-gray-700 text-gray-300 flex items-center gap-1"><i className="fa-solid fa-clock-rotate-left"></i> História</button>
                             {v.status !== "cancelled" && (<button type="button" onClick={() => mgrSetPrice(v)} className="text-[10px] font-bold px-2 py-1 rounded border border-sky-700/60 text-sky-300 flex items-center gap-1"><i className="fa-solid fa-pen"></i> Zmeniť cenu</button>)}
@@ -4741,7 +4793,7 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
                     {histRows.map(r => (
                       <div key={r.id} className="bg-gray-900 border border-gray-800 rounded-lg p-2 space-y-0.5">
                         <div className="flex justify-between gap-2 text-[10px] text-gray-400">
-                          <span className="truncate font-bold text-gray-300">{currentUser && r.changed_by === currentUser.id ? "Ty" : (r.changed_by_email || "?")}</span>
+                          <span className="truncate font-bold text-gray-300">{currentUser && r.changed_by === currentUser.id ? "Ty" : (dispName(r.changed_by_email) || "?")}</span>
                           <span className="shrink-0">{new Date(r.changed_at).toLocaleString("sk-SK")}</span>
                         </div>
                         <div className="text-gray-100 font-semibold">{chgText(r)}</div>
@@ -4961,7 +5013,7 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
                           const isMe = isMyCoopRow(c);
                           return (
                             <div key={i} className={`p-1.5 rounded flex justify-between items-center text-[10px] ${isMe ? "bg-amber-500/20 text-amber-300 font-bold" : "bg-gray-950 text-gray-300"}`}>
-                              <span className="truncate">{c.technician_email}</span>
+                              <span className="truncate">{dispName(c.technician_email)}</span>
                               <span className="font-mono text-emerald-400 font-black">{currSymbol}{techShare}</span>
                             </div>
                           );
@@ -5558,7 +5610,7 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
                       <div key={p.id} className="bg-gray-900 p-2 rounded-xl border border-gray-800 flex justify-between items-center">
                         <div className="flex items-center gap-2">
                           <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                          <span className="font-bold text-gray-200 text-xs">{p.partnerEmail || p.recipient_email}</span>
+                          <span className="font-bold text-gray-200 text-xs">{dispName(p.partnerEmail || p.recipient_email)}</span>
                         </div>
                         <button
                           type="button"
@@ -5571,6 +5623,25 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
                       </div>
                     ))
                   )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {(needName || showNameModal) && (
+            <div className="fixed inset-0 z-[80] bg-black/90 backdrop-blur-sm flex items-center justify-center p-4">
+              <div className="w-full max-w-sm bg-gray-950 border border-amber-500/80 rounded-2xl p-4 shadow-2xl space-y-3 text-xs">
+                <div className="font-bold text-amber-400 flex items-center gap-2 text-sm">
+                  <i className="fa-solid fa-user"></i>
+                  <span>{needName ? "Doplň svoje meno" : "Zmeniť meno a priezvisko"}</span>
+                </div>
+                <div className="text-gray-400">Meno a priezvisko uvidia len ľudia, s ktorými spolupracuješ (CO-OP partneri, manažér, tvoj tím), namiesto e-mailu.</div>
+                <input value={nameFirstIn} onChange={e => setNameFirstIn(e.target.value)} maxLength={40} placeholder="Meno" autoComplete="given-name" className="w-full bg-gray-900 border border-gray-700 rounded-lg p-2 text-white" />
+                <input value={nameLastIn} onChange={e => setNameLastIn(e.target.value)} maxLength={40} placeholder="Priezvisko" autoComplete="family-name" className="w-full bg-gray-900 border border-gray-700 rounded-lg p-2 text-white" />
+                {nameErr && <div className="text-red-400 font-bold">{nameErr}</div>}
+                <div className="flex gap-2">
+                  <button type="button" disabled={nameSaving} onClick={saveName} className="flex-1 py-2 rounded-lg bg-amber-500 text-black font-black disabled:opacity-50">{nameSaving ? "Ukladám..." : "Uložiť"}</button>
+                  {!needName && <button type="button" onClick={() => setShowNameModal(false)} className="px-3 py-2 rounded-lg bg-gray-800 text-gray-300 font-bold">Zrušiť</button>}
                 </div>
               </div>
             </div>
@@ -5601,6 +5672,13 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
                 <div className="space-y-1">
                   <span className="text-gray-400">Prihlásený email:</span>
                   <div className="font-bold text-white font-mono">{currentUser.email}</div>
+                </div>
+                <div className="space-y-1">
+                  <span className="text-gray-400">Meno a priezvisko:</span>
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="font-bold text-white">{myFullName() || "— nezadané —"}</div>
+                    <button type="button" onClick={() => { setShowSettingsModal(false); openNameEdit(); }} className="px-2 py-1 rounded bg-gray-800 hover:bg-gray-700 text-amber-400 font-bold">Zmeniť</button>
+                  </div>
                 </div>
 
                 {/* Voľba meny a jazyka */}
@@ -5660,5 +5738,5 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
       );
     }
 
-    ReactDOM.render(<App />, document.getElementById("root"));
+    createRoot(document.getElementById("root")).render(<App />);
   
