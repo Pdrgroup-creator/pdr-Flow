@@ -1,0 +1,5394 @@
+import React, { useState, useEffect, useMemo, useRef } from "react";
+import ReactDOM from "react-dom";
+import { createClient } from "@supabase/supabase-js";
+
+    
+
+    const SUPABASE_URL = "https://hzmipgjpjhibxmkdadvf.supabase.co";
+    const SUPABASE_KEY = "sb_publishable_5lQPiP19Qy2xwDq6eUXDmQ_MB5IYkHQ";
+    const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    // Zoznam 40 európskych štátov s vlajkami a predvoľbami
+    const EUROPEAN_COUNTRIES = [
+      { code: "DE", flag: "🇩🇪", name: { EN: "Germany", DE: "Deutschland", SK: "Nemecko" }, dial: "+49" },
+      { code: "AT", flag: "🇦🇹", name: { EN: "Austria", DE: "Österreich", SK: "Rakúsko" }, dial: "+43" },
+      { code: "SK", flag: "🇸🇰", name: { EN: "Slovakia", DE: "Slowakei", SK: "Slovensko" }, dial: "+421" },
+      { code: "CZ", flag: "🇨🇿", name: { EN: "Czech Republic", DE: "Tschechien", SK: "Česko" }, dial: "+420" },
+      { code: "NL", flag: "🇳🇱", name: { EN: "Netherlands", DE: "Niederlande", SK: "Holandsko" }, dial: "+31" },
+      { code: "BE", flag: "🇧🇪", name: { EN: "Belgium", DE: "Belgien", SK: "Belgicko" }, dial: "+32" },
+      { code: "FR", flag: "🇫🇷", name: { EN: "France", DE: "Frankreich", SK: "Francúzsko" }, dial: "+33" },
+      { code: "IT", flag: "🇮🇹", name: { EN: "Italy", DE: "Italien", SK: "Taliansko" }, dial: "+39" },
+      { code: "CH", flag: "🇨🇭", name: { EN: "Switzerland", DE: "Schweiz", SK: "Švajčiarsko" }, dial: "+41" },
+      { code: "PL", flag: "🇵🇱", name: { EN: "Poland", DE: "Polen", SK: "Poľsko" }, dial: "+48" },
+      { code: "HU", flag: "🇭🇺", name: { EN: "Hungary", DE: "Ungarn", SK: "Maďarsko" }, dial: "+36" },
+      { code: "ES", flag: "🇪🇸", name: { EN: "Spain", DE: "Spanien", SK: "Španielsko" }, dial: "+34" },
+      { code: "PT", flag: "🇵🇹", name: { EN: "Portugal", DE: "Portugal", SK: "Portugalsko" }, dial: "+351" },
+      { code: "SE", flag: "🇸🇪", name: { EN: "Sweden", DE: "Schweden", SK: "Švédsko" }, dial: "+46" },
+      { code: "NO", flag: "🇳🇴", name: { EN: "Norway", DE: "Norwegen", SK: "Nórsko" }, dial: "+47" },
+      { code: "DK", flag: "🇩🇰", name: { EN: "Denmark", DE: "Dänemark", SK: "Dánsko" }, dial: "+45" },
+      { code: "FI", flag: "🇫🇮", name: { EN: "Finland", DE: "Finnland", SK: "Fínsko" }, dial: "+358" },
+      { code: "GB", flag: "🇬🇧", name: { EN: "United Kingdom", DE: "Großbritannien", SK: "Veľká Británia" }, dial: "+44" },
+      { code: "IE", flag: "🇮🇪", name: { EN: "Ireland", DE: "Irland", SK: "Írsko" }, dial: "+353" },
+      { code: "HR", flag: "🇭🇷", name: { EN: "Croatia", DE: "Kroatien", SK: "Chorvátsko" }, dial: "+385" },
+      { code: "SI", flag: "🇸🇮", name: { EN: "Slovenia", DE: "Slowenien", SK: "Slovinsko" }, dial: "+386" },
+      { code: "RO", flag: "🇷🇴", name: { EN: "Romania", DE: "Rumänien", SK: "Rumunsko" }, dial: "+40" },
+      { code: "BG", flag: "🇧🇬", name: { EN: "Bulgaria", DE: "Bulgarien", SK: "Bulharsko" }, dial: "+359" },
+      { code: "GR", flag: "🇬🇷", name: { EN: "Greece", DE: "Griechenland", SK: "Grécko" }, dial: "+30" },
+      { code: "LU", flag: "🇱🇺", name: { EN: "Luxembourg", DE: "Luxemburg", SK: "Luxembursko" }, dial: "+352" },
+      { code: "LI", flag: "🇱🇮", name: { EN: "Liechtenstein", DE: "Liechtenstein", SK: "Lichtenštajnsko" }, dial: "+423" },
+      { code: "EE", flag: "🇪🇪", name: { EN: "Estonia", DE: "Estland", SK: "Estónsko" }, dial: "+372" },
+      { code: "LV", flag: "🇱🇻", name: { EN: "Latvia", DE: "Lettland", SK: "Lotyšsko" }, dial: "+371" },
+      { code: "LT", flag: "🇱🇹", name: { EN: "Lithuania", DE: "Litauen", SK: "Litva" }, dial: "+370" },
+      { code: "RS", flag: "🇷🇸", name: { EN: "Serbia", DE: "Serbien", SK: "Srbsko" }, dial: "+381" },
+      { code: "BA", flag: "🇧🇦", name: { EN: "Bosnia & Herz.", DE: "Bosnien & Herz.", SK: "Bosna a Herc." }, dial: "+387" },
+      { code: "ME", flag: "🇲🇪", name: { EN: "Montenegro", DE: "Montenegro", SK: "Čierna Hora" }, dial: "+382" },
+      { code: "MK", flag: "🇲🇰", name: { EN: "North Macedonia", DE: "Nordmazedonien", SK: "Sev. Macedónsko" }, dial: "+389" },
+      { code: "AL", flag: "🇦🇱", name: { EN: "Albania", DE: "Albanien", SK: "Albánsko" }, dial: "+355" },
+      { code: "IS", flag: "🇮🇸", name: { EN: "Iceland", DE: "Island", SK: "Island" }, dial: "+354" },
+      { code: "CY", flag: "🇨🇾", name: { EN: "Cyprus", DE: "Zypern", SK: "Cyprus" }, dial: "+357" },
+      { code: "MT", flag: "🇲🇹", name: { EN: "Malta", DE: "Malta", SK: "Malta" }, dial: "+356" },
+      { code: "MC", flag: "🇲🇨", name: { EN: "Monaco", DE: "Monaco", SK: "Monako" }, dial: "+377" },
+      { code: "SM", flag: "🇸🇲", name: { EN: "San Marino", DE: "San Marino", SK: "San Maríno" }, dial: "+378" },
+      { code: "UA", flag: "🇺🇦", name: { EN: "Ukraine", DE: "Ukraine", SK: "Ukrajina" }, dial: "+380" }
+    ];
+
+    const WMI_MAP = {
+      "WVW": "Volkswagen", "WV1": "Volkswagen", "WV2": "Volkswagen",
+      "WAU": "Audi", "TRU": "Audi",
+      "TMB": "Škoda", "TMP": "Škoda",
+      "VSS": "Seat",
+      "WBA": "BMW", "WBS": "BMW M", "WMW": "MINI",
+      "WDB": "Mercedes-Benz", "WDC": "Mercedes-Benz", "WDD": "Mercedes-Benz", "W1K": "Mercedes-Benz",
+      "VF7": "Citroën", "VF3": "Peugeot", "VF1": "Renault",
+      "ZFA": "Fiat", "ZAR": "Alfa Romeo",
+      "OPL": "Opel", "W0L": "Opel",
+      "WF0": "Ford",
+      "YV1": "Volvo",
+      "SAL": "Land Rover", "SAJ": "Jaguar",
+      "SHS": "Honda", "JHM": "Honda",
+      "JT1": "Toyota", "SB1": "Toyota",
+      "KMH": "Hyundai", "TMA": "Hyundai",
+      "KNA": "Kia", "U5Y": "Kia", "KND": "Kia", "KNE": "Kia", "NLH": "Hyundai",
+      "JTD": "Toyota", "JTM": "Toyota", "JTN": "Toyota", "JTE": "Toyota", "JTH": "Lexus", "JTJ": "Lexus",
+      "WP0": "Porsche", "WP1": "Porsche", "WUA": "Audi", "WA1": "Audi", "WVG": "Volkswagen", "WV3": "Volkswagen",
+      "W0V": "Opel", "WDF": "Mercedes-Benz", "WD3": "Mercedes-Benz", "WD4": "Mercedes-Benz", "WME": "Smart",
+      "YV4": "Volvo", "LGX": "BYD", "LSJ": "MG", "5YJ": "Tesla", "XP7": "Tesla", "7SA": "Tesla", "LRW": "Tesla",
+      "UU1": "Dacia", "VF8": "Matra/Renault", "VR1": "DS", "ZFF": "Ferrari", "ZAC": "Jeep", "ZLA": "Lancia",
+      "JMZ": "Mazda", "JM1": "Mazda", "SJN": "Nissan", "JN1": "Nissan", "JMB": "Mitsubishi", "JF1": "Subaru",
+      "TSM": "Suzuki", "JS3": "Suzuki", "SHH": "Honda", "WF1": "Ford"
+    };
+
+    const COLOR_PALETTE = [
+      { id: "white", bg: "#FFFFFF", text: "#111827", border: "#D1D5DB", labels: { EN: "White", DE: "Weiß", SK: "Biela" } },
+      { id: "silver", bg: "#D1D5DB", text: "#111827", border: "#9CA3AF", labels: { EN: "Silver", DE: "Silber", SK: "Strieborná" } },
+      { id: "grey", bg: "#6B7280", text: "#FFFFFF", border: "#4B5563", labels: { EN: "Grey", DE: "Grau", SK: "Sivá" } },
+      { id: "black", bg: "#111827", text: "#FFFFFF", border: "#374151", labels: { EN: "Black", DE: "Schwarz", SK: "Čierna" } },
+      { id: "blue", bg: "#1D4ED8", text: "#FFFFFF", border: "#1E40AF", labels: { EN: "Blue", DE: "Blau", SK: "Modrá" } },
+      { id: "red", bg: "#DC2626", text: "#FFFFFF", border: "#B91C1C", labels: { EN: "Red", DE: "Rot", SK: "Červená" } },
+      { id: "green", bg: "#15803D", text: "#FFFFFF", border: "#166534", labels: { EN: "Green", DE: "Grün", SK: "Zelená" } },
+      { id: "yellow", bg: "#EAB308", text: "#111827", border: "#CA8A04", labels: { EN: "Yellow", DE: "Gelb", SK: "Žltá" } },
+      { id: "orange", bg: "#EA580C", text: "#FFFFFF", border: "#C2410C", labels: { EN: "Orange", DE: "Orange", SK: "Oranžová" } },
+      { id: "brown", bg: "#78350F", text: "#FFFFFF", border: "#582509", labels: { EN: "Brown", DE: "Braun", SK: "Hnedá" } },
+      { id: "gold_bronze", bg: "#B4833E", text: "#111827", border: "#926322", labels: { EN: "Gold/Brz", DE: "Gold/Brz", SK: "Zlatá/Brz" } },
+      { id: "burgundy", bg: "#831843", text: "#FFFFFF", border: "#601031", labels: { EN: "Burgundy", DE: "Bordeaux", SK: "Bordová" } }
+    ];
+
+    const TRANSLATIONS = {
+      EN: {
+        roleTechLabel: "Technician",
+        roleManagerLabel: "Manager",
+        tabVehicles1: "Intake",
+        tabVehicles2: "Vehicles",
+        tabProjects1: "Clients &",
+        tabProjects2: "Locations",
+        tabReports1: "Register &",
+        tabReports2: "Reports",
+        scanBtn: "Scan Car (VIN / Rear / Sheet)",
+        step1Label: "1. VIN Plate",
+        step2Label: "2. Rear Photo",
+        step3Label: "3. Calc Sheet",
+        clientLabel: "Client (Company)",
+        locationLabel: "Location / Shop",
+        calcNumberLabel: "Calculation No. (Client)",
+        ecv: "License Plate",
+        noEcvCheckbox: "No Plate",
+        vin: "VIN Code",
+        brand: "Make",
+        model: "Model",
+        color: "Body Color",
+        priceLabel: "PDR Price",
+        pricePendingCheckbox: "Price unknown",
+        riPriceLabel: "R&I Price (Disassembly)",
+        saveVehicle: "Save Vehicle",
+        addClientBtn: "Add Client",
+        addLocationBtn: "Add Location",
+        noVehicles: "No vehicles recorded yet.",
+        loginTitle: "Sign In",
+        registerTitle: "Register",
+        emailPlaceholder: "Email address",
+        passwordPlaceholder: "Password (min. 6 chars)",
+        confirmPasswordPlaceholder: "Confirm password",
+        passwordMismatch: "Passwords do not match!",
+        passwordTooShort: "Password must have at least 6 characters.",
+        loginBtn: "Sign In",
+        registerBtn: "Register",
+        googleSignInBtn: "Continue with Google",
+        orDivider: "or",
+        forgotPasswordLink: "Forgot password? Reset access",
+        sendResetLinkBtn: "Send Reset Link",
+        resetLinkSentMsg: "Password reset link sent to your email!",
+        backToLoginBtn: "Back to Sign In",
+        accountType: "Account Type",
+        soloTech: "Technician",
+        companyTeam: "Company / Team",
+        roleLabel: "Role",
+        roleManager: "Manager",
+        roleEmployee: "Technician",
+        switchToReg: "Don't have an account? Register",
+        switchToLogin: "Already have an account? Sign In",
+        settingsTitle: "Account Settings",
+        updatePasswordBtn: "Update Password",
+        passwordUpdated: "Password updated successfully!",
+        searchPlaceholder: "Search VIN, Plate, Model...",
+        searchLocationsPlaceholder: "Search locations...",
+        coopTitle: "Co-op & Partners",
+        invitePartnerBtn: "Invite Tech",
+        activePartnersLabel: "Active Partners in Shop",
+        pendingPartnersLabel: "Pending Invites",
+        coopRowLabel: "Co-op on vehicle",
+        coopBadge: "CO-OP",
+        coopTechShare: "My Share",
+        coopTotalGross: "Total Gross",
+        coopParticipants: "Participants",
+        noPartnersMsg: "No partners added yet. Invite colleagues using the handshake icon in the header.",
+        clientCardTitle: "Client Card",
+        locationDetailTitle: "Location Detail",
+        callBtn: "Call",
+        navigateBtn: "Navigate in Google Maps ➔",
+        closeBtn: "Close",
+        editBtn: "Edit",
+        cancelBtn: "Cancel",
+        saveChangesBtn: "Save Changes",
+        archiveBtn: "Archive",
+        restoreBtn: "Restore",
+        archiveConfirm: "Archive this location? It will hide from active intake but records remain intact.",
+        restoreConfirm: "Restore this location to active intake?",
+        latePricePlaceholder: "Approved amount in",
+        savePriceBtn: "Save Price",
+        missingAwRateAlert: "Missing AW rate in Location settings. Fill rate or check 'Price unknown'.",
+        blockedSubmission: "Blocked (Specify AW rate)",
+        damagePhotosCount: "Damage details",
+        damageNoteLabel: "Vehicle note",
+        addDamagePhoto: "+ Photos for notes",
+        uploadedPhotos: "Uploaded",
+        allClients: "All Clients",
+        allLocations: "All Locations",
+        allDates: "All Dates",
+        last7Days: "Last 7 Days",
+        thisMonth: "This Month",
+        lastMonth: "Previous Month",
+        customMonthYear: "Specific Month",
+        selectMonth: "Month",
+        selectYear: "Year",
+        kpiVehicles: "Vehicles",
+        kpiGross: "Invoiced",
+        kpiMyShare: "My Share",
+        downloadPdfBtn: "Download PDF (A4)",
+        downloadCsvBtn: "CSV",
+        savingVehicleStatus: "Compressing images & storing records...",
+        savedSuccessMsg: "Vehicle and Co-op data saved successfully!",
+        pdfTitle: "PDR Work & Co-op Summary (Billing Appendix)",
+        pdfGenerated: "Generated",
+        pdfNetMyShare: "Net technician share",
+        languageLabel: "Language",
+        pricingModeLabel: "Pricing Mode",
+        fixedRateLabel: "Fixed Rate",
+        awRateLabel: "Rate per 1 AW",
+        predefinedSeqCheckbox: "Predefined sequence numbering",
+        seqFixedPart: "Fixed Mask (Prefix/Year)",
+        seqStartPart: "Start Counter",
+        clientNamePlaceholder: "Company name",
+        clientAddressPlaceholder: "Street and number",
+        cityPlaceholder: "City",
+        postalCodePlaceholder: "Postal Code (ZIP)",
+        countryPlaceholder: "Search Country (Type 1-2 letters)...",
+        contactPersonPlaceholder: "Contact person",
+        phonePlaceholder: "Phone (+49...)",
+        icoPlaceholder: "Company ID / VAT ID",
+        defaultPdrPercentLabel: "Default % PDR",
+        defaultRiPercentLabel: "Default % R&I",
+        partnerBadge: "Partner",
+        addCatBtn: "+ Add Cat",
+        ocrModalTitleVin: "Check VIN & Make",
+        ocrModalTitleRear: "Check Plate & Body Color",
+        ocrModalTitleSheet: "Check Calculation Sheet",
+        ocrModalAnalyzing: "Scanning via Google Vision...",
+        ocrModalRetake: "Retake Photo",
+        ocrModalConfirmNext: "Confirm & Next Step",
+        ocrModalConfirmFinish: "Confirm & Finish Scan",
+        installAppTitle: "Add FlowBoard to Phone",
+        installAppSubtitle: "Fast 1-tap access on workshop",
+        installAppBtn: "Install App Icon",
+        iosInstallHelp: "Tap Share icon and select 'Add to Home Screen'."
+      },
+      DE: {
+        roleTechLabel: "Techniker",
+        roleManagerLabel: "Manager",
+        tabVehicles1: "Erfassung",
+        tabVehicles2: "Fahrzeuge",
+        tabProjects1: "Kunden &",
+        tabProjects2: "Standorte",
+        tabReports1: "Register &",
+        tabReports2: "Reports",
+        scanBtn: "Scan Car (FIN / Heck / Formular)",
+        step1Label: "1. FIN Schild",
+        step2Label: "2. Heckfoto",
+        step3Label: "3. Kalkulationsblatt",
+        clientLabel: "Kunde (Firma)",
+        locationLabel: "Standort / Werkstatt",
+        calcNumberLabel: "Kalkulations-Nr. (Kunde)",
+        ecv: "Kennzeichen",
+        noEcvCheckbox: "Ohne KZ",
+        vin: "FIN",
+        brand: "Marke",
+        model: "Modell",
+        color: "Farbe",
+        priceLabel: "Dellenreparatur",
+        pricePendingCheckbox: "Preis unbekannt",
+        riPriceLabel: "R&I Demontage",
+        saveVehicle: "Fahrzeug speichern",
+        addClientBtn: "Kunde hinzufügen",
+        addLocationBtn: "Standort hinzufügen",
+        noVehicles: "Keine Fahrzeuge erfasst.",
+        loginTitle: "Anmeldung",
+        registerTitle: "Registrierung",
+        emailPlaceholder: "E-Mail-Adresse",
+        passwordPlaceholder: "Passwort (mind. 6 Zeichen)",
+        confirmPasswordPlaceholder: "Passwort wiederholen",
+        passwordMismatch: "Passwörter stimmen nicht überein!",
+        passwordTooShort: "Mindestens 6 Zeichen erforderlich.",
+        loginBtn: "Anmelden",
+        registerBtn: "Registrieren",
+        googleSignInBtn: "Weiter mit Google",
+        orDivider: "oder",
+        forgotPasswordLink: "Passwort vergessen? Zugriff wiederherstellen",
+        sendResetLinkBtn: "Link zum Zurücksetzen senden",
+        resetLinkSentMsg: "Link zum Zurücksetzen wurde an Ihre E-Mail gesendet!",
+        backToLoginBtn: "Zurück zur Anmeldung",
+        accountType: "Kontotyp",
+        soloTech: "Techniker",
+        companyTeam: "Unternehmen / Team",
+        roleLabel: "Rolle",
+        roleManager: "Manager",
+        roleEmployee: "Techniker",
+        switchToReg: "Registrieren",
+        switchToLogin: "Anmelden",
+        settingsTitle: "Kontoeinstellungen",
+        updatePasswordBtn: "Passwort aktualisieren",
+        passwordUpdated: "Passwort erfolgreich geändert!",
+        searchPlaceholder: "Suche FIN, KZ, Modell...",
+        searchLocationsPlaceholder: "Standorte filtern...",
+        coopTitle: "Kooperationen & Partner",
+        invitePartnerBtn: "Techniker einladen",
+        activePartnersLabel: "Aktive Werkstatt-Partner",
+        pendingPartnersLabel: "Ausstehende Einladungen",
+        coopRowLabel: "Kooperation am Fahrzeug",
+        coopBadge: "CO-OP",
+        coopTechShare: "Mein Anteil",
+        coopTotalGross: "Gesamtbetrag",
+        coopParticipants: "Beteiligte",
+        noPartnersMsg: "Keine Partner vorhanden. Laden Sie Kollegen über das Handschlag-Symbol in der Kopfzeile ein.",
+        clientCardTitle: "Kundenkarte",
+        locationDetailTitle: "Standort-Detail",
+        callBtn: "Anrufen",
+        navigateBtn: "In Google Maps navigieren ➔",
+        closeBtn: "Schließen",
+        editBtn: "Bearbeiten",
+        cancelBtn: "Abbrechen",
+        saveChangesBtn: "Änderungen speichern",
+        archiveBtn: "Archivieren",
+        restoreBtn: "Wiederherstellen",
+        archiveConfirm: "Diesen Standort archivieren? Er wird ausgeblendet, Daten bleiben erhalten.",
+        restoreConfirm: "Standort wiederherstellen?",
+        latePricePlaceholder: "Bestätigter Betrag in",
+        savePriceBtn: "Preis speichern",
+        missingAwRateAlert: "Fehlender AW-Satz in den Standorteinstellungen. Satz festlegen oder 'Preis unbekannt' wählen.",
+        blockedSubmission: "Gesperrt (AW-Satz ergänzen)",
+        damagePhotosCount: "Schadensdetails",
+        damageNoteLabel: "Fahrzeugnotiz",
+        addDamagePhoto: "+ Fotos zur Notiz",
+        uploadedPhotos: "Hochgeladen",
+        allClients: "Alle Kunden",
+        allLocations: "Alle Standorte",
+        allDates: "Alle Zeiträume",
+        last7Days: "Letzte 7 Tage",
+        thisMonth: "Dieser Monat",
+        lastMonth: "Vorheriger Monat",
+        customMonthYear: "Monat & Jahr",
+        selectMonth: "Monat",
+        selectYear: "Jahr",
+        kpiVehicles: "Fahrzeuge",
+        kpiGross: "Fakturiert",
+        kpiMyShare: "Mein Anteil",
+        downloadPdfBtn: "PDF-Aufstellung (A4)",
+        downloadCsvBtn: "CSV",
+        savingVehicleStatus: "Bilder komprimieren & Datensätze anlegen...",
+        savedSuccessMsg: "Fahrzeug und Kooperationsdaten erfolgreich gespeichert!",
+        pdfTitle: "PDR Arbeits- & Kooperationsnachweis (Abrechnungsanhang)",
+        pdfGenerated: "Erstellt am",
+        pdfNetMyShare: "Nettobetrag Techniker",
+        languageLabel: "Sprache",
+        pricingModeLabel: "Preissystem",
+        fixedRateLabel: "Festpreis",
+        awRateLabel: "Satz pro 1 AW",
+        predefinedSeqCheckbox: "Vordefinierte Nummernfolge",
+        seqFixedPart: "Feste Maske (Präfix/Jahr)",
+        seqStartPart: "Startzähler",
+        clientNamePlaceholder: "Firmenname",
+        clientAddressPlaceholder: "Straße und Hausnummer",
+        cityPlaceholder: "Stadt",
+        postalCodePlaceholder: "Postleitzahl (PLZ)",
+        countryPlaceholder: "Land suchen (1-2 Buchstaben tippen)...",
+        contactPersonPlaceholder: "Ansprechpartner",
+        phonePlaceholder: "Telefon (+49...)",
+        icoPlaceholder: "USt-IdNr. / Steuernummer",
+        defaultPdrPercentLabel: "Standard % Dellenreparatur",
+        defaultRiPercentLabel: "Standard % Demontage",
+        partnerBadge: "Partner",
+        addCatBtn: "+ Cat",
+        ocrModalTitleVin: "FIN & Marke prüfen",
+        ocrModalTitleRear: "Kennzeichen & Farbe prüfen",
+        ocrModalTitleSheet: "Kalkulationsblatt prüfen",
+        ocrModalAnalyzing: "Google Vision Scan läuft...",
+        ocrModalRetake: "Foto wiederholen",
+        ocrModalConfirmNext: "Bestätigen & Weiter",
+        ocrModalConfirmFinish: "Bestätigen & Fertigstellen",
+        installAppTitle: "FlowBoard zum Startbildschirm",
+        installAppSubtitle: "Schneller Zugriff in der Werkstatt",
+        installAppBtn: "App-Symbol installieren",
+        iosInstallHelp: "Auf Teilen tippen und 'Zum Home-Bildschirm' wählen."
+      },
+      SK: {
+        roleTechLabel: "Technik",
+        roleManagerLabel: "Manažér",
+        tabVehicles1: "Evidencia",
+        tabVehicles2: "Vozidlá",
+        tabProjects1: "Klienti &",
+        tabProjects2: "Lokácie",
+        tabReports1: "Register &",
+        tabReports2: "Reports",
+        scanBtn: "Scan Car (VIN / Auto / Hárok)",
+        step1Label: "1. VIN štítok",
+        step2Label: "2. Auto zozadu",
+        step3Label: "3. Hárok kalkulácie",
+        clientLabel: "Klient (Firma)",
+        locationLabel: "Lokácia / Dielňa",
+        calcNumberLabel: "Číslo kalkulácie (Klient)",
+        ecv: "ŠPZ / EČV",
+        noEcvCheckbox: "Bez ŠPZ",
+        vin: "VIN kód",
+        brand: "Značka",
+        model: "Model",
+        color: "Farba karosérie",
+        priceLabel: "PDR Cena",
+        pricePendingCheckbox: "Cena neznáma",
+        riPriceLabel: "R&I Cena (Demontáž)",
+        saveVehicle: "Uložiť vozidlo",
+        addClientBtn: "Pridať klienta",
+        addLocationBtn: "Pridať lokáciu",
+        noVehicles: "Zatiaľ nie sú zaevidované žiadne vozidlá.",
+        loginTitle: "Prihlásenie",
+        registerTitle: "Registrácia",
+        emailPlaceholder: "E-mailová adresa",
+        passwordPlaceholder: "Heslo (min. 6 znakov)",
+        confirmPasswordPlaceholder: "Zopakujte heslo",
+        passwordMismatch: "Heslá sa nezhodujú!",
+        passwordTooShort: "Heslo musí mať aspoň 6 znakov.",
+        loginBtn: "Prihlásiť sa",
+        registerBtn: "Zaregistrovať sa",
+        googleSignInBtn: "Pokračovať cez Google",
+        orDivider: "alebo",
+        forgotPasswordLink: "Zabudli ste heslo? Obnoviť prístup",
+        sendResetLinkBtn: "Odoslať odkaz na obnovu",
+        resetLinkSentMsg: "Odkaz na obnovu hesla bol odoslaný na váš e-mail!",
+        backToLoginBtn: "Späť na prihlásenie",
+        accountType: "Typ účtu",
+        soloTech: "Technik",
+        companyTeam: "Firma / Tím",
+        roleLabel: "Moja rola",
+        roleManager: "Manažér",
+        roleEmployee: "Technik",
+        switchToReg: "Nemáte účet? Zaregistrujte sa",
+        switchToLogin: "Už máte účet? Prihláste sa",
+        settingsTitle: "Nastavenia účtu",
+        updatePasswordBtn: "Zmeniť heslo",
+        passwordUpdated: "Heslo úspešne zmenené!",
+        searchPlaceholder: "Hľadať VIN, ŠPZ, model...",
+        searchLocationsPlaceholder: "Hľadať lokáciu...",
+        coopTitle: "Spolupráca & Partneri",
+        invitePartnerBtn: "Pozvať technika",
+        activePartnersLabel: "Aktívni partneri na dielni",
+        pendingPartnersLabel: "Čakajúce pozvánky",
+        coopRowLabel: "Kooperácia na aute",
+        coopBadge: "CO-OP",
+        coopTechShare: "Môj podiel",
+        coopTotalGross: "Celkom",
+        coopParticipants: "Technici v kooperácii",
+        noPartnersMsg: "Zatiaľ nemáte žiadnych partnerov. Pozvite kolegov cez ikonu podania rúk v hlavičke.",
+        clientCardTitle: "Vizitka klienta",
+        locationDetailTitle: "Detail lokácie",
+        callBtn: "Vytočiť",
+        navigateBtn: "Navigovať v Google Maps ➔",
+        closeBtn: "Zavrieť",
+        editBtn: "Upraviť",
+        cancelBtn: "Zrušiť",
+        saveChangesBtn: "Uložiť zmeny",
+        archiveBtn: "Archivovať",
+        restoreBtn: "Obnoviť",
+        archiveConfirm: "Archivovať túto lokáciu? Zmizne z ponuky evidencie, no autá zostanú.",
+        restoreConfirm: "Obnoviť túto lokáciu do aktívnej evidencie?",
+        latePricePlaceholder: "Schválená suma v",
+        savePriceBtn: "Uložiť cenu",
+        missingAwRateAlert: "Chýba sadzba za 1 AW v nastaveniach lokácie. Nastavte sadzbu alebo označte 'Cena neznáma'.",
+        blockedSubmission: "Blokované (Doplňte sadzbu AW)",
+        damagePhotosCount: "Detaily poškodenia",
+        damageNoteLabel: "Poznámka k vozidlu",
+        addDamagePhoto: "+ Fotografie k poznámkam",
+        uploadedPhotos: "Nahraté",
+        allClients: "Všetci klienti",
+        allLocations: "Všetky lokácie",
+        allDates: "Všetky dátumy",
+        last7Days: "Posledných 7 dní",
+        thisMonth: "Tento mesiac",
+        lastMonth: "Minulý mesiac",
+        customMonthYear: "Konkrétny mesiac",
+        selectMonth: "Mesiac",
+        selectYear: "Rok",
+        kpiVehicles: "Vozidlá",
+        kpiGross: "Fakturované",
+        kpiMyShare: "Môj podiel",
+        downloadPdfBtn: "Stiahnuť PDF (A4)",
+        downloadCsvBtn: "CSV",
+        savingVehicleStatus: "Komprimujem fotky a ukladám záznam...",
+        savedSuccessMsg: "Vozidlo a kooperácia úspešne uložené!",
+        pdfTitle: "PDR Súpis prác & Kooperácií (Príloha k vyúčtovaniu)",
+        pdfGenerated: "Vygenerované dňa",
+        pdfNetMyShare: "Čistý podiel technika",
+        languageLabel: "Jazyk aplikácie",
+        pricingModeLabel: "Cenový model",
+        fixedRateLabel: "Fixná sadzba",
+        awRateLabel: "Sadzba za 1 AW",
+        predefinedSeqCheckbox: "Preddefinovaná číselná rada kalkulácie",
+        seqFixedPart: "Fixná časť (Maska/Rok)",
+        seqStartPart: "Počiatočné číslo",
+        clientNamePlaceholder: "Názov firmy",
+        clientAddressPlaceholder: "Ulica a číslo",
+        cityPlaceholder: "Mesto",
+        postalCodePlaceholder: "PSČ",
+        countryPlaceholder: "Hľadať štát (napíš 1-2 písmená)...",
+        contactPersonPlaceholder: "Meno kontaktu",
+        phonePlaceholder: "Telefón (+421...)",
+        icoPlaceholder: "IČO / UID",
+        defaultPdrPercentLabel: "Predvolené % PDR",
+        defaultRiPercentLabel: "Predvolené % R&I",
+        partnerBadge: "Partner",
+        addCatBtn: "+ Pridať Cat",
+        ocrModalTitleVin: "Kontrola VIN a Značky",
+        ocrModalTitleRear: "Kontrola ŠPZ a Farby karosérie",
+        ocrModalTitleSheet: "Kontrola Hárku kalkulácie",
+        ocrModalAnalyzing: "Google Vision skenuje fotku...",
+        ocrModalRetake: "Znova odfotiť",
+        ocrModalConfirmNext: "Potvrdiť a Ďalší krok",
+        ocrModalConfirmFinish: "Potvrdiť a Dokončiť sken",
+        installAppTitle: "Pridať FlowBoard na plochu",
+        installAppSubtitle: "Rýchly prístup 1 klikom priamo na dielni",
+        installAppBtn: "Inštalovať ikonu aplikácie",
+        iosInstallHelp: "Ťuknite na ikonu Zdieľať a zvoľte 'Pridať na plochu'."
+      }
+    };
+
+    const MONTHS_LIST = {
+      EN: ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"],
+      DE: ["Januar", "Februar", "März", "April", "Mai", "Juni", "Juli", "August", "September", "Oktober", "November", "Dezember"],
+      SK: ["Január", "Február", "Marec", "Apríl", "Máj", "Jún", "Júl", "August", "September", "Október", "November", "December"]
+    };
+    // Filtre reťazcov bez medzier s presným orezaním dĺžky
+    const sanitizePhone = (val) => {
+      if (!val) return "";
+      let cleaned = val.replace(/[^\d+]/g, "");
+      if (cleaned.indexOf("+") > 0) {
+        cleaned = cleaned.charAt(0) === "+" ? "+" + cleaned.slice(1).replace(/\+/g, "") : cleaned.replace(/\+/g, "");
+      }
+      return cleaned.slice(0, 16);
+    };
+
+    const sanitizePostalCode = (val) => {
+      if (!val) return "";
+      return val.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 8);
+    };
+
+    const sanitizeIco = (val) => {
+      if (!val) return "";
+      return val.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 14);
+    };
+
+    const sanitizeVin = (val) => {
+  if (!val) return "";
+  
+  // 1. Prevod na veľké písmená a vyčistenie nepovolených znakov
+  let clean = val.toUpperCase().replace(/[^A-Z0-9]/g, "");
+  
+  // 2. Zámena zakázaných znakov podľa ISO 3779 (I, O, Q)
+  clean = clean.replace(/I/g, "1").replace(/O/g, "0").replace(/Q/g, "0");
+  
+  // 3. Oprava rotácie (posun o 1 doprava, napr. 3WVW... -> WVW...3)
+  if (clean.length >= 4 && /^[0-9]/.test(clean)) {
+    const potentialWmi = clean.substring(1, 4);
+    if (typeof WMI_MAP !== "undefined" && WMI_MAP[potentialWmi]) {
+      clean = clean.substring(1) + clean[0];
+    }
+  }
+  
+  // 4. Striktné orezanie na 17 znakov
+  return clean.slice(0, 17);
+};
+
+    // Upozornenie pri VIN: dĺžka, neznámy výrobca (prvé 3 znaky), písmená v sériovom čísle na konci
+    const vinWarning = (v) => {
+      if (!v) return "";
+      if (v.length < 17) return "VIN má " + v.length + " z 17 znakov - skontroluj podľa fotky";
+      if (!WMI_MAP[v.substring(0, 3)]) return "Neznámy výrobca (prvé 3 znaky) - skontroluj VIN podľa fotky";
+      if (/[A-Z]/.test(v.substring(12))) return "Posledné znaky VIN bývajú číslice - skontroluj podľa fotky";
+      return "";
+    };
+
+    // ---- Súkromné fotky: v DB je len cesta k súboru, zobrazenie cez dočasný podpísaný odkaz ----
+    const photoUrlCache = new Map();
+    const toPhotoPath = (v) => {
+      if (!v) return null;
+      const str = String(v);
+      const m = str.match(/\/vehicle-photos\/(.+?)(?:\?.*)?$/); // starý verejný odkaz -> cesta
+      return m ? decodeURIComponent(m[1]) : str;
+    };
+    function SignedPhoto({ value, alt }) {
+      const path = toPhotoPath(value);
+      const [url, setUrl] = useState(null);
+      useEffect(() => {
+        let alive = true;
+        if (!path) { setUrl(null); return; }
+        const hit = photoUrlCache.get(path);
+        if (hit && hit.exp > Date.now()) { setUrl(hit.url); return; }
+        supabase.storage.from("vehicle-photos").createSignedUrl(path, 3600).then(({ data, error }) => {
+          if (!alive) return;
+          if (error || !data) { setUrl(null); return; }
+          photoUrlCache.set(path, { url: data.signedUrl, exp: Date.now() + 50 * 60 * 1000 });
+          setUrl(data.signedUrl);
+        });
+        return () => { alive = false; };
+      }, [path]);
+      const box = "aspect-video bg-gray-900 rounded border border-gray-800 overflow-hidden";
+      if (!url) {
+        return <div className={box + " flex items-center justify-center text-gray-600 text-[10px]"}><i className="fa-solid fa-image"></i></div>;
+      }
+      return (
+        <a href={url} target="_blank" rel="noreferrer" className={box}>
+          <img src={url} alt={alt} className="w-full h-full object-cover" />
+        </a>
+      );
+    }
+
+    function CountryPicker({ selectedCode, onSelect, lang, placeholder }) {
+      const [isOpen, setIsOpen] = useState(false);
+      const [searchQuery, setSearchQuery] = useState("");
+      const dropdownRef = useRef(null);
+
+      const currentCountry = useMemo(() => {
+        return EUROPEAN_COUNTRIES.find(c => c.code === selectedCode) || EUROPEAN_COUNTRIES[0];
+      }, [selectedCode]);
+
+      const filtered = useMemo(() => {
+        if (!searchQuery.trim()) return EUROPEAN_COUNTRIES;
+        const q = searchQuery.toLowerCase().trim();
+        return EUROPEAN_COUNTRIES.filter(c => {
+          const cName = (c.name[lang] || c.name.EN).toLowerCase();
+          return cName.includes(q) || c.code.toLowerCase().includes(q) || c.dial.includes(q);
+        });
+      }, [searchQuery, lang]);
+
+      useEffect(() => {
+        const handleClickOutside = (e) => {
+          if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+            setIsOpen(false);
+          }
+        };
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+      }, []);
+
+      return (
+        <div className="relative" ref={dropdownRef}>
+          <button
+            type="button"
+            onClick={() => { setIsOpen(!isOpen); setSearchQuery(""); }}
+            className="w-full bg-gray-900 border border-gray-700 hover:border-amber-500 rounded p-1.5 text-xs text-white flex justify-between items-center"
+          >
+            <span className="flex items-center gap-1.5 truncate">
+              <span className="text-base">{currentCountry.flag}</span>
+              <span className="font-bold">{currentCountry.name[lang] || currentCountry.name.EN}</span>
+              <span className="text-[10px] text-gray-400 font-mono">({currentCountry.dial})</span>
+            </span>
+            <i className={`fa-solid ${isOpen ? "fa-chevron-up" : "fa-chevron-down"} text-[10px] text-gray-400`}></i>
+          </button>
+
+          {isOpen && (
+            <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-gray-950 border border-amber-500/60 rounded-xl shadow-2xl p-2 space-y-1.5 max-h-56 flex flex-col">
+              <input
+                type="text"
+                autoFocus
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                placeholder={placeholder}
+                className="w-full bg-gray-900 border border-gray-700 rounded p-1 text-xs text-white font-medium"
+              />
+              <div className="overflow-y-auto flex-1 space-y-0.5">
+                {filtered.length === 0 ? (
+                  <p className="p-2 text-center text-xs text-gray-500">No match</p>
+                ) : (
+                  filtered.map(c => (
+                    <button
+                      key={c.code}
+                      type="button"
+                      onClick={() => { onSelect(c); setIsOpen(false); }}
+                      className={`w-full text-left p-1.5 rounded flex items-center justify-between text-xs hover:bg-amber-500/20 ${c.code === selectedCode ? "bg-amber-500/30 text-amber-300 font-bold" : "text-gray-200"}`}
+                    >
+                      <span className="flex items-center gap-2 truncate">
+                        <span className="text-base">{c.flag}</span>
+                        <span>{c.name[lang] || c.name.EN}</span>
+                      </span>
+                      <span className="text-[10px] font-mono text-gray-400">{c.dial}</span>
+                    </button>
+                  ))
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    const compressImage = (file) => {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = (e) => {
+          const img = new Image();
+          img.src = e.target.result;
+          img.onload = () => {
+            const maxDim = 1600;
+            let width = img.width;
+            let height = img.height;
+
+            if (width > maxDim || height > maxDim) {
+              if (width > height) {
+                height = Math.round((height * maxDim) / width);
+                width = maxDim;
+              } else {
+                width = Math.round((width * maxDim) / height);
+                height = maxDim;
+              }
+            }
+
+            const canvas = document.createElement("canvas");
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext("2d");
+            ctx.drawImage(img, 0, 0, width, height);
+
+            canvas.toBlob(
+              (blob) => {
+                if (blob) resolve(blob);
+                else reject(new Error("Canvas error"));
+              },
+              "image/jpeg",
+              0.78
+            );
+          };
+          img.onerror = (err) => reject(err);
+        };
+        reader.onerror = (err) => reject(err);
+      });
+    };
+const fileToBase64 = (file) => {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = () => resolve(reader.result.split(",")[1]);
+        reader.onerror = (err) => reject(err);
+      });
+    };
+    // Detekcia dominantnej farby z lakovanej zóny kufra (vynechá sklo hore a nárazník dole)
+    const detectDominantColor = (file) => {
+      return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = (e) => {
+          const img = new Image();
+          img.src = e.target.result;
+          img.onload = () => {
+            const canvas = document.createElement("canvas");
+            const ctx = canvas.getContext("2d");
+            canvas.width = 120;
+            canvas.height = 120;
+
+            // Zameranie na stred karosérie (35% až 65% výšky, 30% až 70% šírky)
+            const sx = img.width * 0.30;
+            const sy = img.height * 0.35;
+            const sw = img.width * 0.40;
+            const sh = img.height * 0.30;
+
+            ctx.drawImage(img, sx, sy, sw, sh, 0, 0, 120, 120);
+            const imgData = ctx.getImageData(0, 0, 120, 120).data;
+
+            let totalR = 0, totalG = 0, totalB = 0, count = 0;
+            for (let i = 0; i < imgData.length; i += 4) {
+              const r = imgData[i];
+              const g = imgData[i + 1];
+              const b = imgData[i + 2];
+
+              // Odfiltrovanie červených brzdových svetiel
+              if (r > 160 && g < 70 && b < 70) continue;
+
+              totalR += r;
+              totalG += g;
+              totalB += b;
+              count++;
+            }
+
+            if (count === 0) return resolve("grey");
+
+            const avgR = totalR / count;
+            const avgG = totalG / count;
+            const avgB = totalB / count;
+
+            const maxC = Math.max(avgR, avgG, avgB);
+            const minC = Math.min(avgR, avgG, avgB);
+            const diff = maxC - minC;
+            const brightness = (avgR + avgG + avgB) / 3;
+
+            // Neutrálne odtiene (biela, strieborná, sivá, čierna)
+            if (diff < 22) {
+              if (brightness > 200) return resolve("white");
+              if (brightness > 140) return resolve("silver");
+              if (brightness > 60) return resolve("grey");
+              return resolve("black");
+            }
+
+            // Farebné odtiene
+            if (avgB > avgR && avgB > avgG) return resolve("blue");
+            if (avgR > avgG && avgR > avgB) {
+              if (avgG > 120) return resolve("orange");
+              if (brightness < 80) return resolve("burgundy");
+              return resolve("red");
+            }
+            if (avgG > avgR && avgG > avgB) return resolve("green");
+            if (avgR > 140 && avgG > 140 && avgB < 100) return resolve("yellow");
+
+            return resolve("grey");
+          };
+          img.onerror = () => resolve("grey");
+        };
+        reader.onerror = () => resolve("grey");
+      });
+    };
+
+    // Google Cloud Vision API - Skutočné OCR rozpoznávanie textu
+    // Google Vision sa volá cez Supabase funkciu "vision-ocr" (kľúč je len na serveri)
+    const callVision = async (base64Data, features) => {
+      const { data, error } = await supabase.functions.invoke("vision-ocr", { body: { image: base64Data, features } });
+      if (error) throw new Error("OCR: " + (error.message || error));
+      return data;
+    };
+
+    // VIN z textu: hľadá po riadkoch (nie zlepený celý text) a opravuje znaky, ktoré VIN nemôže obsahovať (O/Q -> 0, I -> 1)
+    const pickVinFromText = (raw) => {
+      const fix = (s) => s.replace(/[OQ]/g, "0").replace(/I/g, "1");
+      const lines = String(raw || "").toUpperCase().split("\n").map((l) => fix(l.replace(/[^A-Z0-9]/g, ""))).filter(Boolean);
+      for (const l of lines) {
+        const m = l.match(/[A-HJ-NPR-Z0-9]{17}/);
+        if (m && /[A-Z]/.test(m[0]) && /\d{4}/.test(m[0])) return m[0];
+      }
+      return "";
+    };
+
+    // Oprava výrobcu (prvé 3 znaky) podľa zoznamu WMI: len jediná zámena podobného znaku (W/V/U, B/8, S/5, Z/2)
+    const fixVinWmi = (vin) => {
+      if (!vin || vin.length !== 17 || WMI_MAP[vin.substring(0, 3)]) return vin;
+      const conf = { W: ["V"], V: ["W", "U"], U: ["V"], B: ["8"], "8": ["B"], S: ["5"], "5": ["S"], Z: ["2"], "2": ["Z"] };
+      const hits = [];
+      for (let p = 0; p < 3; p++) {
+        for (const alt of conf[vin[p]] || []) {
+          const w = vin.substring(0, p) + alt + vin.substring(p + 1, 3);
+          if (WMI_MAP[w]) hits.push(w);
+        }
+      }
+      return hits.length === 1 ? hits[0] + vin.substring(3) : vin;
+    };
+
+    // ŠPZ bez ohľadu na krajinu: vyberie riadok s najväčšími znakmi na fotke (znaky ŠPZ sú vždy najväčší text),
+    // malý kód krajiny (NL, CZ) a nápisy predajcu sa vyradia výškou písma
+    const pickPlateGeo = (anns) => {
+      const words = [];
+      for (let i = 1; i < Math.min((anns || []).length, 400); i++) {
+        const vs = anns[i].boundingPoly?.vertices || [];
+        if (vs.length < 4) continue;
+        const txt = (anns[i].description || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+        if (!txt) continue;
+        const xs = vs.map((v) => v.x || 0), ys = vs.map((v) => v.y || 0);
+        const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
+        words.push({ txt, x0, x1, y0, y1, h: y1 - y0, cy: (y0 + y1) / 2 });
+      }
+      // spájame slová, ktoré ležia vedľa seba, majú podobnú veľkosť písma a (aj pri naklonenej ŠPZ) približne rovnakú výšku
+      const par = words.map((_, i) => i);
+      const find = (i) => (par[i] === i ? i : (par[i] = find(par[i])));
+      for (let i = 0; i < words.length; i++) {
+        for (let j = i + 1; j < words.length; j++) {
+          const a = words[i], b = words[j];
+          const hm = Math.max(a.h, b.h);
+          if (Math.min(a.h, b.h) / hm < 0.6) continue;
+          if (Math.abs(a.cy - b.cy) > hm * 0.9) continue;
+          const gap = Math.max(a.x0, b.x0) - Math.min(a.x1, b.x1);
+          if (gap > hm * 1.5) continue;
+          par[find(i)] = find(j);
+        }
+      }
+      const groups = {};
+      words.forEach((w, i) => { (groups[find(i)] = groups[find(i)] || []).push(w); });
+      let best = null;
+      for (const g of Object.values(groups)) {
+        g.sort((a, b) => a.x0 - b.x0);
+        const s = g.map((x) => x.txt).join("");
+        if (s.length < 4 || s.length > 10 || !/[A-Z]/.test(s) || !/[0-9]/.test(s) || /^WWW/.test(s)) continue;
+        const h = Math.max(...g.map((x) => x.h));
+        if (!best || h > best.h) {
+          const mx0 = Math.min(...g.map((x) => x.x0)), mx1 = Math.max(...g.map((x) => x.x1));
+          const my0 = Math.min(...g.map((x) => x.y0)), my1 = Math.max(...g.map((x) => x.y1));
+          best = { plate: s, h, box: [{ x: mx0, y: my0 }, { x: mx1, y: my0 }, { x: mx1, y: my1 }, { x: mx0, y: my1 }] };
+        }
+      }
+      return best;
+    };
+
+    const analyzeImageWithGoogleVision = async (file) => {
+      const base64Data = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = () => resolve(reader.result.split(",")[1]);
+        reader.onerror = (err) => reject(err);
+      });
+
+      const result = await callVision(base64Data, ["TEXT_DETECTION"]);
+      return result.responses?.[0]?.fullTextAnnotation?.text || "";
+    };
+
+    // ---- Offline fronta uloženia auta (IndexedDB): záznam + fotky sa uložia v zariadení a dohrajú, keď je signál ----
+    const pdrIdbRun = (mode, fn) => new Promise((resolve, reject) => {
+      const req = indexedDB.open("pdr_offline", 1);
+      req.onupgradeneeded = () => { req.result.createObjectStore("pending", { keyPath: "id" }); };
+      req.onerror = () => reject(req.error);
+      req.onsuccess = () => {
+        const db = req.result;
+        const tx = db.transaction("pending", mode);
+        const r = fn(tx.objectStore("pending"));
+        tx.oncomplete = () => { db.close(); resolve(r && r.result); };
+        tx.onerror = () => { db.close(); reject(tx.error); };
+        tx.onabort = () => { db.close(); reject(tx.error || new Error("IndexedDB abort")); };
+      };
+    });
+    const pdrQueuePut = (item) => pdrIdbRun("readwrite", (st) => st.put(item));
+    const pdrQueueAll = () => pdrIdbRun("readonly", (st) => st.getAll()).then((x) => x || []);
+    const pdrQueueDelete = (id) => pdrIdbRun("readwrite", (st) => st.delete(id));
+    const isNetErr = (e) => navigator.onLine === false || /failed to fetch|networkerror|network request failed|load failed|network error/i.test(String((e && (e.message || e.name)) || e || ""));
+    const newUuid = () => (window.crypto && crypto.randomUUID ? crypto.randomUUID() : "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => { const r = (Math.random() * 16) | 0; return (c === "x" ? r : (r & 3) | 8).toString(16); }));
+
+    function App() {
+      const [lang, setLang] = useState(() => localStorage.getItem("pdr_lang") || "SK");
+      const [currency, setCurrency] = useState(() => localStorage.getItem("pdr_curr") || "EUR");
+      const currSymbol = currency === "EUR" ? "€" : "$";
+      const t = TRANSLATIONS[lang] || TRANSLATIONS.SK;
+
+      const [currentUser, setCurrentUser] = useState(null);
+      const [loadingUser, setLoadingUser] = useState(true);
+
+      const [isRegistering, setIsRegistering] = useState(false);
+      const [isResetMode, setIsResetMode] = useState(false);
+      const [authEmail, setAuthEmail] = useState("");
+      const [authPassword, setAuthPassword] = useState("");
+      const [authConfirmPassword, setAuthConfirmPassword] = useState("");
+      const [authAccountType, setAuthAccountType] = useState("solo");
+      const [authRole, setAuthRole] = useState("manager");
+      const [authError, setAuthError] = useState("");
+      const [resetSuccessMsg, setResetSuccessMsg] = useState("");
+      const [failedAttempts, setFailedAttempts] = useState(0);
+
+
+      const [showSettingsModal, setShowSettingsModal] = useState(false);
+      const [newAccountPassword, setNewAccountPassword] = useState("");
+      const [settingsMsg, setSettingsMsg] = useState("");
+
+      const [showCoopModal, setShowCoopModal] = useState(false);
+      const [showTeamModal, setShowTeamModal] = useState(false);
+      const [profileRole, setProfileRole] = useState(null);
+      const [teamRows, setTeamRows] = useState([]);
+      const [teamInviteEmail, setTeamInviteEmail] = useState("");
+      const [teamMsg, setTeamMsg] = useState("");
+      const [clientComm, setClientComm] = useState({});
+      const [assignRows, setAssignRows] = useState([]);
+      const [newClientCommPdr, setNewClientCommPdr] = useState("");
+      const [newClientCommRi, setNewClientCommRi] = useState("");
+      const [coopPartners, setCoopPartners] = useState([]);
+      const [pendingCoopInvites, setPendingCoopInvites] = useState([]);
+      const [newPartnerEmail, setNewPartnerEmail] = useState("");
+      const [coopMsg, setCoopMsg] = useState("");
+      const [selectedCoopPartners, setSelectedCoopPartners] = useState([]);
+
+      const [activeTab, setActiveTab] = useState("vehicles");
+      const [clients, setClients] = useState([]);
+      const [projects, setProjects] = useState([]);
+      const [vehicles, setVehicles] = useState([]);
+      const [coopRecords, setCoopRecords] = useState([]);
+
+      const [selectedClientId, setSelectedClientId] = useState(() => localStorage.getItem("pdr_last_client") || "");
+      const [selectedProjectId, setSelectedProjectId] = useState(() => localStorage.getItem("pdr_last_project") || "");
+
+      const [activeBottomSheet, setActiveBottomSheet] = useState(null);
+      const [isEditingSheet, setIsEditingSheet] = useState(false);
+      const [sheetEditData, setSheetEditData] = useState({});
+      const [sheetEditCategories, setSheetEditCategories] = useState([]);
+      const [sheetEditTempCatPrice, setSheetEditTempCatPrice] = useState("");
+const [sentCoopInvites, setSentCoopInvites] = useState([]);
+      const [selectedVehicleDetail, setSelectedVehicleDetail] = useState(null);
+      const [isEditingVehicle, setIsEditingVehicle] = useState(false);
+      const [editVehicleData, setEditVehicleData] = useState({});
+      const [isUploading, setIsUploading] = useState(false);
+      const [uploadStatusText, setUploadStatusText] = useState("");
+      const [latePriceInput, setLatePriceInput] = useState("");
+
+      const [locationSearchFilter, setLocationSearchFilter] = useState("");
+      const [showArchivedProjects, setShowArchivedProjects] = useState(false);
+
+      // Formulár nového klienta
+      const [showNewClientForm, setShowNewClientForm] = useState(false);
+      const [newClientCountry, setNewClientCountry] = useState("DE");
+      const [newClientName, setNewClientName] = useState("");
+      const [newClientAddress, setNewClientAddress] = useState("");
+      const [newClientCity, setNewClientCity] = useState("");
+      const [newClientPostalCode, setNewClientPostalCode] = useState("");
+      const [newClientContactPerson, setNewClientContactPerson] = useState("");
+      const [newClientPhone, setNewClientPhone] = useState("+49");
+      const [newClientIco, setNewClientIco] = useState("");
+      const [newClientDefaultPdr, setNewClientDefaultPdr] = useState("");
+      const [newClientDefaultRi, setNewClientDefaultRi] = useState("");
+      const [hasSeqConfig, setHasSeqConfig] = useState(false);
+      const [newClientSeqPrefix, setNewClientSeqPrefix] = useState("");
+      const [newClientInitialSeq, setNewClientInitialSeq] = useState("1");
+
+      // Formulár novej Lokácie
+      const [addingProjectClientId, setAddingProjectClientId] = useState(null);
+      const [newProjectCountry, setNewProjectCountry] = useState("DE");
+      const [newProjectName, setNewProjectName] = useState("");
+      const [newProjectAddress, setNewProjectAddress] = useState("");
+      const [newProjectCity, setNewProjectCity] = useState("");
+      const [newProjectPostalCode, setNewProjectPostalCode] = useState("");
+      const [newProjectContactPerson, setNewProjectContactPerson] = useState("");
+      const [newProjectPhone, setNewProjectPhone] = useState("+49");
+      const [newProjectPricingMode, setNewProjectPricingMode] = useState("free");
+      const [newProjectFixedPrice, setNewProjectFixedPrice] = useState("");
+      const [projectCategoriesList, setProjectCategoriesList] = useState([]);
+      const [tempCategoryPrice, setTempCategoryPrice] = useState("");
+      const [newProjectTechPdrPercent, setNewProjectTechPdrPercent] = useState("");
+      const [newProjectTechRiPercent, setNewProjectTechRiPercent] = useState("");
+      const [newProjectAwRate, setNewProjectAwRate] = useState("");
+
+      // Filtre v reporte
+      const [repClientFilter, setRepClientFilter] = useState("all");
+      const [repProjectFilter, setRepProjectFilter] = useState("all");
+      const [repDateRange, setRepDateRange] = useState("all");
+      const [repSelectedMonth, setRepSelectedMonth] = useState(() => new Date().getMonth());
+      const [repSelectedYear, setRepSelectedYear] = useState(() => new Date().getFullYear());
+      const [repSearchQuery, setRepSearchQuery] = useState("");
+      const [repStatusFilter, setRepStatusFilter] = useState("all"); // "all", "open", "closed"
+
+      const cameraInputRef = useRef(null);
+      const galleryInputRef = useRef(null);
+      const damagePhotoInputRef = useRef(null);
+
+      // Stavy skenovania a overovania (Variant 2)
+      const [scanStep, setScanStep] = useState(0);
+      const [activeOcrModal, setActiveOcrModal] = useState(null); // 'vin', 'rear', 'sheet'
+      const [isAnalyzingOcr, setIsAnalyzingOcr] = useState(false);
+
+      const [tempOcrVin, setTempOcrVin] = useState("");
+      const [tempOcrBrand, setTempOcrBrand] = useState("");
+      const [tempOcrEcv, setTempOcrEcv] = useState("");
+      const [tempOcrHasNoEcv, setTempOcrHasNoEcv] = useState(false);
+      const [tempOcrColorId, setTempOcrColorId] = useState("grey");
+
+      const [vinFile, setVinFile] = useState(null);
+      const [rearFile, setRearFile] = useState(null);
+      const [sheetFile, setSheetFile] = useState(null);
+      const [damageFiles, setDamageFiles] = useState([]);
+
+      const [vinPreview, setVinPreview] = useState(null);
+      const [rearPreview, setRearPreview] = useState(null);
+      const [sheetPreview, setSheetPreview] = useState(null);
+
+      const [clientCalcNo, setClientCalcNo] = useState("");
+      const [vin, setVin] = useState("");
+      const [ecv, setEcv] = useState("");
+      const [hasNoEcv, setHasNoEcv] = useState(false);
+      const [brand, setBrand] = useState("");
+      const [model, setModel] = useState("");
+      const [selectedColorId, setSelectedColorId] = useState("grey");
+
+      const [price, setPrice] = useState("");
+      const [awCount, setAwCount] = useState("");
+      const [selectedCategoryLabel, setSelectedCategoryLabel] = useState("");
+      const [riPrice, setRiPrice] = useState("");
+      const [isPricePending, setIsPricePending] = useState(false);
+      const [damageNote, setDamageNote] = useState("");
+
+
+      useEffect(() => {
+        let mounted = true;
+        const initAuth = async () => {
+          try {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (mounted && session?.user) {
+              setCurrentUser({
+                id: session.user.id,
+                email: session.user.email,
+                accountType: session.user.user_metadata?.account_type || "solo",
+                role: session.user.user_metadata?.role || "solo"
+              });
+            }
+          } catch (e) {
+            console.warn(e);
+          } finally {
+            if (mounted) setLoadingUser(false);
+          }
+        };
+        initAuth();
+
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+          if (mounted) {
+            if (event === "PASSWORD_RECOVERY") {
+              setShowSettingsModal(true);
+            }
+            if (session?.user) {
+              setCurrentUser({
+                id: session.user.id,
+                email: session.user.email,
+                accountType: session.user.user_metadata?.account_type || "solo",
+                role: session.user.user_metadata?.role || "solo"
+              });
+            } else {
+              setCurrentUser(null);
+            }
+            setLoadingUser(false);
+          }
+        });
+
+        const timer = setTimeout(() => { if (mounted && loadingUser) setLoadingUser(false); }, 1500);
+        return () => { mounted = false; clearTimeout(timer); subscription.unsubscribe(); };
+      }, []);
+
+      const loadData = async () => {
+        try {
+          const { data: cData } = await supabase.from("clients").select("*").order("name");
+          if (cData) {
+            setClients(cData);
+            if (!selectedClientId && cData.length > 0) {
+              setSelectedClientId(cData[0].id);
+              localStorage.setItem("pdr_last_client", cData[0].id);
+            }
+          }
+          const { data: pData } = await supabase.from("projects").select("*").order("name");
+          if (pData) setProjects(pData);
+
+          const { data: vData } = await supabase.from("vehicles").select("*").order("created_at", { ascending: false });
+          if (vData) {
+            const isMgrView = (v) => v.manager_id && v.manager_id === currentUser.id && v.created_by !== currentUser.id;
+            setVehicles(vData.filter(v => !isMgrView(v)));
+            setMgrVehicles(vData.filter(isMgrView));
+          }
+          loadVehComm();
+
+          loadPartnerships();
+        } catch (e) {
+          console.error(e);
+        }
+      };
+
+      const effRole = profileRole || (currentUser && currentUser.role) || "solo";
+
+      // ---- Offline fronta uloženia auta: záznam + fotky sa uložia v zariadení a dohrajú automaticky ----
+      const [pendingSaves, setPendingSaves] = useState([]);
+      const [pendingMsg, setPendingMsg] = useState("");
+      const flushingRef = useRef(false);
+      const flushRef = useRef(null);
+
+      const refreshPending = async () => {
+        try {
+          const all = (await pdrQueueAll()).filter((x) => currentUser && x.userId === currentUser.id);
+          setPendingSaves(all.map((x) => ({ id: x.id, no: x.vehicle.internal_record_no, ecv: x.vehicle.ecv, vin: x.vehicle.vin, status: x.status, lastError: x.lastError || "" })));
+          return all;
+        } catch (e) {
+          return [];
+        }
+      };
+
+      const discardPending = async (id) => {
+        if (!window.confirm("Zahodiť tento záznam aj s fotkami?")) return;
+        try { await pdrQueueDelete(id); } catch (e) {}
+        await refreshPending();
+      };
+
+      const flushPending = async (manual) => {
+        if (!currentUser || flushingRef.current) return;
+        flushingRef.current = true;
+        let sent = 0;
+        try {
+          const all = (await pdrQueueAll()).filter((x) => x.userId === currentUser.id);
+          for (const item of all) {
+            if (item.status === "failed" && !manual) continue;
+            if (navigator.onLine === false) break;
+            try {
+              if (item.status === "failed") { item.status = "pending"; item.lastError = ""; await pdrQueuePut(item); }
+              for (const ph of item.photos) {
+                if (ph.done) continue;
+                const up = await supabase.storage.from("vehicle-photos").upload(ph.path, ph.blob, { contentType: "image/jpeg", upsert: true });
+                if (up.error) throw up.error;
+                ph.done = true;
+                await pdrQueuePut(item);
+              }
+              // id auta vzniklo v zariadení, takže opakovanie nevytvorí duplicitu
+              const ins = await supabase.from("vehicles").insert([item.vehicle]).select();
+              if (ins.error) {
+                if (isNetErr(ins.error)) throw ins.error;
+                const ex = await supabase.from("vehicles").select("id").eq("id", item.vehicle.id).maybeSingle();
+                if (!ex.data) throw ins.error;
+              }
+              const have = await supabase.from("vehicle_coops").select("technician_id, technician_email").eq("vehicle_id", item.vehicle.id);
+              if (have.error) throw have.error;
+              const missing = item.coops.filter((c) => !(have.data || []).some((h) => (h.technician_id && c.technician_id && h.technician_id === c.technician_id) || (h.technician_email && c.technician_email && String(h.technician_email).toLowerCase() === String(c.technician_email).toLowerCase())));
+              if (missing.length) {
+                const ci = await supabase.from("vehicle_coops").insert(missing);
+                if (ci.error) throw ci.error;
+              }
+              await pdrQueueDelete(item.id);
+              sent++;
+            } catch (err) {
+              if (isNetErr(err)) break; // stále bez signálu, skúsime neskôr
+              item.status = "failed";
+              item.lastError = String((err && err.message) || err);
+              try { await pdrQueuePut(item); } catch (pe) {}
+            }
+          }
+        } catch (e) {
+          console.warn("Offline fronta:", e);
+        } finally {
+          flushingRef.current = false;
+        }
+        await refreshPending();
+        if (sent > 0) {
+          setPendingMsg(sent + (lang === "SK" ? " záznam(ov) odoslaných na server" : " record(s) sent to server"));
+          loadData();
+          setTimeout(() => setPendingMsg(""), 8000);
+        }
+      };
+      flushRef.current = flushPending;
+
+      useEffect(() => {
+        if (!currentUser) return;
+        refreshPending().then(() => { if (flushRef.current) flushRef.current(false); });
+        const onOnline = () => { if (flushRef.current) flushRef.current(false); };
+        window.addEventListener("online", onOnline);
+        const iv = setInterval(() => { if (flushRef.current) flushRef.current(false); }, 45000);
+        return () => { window.removeEventListener("online", onOnline); clearInterval(iv); };
+      }, [currentUser]);
+
+      const [vehComm, setVehComm] = useState([]);
+      const [mgrVehicles, setMgrVehicles] = useState([]);
+      const loadVehComm = async () => {
+        try {
+          const { data } = await supabase.from("vehicle_commissions").select("*");
+          setVehComm(data || []);
+        } catch (e) { console.warn("Commissions:", e.message); }
+      };
+      const commOf = (vehicleId, techId) => vehComm.find(r => String(r.vehicle_id) === String(vehicleId) && String(r.technician_id) === String(techId));
+      const techShareValue = (v, fraction, techId) => {
+        const cm = commOf(v.id, techId);
+        const cp = cm ? (parseFloat(cm.commission_pdr) || 0) : 0;
+        const cr = cm ? (parseFloat(cm.commission_ri) || 0) : 0;
+        const pdr = parseFloat(v.price) || 0, ri = parseFloat(v.ri_price) || 0;
+        return pdr * ((v.tech_pdr_percent || 100) / 100) * (1 - cp / 100) * fraction + ri * ((v.tech_ri_percent || 100) / 100) * (1 - cr / 100) * fraction;
+      };
+
+      // ===== Manažérsky pohľad (Technici / Reporty) =====
+      const [mgrMode, setMgrMode] = useState(() => { try { return localStorage.getItem("pdr_mgr_mode") !== "0"; } catch (e) { return true; } });
+      const inMgr = effRole === "manager" && mgrMode;
+      const switchMgrMode = (on) => {
+        setMgrMode(on);
+        try { localStorage.setItem("pdr_mgr_mode", on ? "1" : "0"); } catch (e) {}
+        setActiveTab(on ? "projects" : "vehicles");
+      };
+      useEffect(() => {
+        if (inMgr && !["projects", "mgr_techs", "mgr_reports"].includes(activeTab)) setActiveTab("projects");
+        if (!inMgr && ["mgr_techs", "mgr_reports"].includes(activeTab)) setActiveTab("vehicles");
+      }, [inMgr]);
+      const [mgrFClient, setMgrFClient] = useState("");
+      const [mgrFTech, setMgrFTech] = useState("");
+      const [mgrFPeriod, setMgrFPeriod] = useState("all");
+      const [mgrQ, setMgrQ] = useState("");
+      const [mgrOpenTech, setMgrOpenTech] = useState(null);
+      const fmtEur = (n) => "€" + (Number(n) || 0).toFixed(2);
+
+      const mgrVehStats = (v) => {
+        const pdr = parseFloat(v.price) || 0, ri = parseFloat(v.ri_price) || 0;
+        const rows = coopRecords.filter(c => String(c.vehicle_id) === String(v.id));
+        const list = rows.length ? rows : [{ technician_id: v.created_by, technician_email: "", split_fraction: 1 }];
+        let payout = 0, comm = 0;
+        const per = [];
+        list.forEach(c => {
+          const f = parseFloat(c.split_fraction) || 1;
+          const cm = commOf(v.id, c.technician_id);
+          const cp = cm ? (parseFloat(cm.commission_pdr) || 0) : 0;
+          const cr = cm ? (parseFloat(cm.commission_ri) || 0) : 0;
+          const bp = pdr * ((v.tech_pdr_percent || 100) / 100) * f;
+          const br = ri * ((v.tech_ri_percent || 100) / 100) * f;
+          const cmm = bp * cp / 100 + br * cr / 100;
+          per.push({ id: c.technician_id, email: c.technician_email, payout: bp + br - cmm, comm: cmm });
+          payout += bp + br - cmm;
+          comm += cmm;
+        });
+        return { gross: pdr + ri, payout, comm, per };
+      };
+
+      const mgrTeam = teamRows.filter(r => r.manager_id === currentUser?.id && r.status === "accepted" && r.member_id);
+      const mgrTechName = (id) => {
+        const r = mgrTeam.find(x => x.member_id === id);
+        return r ? String(r.member_email || "").split("@")[0] : "";
+      };
+
+      const mgrFiltered = mgrVehicles.filter(v => {
+        const proj = projects.find(p => p.id === v.project_id);
+        if (mgrFClient && (!proj || proj.client_id !== mgrFClient)) return false;
+        if (mgrFTech && v.created_by !== mgrFTech && !coopRecords.some(c => String(c.vehicle_id) === String(v.id) && String(c.technician_id) === mgrFTech)) return false;
+        if (mgrFPeriod !== "all") {
+          const d = new Date(v.created_at), now = new Date();
+          const m = mgrFPeriod === "month" ? 0 : 1;
+          const ref = new Date(now.getFullYear(), now.getMonth() - m, 1);
+          if (d.getFullYear() !== ref.getFullYear() || d.getMonth() !== ref.getMonth()) return false;
+        }
+        const q = mgrQ.trim().toLowerCase();
+        if (q) {
+          const hay = [v.vin, v.ecv, v.brand, v.model, proj?.name, v.client_calc_no].join(" ").toLowerCase();
+          if (!hay.includes(q)) return false;
+        }
+        return true;
+      });
+
+      const mgrTotals = mgrFiltered.reduce((a, v) => {
+        const s = mgrVehStats(v);
+        a.count += 1; a.gross += s.gross; a.payout += s.payout; a.comm += s.comm;
+        return a;
+      }, { count: 0, gross: 0, payout: 0, comm: 0 });
+
+      const mgrExportCsv = () => {
+        const head = ["Datum", "Klient", "Zakazka", "Auto", "VIN", "SPZ", "Technici", "Obrat", "Vyplata technikov", "Moja provizia"];
+        const rows = mgrFiltered.map(v => {
+          const proj = projects.find(p => p.id === v.project_id);
+          const cl = clients.find(c => c.id === proj?.client_id);
+          const s = mgrVehStats(v);
+          const techs = s.per.map(p => p.email || mgrTechName(p.id)).join(" + ");
+          return [new Date(v.created_at).toLocaleDateString("sk-SK"), cl?.name || "", proj?.name || "", `${v.brand || ""} ${v.model || ""}`.trim(), v.vin || "", v.ecv || "", techs, s.gross.toFixed(2), s.payout.toFixed(2), s.comm.toFixed(2)]
+            .map(x => `"${String(x).replace(/"/g, '""')}"`).join(";");
+        });
+        const blob = new Blob(["﻿" + [head.join(";"), ...rows].join("\n")], { type: "text/csv;charset=utf-8" });
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = "manazer_report.csv";
+        a.click();
+      };
+
+      const mgrExportPdf = () => {
+        const { jsPDF } = window.jspdf;
+        const asc = (x) => String(x == null ? "" : x).normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+        doc.setFontSize(14);
+        doc.setFont("helvetica", "bold");
+        doc.text("PDR FlowBoard Pro - Manager Report", 14, 15);
+        doc.setFontSize(9);
+        doc.setFont("helvetica", "normal");
+        const cName = mgrFClient ? (clients.find(c => c.id === mgrFClient)?.name || "") : "all";
+        const tName = mgrFTech ? mgrTechName(mgrFTech) : "all";
+        const per = mgrFPeriod === "month" ? "this month" : (mgrFPeriod === "prev" ? "previous month" : "all time");
+        doc.text(asc("Manager: " + currentUser?.email + " | Generated: " + new Date().toLocaleDateString()), 14, 21);
+        doc.text(asc("Client: " + cName + " | Technician: " + tName + " | Period: " + per), 14, 26);
+        doc.text("Vehicles: " + mgrTotals.count + " | Turnover: " + fmtEur(mgrTotals.gross) + " | Technicians: " + fmtEur(mgrTotals.payout) + " | My commission: " + fmtEur(mgrTotals.comm), 14, 31);
+        const body = mgrFiltered.map(v => {
+          const proj = projects.find(p => p.id === v.project_id);
+          const cl = clients.find(c => c.id === proj?.client_id);
+          const s = mgrVehStats(v);
+          return [
+            new Date(v.created_at).toLocaleDateString(),
+            asc((cl?.name || "") + "\n" + (proj?.name || "")),
+            asc(((v.brand || "") + " " + (v.model || "")).trim() + "\n" + (v.vin || "") + "\n" + (v.ecv || "")),
+            asc(s.per.map(p => (p.email ? String(p.email).split("@")[0] : mgrTechName(p.id)) + " " + fmtEur(p.payout)).join("\n")),
+            fmtEur(s.gross),
+            fmtEur(s.comm)
+          ];
+        });
+        doc.autoTable({
+          startY: 35,
+          head: [["Date", "Client / Job", "Vehicle / VIN / Plate", "Technician payout", "Turnover", "My commission"]],
+          body,
+          theme: "grid",
+          styles: { fontSize: 8, cellPadding: 2, textColor: [30, 41, 59] },
+          headStyles: { fillColor: [14, 165, 233], textColor: [255, 255, 255], fontStyle: "bold" },
+          margin: { left: 14, right: 14 }
+        });
+        doc.save("manager_report_" + Date.now() + ".pdf");
+      };
+
+      const loadProfileRole = async () => {
+        if (!currentUser) return;
+        try {
+          const { data } = await supabase.from("profiles").select("role").eq("id", currentUser.id).maybeSingle();
+          setProfileRole(data && data.role ? data.role : null);
+        } catch (e) { console.warn(e); }
+      };
+
+      const loadTeam = async () => {
+        if (!currentUser) return;
+        try {
+          const { data, error } = await supabase.from("manager_team_members").select("*").order("created_at", { ascending: true });
+          if (error) throw error;
+          setTeamRows(data || []);
+        } catch (e) { console.warn("Team load:", e.message); }
+      };
+
+      const handleInviteTeamMember = async (e) => {
+        e.preventDefault();
+        const em = teamInviteEmail.trim().toLowerCase();
+        if (!em) return;
+        const { error } = await supabase.from("manager_team_members").insert([{ manager_id: currentUser.id, member_email: em }]);
+        if (error) {
+          setTeamMsg(error.code === "23505" ? "Tento technik už je pozvaný." : "Chyba: " + error.message);
+        } else {
+          setTeamMsg("Pozvánka odoslaná.");
+          setTeamInviteEmail("");
+          loadTeam();
+        }
+        setTimeout(() => setTeamMsg(""), 3500);
+      };
+
+      const handleAcceptTeamInvite = async (id) => {
+        const { error } = await supabase.from("manager_team_members").update({ status: "accepted" }).eq("id", id);
+        setTeamMsg(error ? "Chyba: " + error.message : "Pozvánka prijatá.");
+        setTimeout(() => setTeamMsg(""), 3500);
+        loadTeam();
+      };
+
+      const handleRemoveTeamRow = async (id, confirmText) => {
+        if (confirmText && !window.confirm(confirmText)) return;
+        const { error } = await supabase.from("manager_team_members").delete().eq("id", id);
+        if (error) { setTeamMsg("Chyba: " + error.message); setTimeout(() => setTeamMsg(""), 3500); }
+        loadTeam();
+      };
+
+      const loadManagerData = async () => {
+        if (!currentUser) return;
+        try {
+          const [cc, pt] = await Promise.all([
+            supabase.from("client_commissions").select("*"),
+            supabase.from("project_technicians").select("*")
+          ]);
+          const m = {};
+          (cc.data || []).forEach(r => { m[r.client_id] = { pdr: r.default_commission_pdr, ri: r.default_commission_ri }; });
+          setClientComm(m);
+          setAssignRows(pt.data || []);
+        } catch (e) { console.warn("Manager data:", e.message); }
+      };
+
+      const clampPct = (v) => Math.min(100, Math.max(0, parseFloat(v) || 0));
+
+      const saveClientCommission = async (clientId, pdr, ri) => {
+        const p = clampPct(pdr), r = clampPct(ri);
+        const { error } = await supabase.from("client_commissions").upsert({ client_id: clientId, default_commission_pdr: p, default_commission_ri: r }, { onConflict: "client_id" });
+        if (error) alert("Provízia sa neuložila: " + error.message);
+        else setClientComm(prev => ({ ...prev, [clientId]: { pdr: p, ri: r } }));
+      };
+
+      const toggleAssign = async (projectId, techId) => {
+        const ex = assignRows.find(a => a.project_id === projectId && a.technician_id === techId);
+        if (ex) {
+          const { error } = await supabase.from("project_technicians").delete().eq("id", ex.id);
+          if (error) alert("Chyba: " + error.message);
+          else setAssignRows(assignRows.filter(a => a.id !== ex.id));
+        } else {
+          const { data, error } = await supabase.from("project_technicians").insert([{ project_id: projectId, technician_id: techId, assigned_by: currentUser.id }]).select();
+          if (error) alert("Chyba: " + error.message);
+          else setAssignRows([...assignRows, ...(data || [])]);
+        }
+      };
+
+      const saveAssignOverride = async (rowId, field, value) => {
+        const val = value === "" ? null : clampPct(value);
+        const { error } = await supabase.from("project_technicians").update({ [field]: val }).eq("id", rowId);
+        if (error) alert("Chyba: " + error.message);
+        else setAssignRows(prev => prev.map(a => a.id === rowId ? { ...a, [field]: val } : a));
+      };
+
+      useEffect(() => { if (effRole === "manager" && currentUser && currentUser.id) loadManagerData(); }, [effRole, currentUser && currentUser.id]);
+
+      useEffect(() => {
+        if (currentUser && currentUser.id) { loadProfileRole(); loadTeam(); }
+        else { setProfileRole(null); setTeamRows([]); }
+      }, [currentUser && currentUser.id]);
+
+      const loadPartnerships = async () => {
+    if (!currentUser) return;
+    try {
+      // 1. Načítanie všetkých partnerstiev týkajúcich sa prihláseného technika
+      const { data, error } = await supabase
+        .from("technician_partners")
+        .select("*");
+
+      if (error) throw error;
+
+      if (data) {
+        const myEmail = (currentUser.email || "").toLowerCase();
+
+        // Odoslané pozvánky čakajúce na schválenie
+        const sent = data.filter(p => 
+          p.sender_id === currentUser.id && p.status === "pending"
+        );
+        setSentCoopInvites(sent);
+
+        // Prijaté pozvánky čakajúce na moje schválenie
+        const pending = data.filter(p => 
+          (p.recipient_id === currentUser.id || (p.recipient_email && p.recipient_email.toLowerCase() === myEmail)) &&
+          p.sender_id !== currentUser.id &&
+          p.status === "pending"
+        );
+        setPendingCoopInvites(pending);
+
+        // Aktívni partneri na dielni
+        const active = data.filter(p => p.status === "accepted").map(p => {
+          const isSender = p.sender_id === currentUser.id;
+          return {
+            ...p,
+            partnerEmail: isSender ? p.recipient_email : (p.sender_email || "Partner"),
+            partnerId: isSender ? p.recipient_id : p.sender_id
+          };
+        });
+        setCoopPartners(active);
+        // Obnova naposledy označených partnerov z pamäte zariadenia
+      try {
+        const savedIds = JSON.parse(localStorage.getItem("pdr_last_coop_partners") || "[]");
+        if (savedIds.length > 0) {
+          const preselected = active.filter(p => savedIds.includes(p.id));
+          setSelectedCoopPartners(preselected);
+        }
+      } catch (err) {
+        console.error("Chyba pri obnove označených partnerov:", err);
+      }
+      }
+
+      // 2. Načítanie záznamov o kooperáciách na autách
+      const { data: coops, error: coopsErr } = await supabase
+        .from("vehicle_coops")
+        .select("*");
+
+      if (!coopsErr && coops) {
+        setCoopRecords(coops);
+      }
+    } catch (err) {
+      console.warn("Chyba načítania partnerstiev:", err);
+    }
+  };
+      useEffect(() => {
+        if (currentUser) loadData();
+      }, [currentUser]);
+
+      const availableProjects = useMemo(() => {
+        return projects.filter(p => p.client_id === selectedClientId && p.is_active !== false);
+      }, [projects, selectedClientId]);
+
+      useEffect(() => {
+        if (availableProjects.length > 0) {
+          const found = availableProjects.find(p => p.id === selectedProjectId);
+          if (!found) {
+            setSelectedProjectId(availableProjects[0].id);
+            localStorage.setItem("pdr_last_project", availableProjects[0].id);
+          }
+        } else {
+          setSelectedProjectId("");
+        }
+      }, [availableProjects, selectedClientId]);
+
+      const handleClientChange = (cId) => {
+        setSelectedClientId(cId);
+        localStorage.setItem("pdr_last_client", cId);
+      };
+
+      const handleProjectChange = (pId) => {
+        setSelectedProjectId(pId);
+        localStorage.setItem("pdr_last_project", pId);
+        rememberRecentProject(pId);
+      };
+
+      // naposledy použité lokality (rýchle bubliny v Intake)
+      const [recentProjectIds, setRecentProjectIds] = useState(() => {
+        try { return JSON.parse(localStorage.getItem("pdr_recent_projects") || "[]"); } catch (e) { return []; }
+      });
+      function rememberRecentProject(pId) {
+        if (!pId) return;
+        setRecentProjectIds(prev => {
+          const next = [pId, ...prev.filter(x => x !== pId)].slice(0, 6);
+          try { localStorage.setItem("pdr_recent_projects", JSON.stringify(next)); } catch (e) {}
+          return next;
+        });
+      }
+      const pickRecentProject = (p) => {
+        setSelectedClientId(p.client_id);
+        localStorage.setItem("pdr_last_client", p.client_id);
+        setSelectedProjectId(p.id);
+        localStorage.setItem("pdr_last_project", p.id);
+        rememberRecentProject(p.id);
+      };
+
+      // vyhľadávanie klienta / lokality (bez diakritiky, viac slov naraz)
+      const [pickSearch, setPickSearch] = useState("");
+      const normSearch = (x) => String(x || "").toLowerCase().normalize("NFD").replace(/[^a-z0-9 ]/g, "");
+      const pickMatches = useMemo(() => {
+        const q = normSearch(pickSearch).trim();
+        if (!q) return [];
+        const words = q.split(/\s+/);
+        return projects
+          .filter((p) => p.is_active !== false)
+          .map((p) => {
+            const cl = clients.find((c) => c.id === p.client_id);
+            return { p, cl, hay: normSearch((cl ? cl.name : "") + " " + p.name + " " + (cl && cl.city ? cl.city : "")) };
+          })
+          .filter((x) => words.every((w) => x.hay.includes(w)))
+          .slice(0, 8);
+      }, [pickSearch, projects, clients]);
+
+      const currentSelectedClient = useMemo(() => {
+        return clients.find(c => c.id === selectedClientId);
+      }, [clients, selectedClientId]);
+
+      const currentSelectedProject = useMemo(() => {
+        return projects.find(p => p.id === selectedProjectId);
+      }, [projects, selectedProjectId]);
+
+      const basePdrPercent = useMemo(() => {
+        if (currentSelectedProject?.tech_pdr_percent !== null && currentSelectedProject?.tech_pdr_percent !== undefined && currentSelectedProject?.tech_pdr_percent !== "") {
+          return parseFloat(currentSelectedProject.tech_pdr_percent);
+        }
+        if (currentSelectedClient?.default_pdr_percent !== null && currentSelectedClient?.default_pdr_percent !== undefined && currentSelectedClient?.default_pdr_percent !== "") {
+          return parseFloat(currentSelectedClient.default_pdr_percent);
+        }
+        return 100;
+      }, [currentSelectedProject, currentSelectedClient]);
+
+      const baseRiPercent = useMemo(() => {
+        if (currentSelectedProject?.tech_ri_percent !== null && currentSelectedProject?.tech_ri_percent !== undefined && currentSelectedProject?.tech_ri_percent !== "") {
+          return parseFloat(currentSelectedProject.tech_ri_percent);
+        }
+        if (currentSelectedClient?.default_ri_percent !== null && currentSelectedClient?.default_ri_percent !== undefined && currentSelectedClient?.default_ri_percent !== "") {
+          return parseFloat(currentSelectedClient.default_ri_percent);
+        }
+        return 100;
+      }, [currentSelectedProject, currentSelectedClient]);
+
+      const mgrJobOwnerId = (currentSelectedProject?.created_by && currentSelectedProject.created_by !== currentUser?.id) ? currentSelectedProject.created_by : null;
+      const [teamPeers, setTeamPeers] = useState({});
+      useEffect(() => {
+        if (!mgrJobOwnerId || teamPeers[mgrJobOwnerId]) return;
+        (async () => {
+          try {
+            const { data, error } = await supabase.rpc("pdr_team_peers", { mgr: mgrJobOwnerId });
+            if (error) throw error;
+            setTeamPeers(prev => ({ ...prev, [mgrJobOwnerId]: (data || []).map(r => ({ id: "peer:" + r.peer_id, partnerId: r.peer_id, partnerEmail: r.peer_email, recipient_email: r.peer_email })) }));
+          } catch (err) {
+            console.warn("Team peers:", err.message);
+            setTeamPeers(prev => ({ ...prev, [mgrJobOwnerId]: [] }));
+          }
+        })();
+      }, [mgrJobOwnerId]);
+      // vlastná provízia technika na zákazke manažéra (vidí len svoju)
+      const [myComm, setMyComm] = useState({});
+      useEffect(() => {
+        if (!mgrJobOwnerId || !selectedProjectId || myComm[selectedProjectId]) return;
+        (async () => {
+          try {
+            const { data, error } = await supabase.rpc("pdr_my_commission", { pid: selectedProjectId });
+            if (error) throw error;
+            const r = (data || [])[0];
+            setMyComm(prev => ({ ...prev, [selectedProjectId]: { pdr: r ? (parseFloat(r.c_pdr) || 0) : 0, ri: r ? (parseFloat(r.c_ri) || 0) : 0 } }));
+          } catch (err) {
+            console.warn("My commission:", err.message);
+            setMyComm(prev => ({ ...prev, [selectedProjectId]: { pdr: 0, ri: 0 } }));
+          }
+        })();
+      }, [mgrJobOwnerId, selectedProjectId]);
+      // na zákazke manažéra je CO-OP možný len s technikmi z jeho tímu
+      const visibleCoopPartners = mgrJobOwnerId ? (teamPeers[mgrJobOwnerId] || []) : (coopPartners || []);
+      const activeCoopPartners = selectedCoopPartners.filter(p => visibleCoopPartners.some(v => v.id === p.id));
+
+      const coopSplitFraction = useMemo(() => {
+        const totalTechs = 1 + activeCoopPartners.length;
+        return 1 / totalTechs;
+      }, [activeCoopPartners.length]);
+
+      const effectivePdrPercent = useMemo(() => {
+        return (basePdrPercent * coopSplitFraction);
+      }, [basePdrPercent, coopSplitFraction]);
+
+      const effectiveRiPercent = useMemo(() => {
+        return (baseRiPercent * coopSplitFraction);
+      }, [baseRiPercent, coopSplitFraction]);
+
+      useEffect(() => {
+        if (!currentSelectedProject) return;
+
+        if (currentSelectedProject.pricing_mode === "fixed" && currentSelectedProject.fixed_price) {
+          setPrice(String(currentSelectedProject.fixed_price));
+          setAwCount("");
+          setSelectedCategoryLabel("");
+          setIsPricePending(false);
+        } else if (currentSelectedProject.pricing_mode === "categories") {
+          const cats = currentSelectedProject.pricing_categories || [];
+          if (cats.length > 0) {
+            setSelectedCategoryLabel(cats[0].label);
+            setPrice(String(cats[0].price));
+            setAwCount("");
+            setIsPricePending(false);
+          }
+        } else if (currentSelectedProject.pricing_mode === "free") {
+          setSelectedCategoryLabel("");
+        }
+      }, [currentSelectedProject]);
+
+      const isTypingPrice = Boolean(price && String(price).trim() !== "");
+      const isTypingAw = Boolean(awCount && String(awCount).trim() !== "");
+      const isAwRateMissing = currentSelectedProject?.pricing_mode === "free" && isTypingAw && !currentSelectedProject?.aw_rate;
+
+      const handleDirectPriceChange = (val) => {
+        setPrice(val);
+        if (val && val.trim() !== "") {
+          setAwCount("");
+          setIsPricePending(false);
+        }
+      };
+
+      const handleAwChange = (val) => {
+        setAwCount(val);
+        if (val && val.trim() !== "") {
+          const count = parseFloat(val);
+          if (!isNaN(count) && currentSelectedProject?.aw_rate) {
+            setPrice((count * parseFloat(currentSelectedProject.aw_rate)).toFixed(2));
+            setIsPricePending(false);
+          } else {
+            setPrice("");
+          }
+        } else {
+          setPrice("");
+        }
+      };
+
+      const canCloseRecord = useMemo(() => {
+        if (isPricePending) return true;
+        if (currentSelectedProject?.pricing_mode === "free" && isTypingAw && isAwRateMissing) {
+          return false;
+        }
+        return true;
+      }, [isPricePending, currentSelectedProject, isTypingAw, isAwRateMissing]);
+
+      const techEarned = useMemo(() => {
+        const pdrP = effectivePdrPercent / 100;
+        const riP = effectiveRiPercent / 100;
+        const pdrVal = parseFloat(price) || 0;
+        const riVal = parseFloat(riPrice) || 0;
+        const mc = (mgrJobOwnerId && myComm[selectedProjectId]) || { pdr: 0, ri: 0 };
+        return (pdrVal * pdrP * (1 - mc.pdr / 100) + riVal * riP * (1 - mc.ri / 100)).toFixed(2);
+      }, [price, riPrice, effectivePdrPercent, effectiveRiPercent, mgrJobOwnerId, myComm, selectedProjectId]);
+
+      useEffect(() => {
+        if (!selectedClientId) return;
+        const client = clients.find(c => c.id === selectedClientId);
+        const currentYear = new Date().getFullYear();
+
+        if (client && client.auto_numbering && client.fixed_seq_prefix) {
+          let prefix = client.fixed_seq_prefix;
+          if (prefix.includes("{ROK}")) {
+            prefix = prefix.replace("{ROK}", String(currentYear));
+          } else if (!prefix.includes(String(currentYear))) {
+            prefix = `${prefix}${currentYear}/`;
+          }
+
+          const clientProjectIds = projects.filter(p => p.client_id === selectedClientId).map(p => p.id);
+          let maxSeq = (client.initial_seq_number || 1) - 1;
+
+          vehicles.forEach(v => {
+            if (clientProjectIds.includes(v.project_id) && v.client_calc_no && v.client_calc_no.startsWith(prefix)) {
+              const numPart = parseInt(v.client_calc_no.replace(prefix, ""), 10);
+              if (!isNaN(numPart) && numPart > maxSeq) maxSeq = numPart;
+            }
+          });
+          setClientCalcNo(`${prefix}${String(maxSeq + 1).padStart(3, "0")}`);
+        } else {
+          setClientCalcNo("");
+        }
+      }, [selectedClientId, clients, projects, vehicles]);
+
+     const toggleCoopPartnerSelection = (partner) => {
+    setSelectedCoopPartners(prev => {
+      const exists = prev.some(p => p.id === partner.id);
+      const updated = exists 
+        ? prev.filter(p => p.id !== partner.id) 
+        : [...prev, partner];
+      
+      try {
+        localStorage.setItem("pdr_last_coop_partners", JSON.stringify(updated.map(p => p.id)));
+      } catch (err) {
+        console.error("Chyba pri zapise do localStorage:", err);
+      }
+      return updated;
+    });
+  };
+
+      const handleSendCoopInvite = async (e) => {
+        e.preventDefault();
+        setCoopMsg("");
+        const email = newPartnerEmail.trim().toLowerCase();
+        if (!email || email === currentUser.email.toLowerCase()) {
+          return setCoopMsg(lang === "SK" ? "Zadajte platný e-mail kolegu." : "Enter a valid email.");
+        }
+
+        const { error } = await supabase.from("technician_partners").insert([{
+          sender_id: currentUser.id,
+          sender_email: (currentUser.email || "").toLowerCase(),
+          recipient_email: email,
+          status: "pending"
+        }]);
+
+        if (error) {
+          setCoopMsg(error.message);
+        } else {
+          setCoopMsg(lang === "SK" ? "Pozvánka odoslaná!" : "Invitation sent!");
+          setNewPartnerEmail("");
+          loadPartnerships();
+        }
+      };
+
+      const handleAcceptCoopInvite = async (inviteId) => {
+        const { error } = await supabase
+          .from("technician_partners")
+          .update({ status: "accepted", recipient_id: currentUser.id })
+          .eq("id", inviteId);
+
+        if (!error) loadPartnerships();
+        else alert(error.message);
+      };
+const handleRemoveOrRejectPartner = async (partnershipId) => {
+        if (!confirm("Naozaj chcete zrušiť túto spoluprácu / pozvánku?")) return;
+        try {
+          const { error } = await supabase
+            .from("technician_partners")
+            .delete()
+            .eq("id", partnershipId);
+
+          if (error) throw error;
+
+          await loadPartnerships();
+        } catch (err) {
+          alert("Chyba pri rušení spolupráce: " + err.message);
+        }
+      };
+      const handleAuthSubmit = async (e) => {
+        e.preventDefault();
+        setAuthError("");
+        setResetSuccessMsg("");
+
+        if (isResetMode) {
+          const email = authEmail.trim().toLowerCase();
+          if (!email) return setAuthError(t.emailPlaceholder);
+
+          const { error } = await supabase.auth.resetPasswordForEmail(email, {
+            redirectTo: window.location.origin
+          });
+
+          if (error) {
+            setAuthError(error.message);
+          } else {
+            setResetSuccessMsg(t.resetLinkSentMsg);
+          }
+          return;
+        }
+
+        if (isRegistering) {
+          if (authPassword.length < 6) return setAuthError(t.passwordTooShort);
+          if (authPassword !== authConfirmPassword) return setAuthError(t.passwordMismatch);
+
+          const roleToAssign = authAccountType === "company" ? authRole : "solo";
+          const { data: signUpData, error } = await supabase.auth.signUp({
+            email: authEmail,
+            password: authPassword,
+            options: { data: { account_type: authAccountType, role: roleToAssign }, emailRedirectTo: window.location.origin }
+          });
+          if (error) {
+            setAuthError(error.message);
+          } else if (signUpData && signUpData.user && Array.isArray(signUpData.user.identities) && signUpData.user.identities.length === 0) {
+            setAuthError(lang === "SK" ? "Tento e-mail je už zaregistrovaný." : "This email is already registered.");
+          } else if (signUpData && !signUpData.session) {
+            setResetSuccessMsg(lang === "SK" ? "Registrácia prebehla. Potvrďte ju odkazom, ktorý sme poslali na váš e-mail, a potom sa prihláste." : (lang === "DE" ? "Registrierung erfolgreich. Bitte bestätigen Sie sie über den Link in Ihrer E-Mail und melden Sie sich dann an." : "Registration successful. Confirm it via the link we sent to your email, then sign in."));
+            setIsRegistering(false);
+            setAuthPassword("");
+            setAuthConfirmPassword("");
+          }
+        } else {
+          const { error } = await supabase.auth.signInWithPassword({ email: authEmail, password: authPassword });
+          if (error) {
+            setAuthError(error.message);
+            setFailedAttempts(prev => prev + 1);
+          } else {
+            setFailedAttempts(0);
+          }
+        }
+      };
+
+      const handleGoogleSignIn = async () => {
+        setAuthError("");
+        const { error } = await supabase.auth.signInWithOAuth({
+          provider: "google",
+          options: {
+            redirectTo: window.location.origin
+          }
+        });
+        if (error) setAuthError(error.message);
+      };
+
+      const handlePasswordUpdate = async (e) => {
+        e.preventDefault();
+        setSettingsMsg("");
+        if (newAccountPassword.length < 6) return setSettingsMsg(t.passwordTooShort);
+
+        const { error } = await supabase.auth.updateUser({ password: newAccountPassword });
+        if (error) {
+          setSettingsMsg(error.message);
+        } else {
+          setSettingsMsg(t.passwordUpdated);
+          setNewAccountPassword("");
+          setTimeout(() => setShowSettingsModal(false), 1500);
+        }
+      };
+
+      const uploadSingleFile = async (file, path) => uploadBlobRetry(await compressImage(file), path);
+
+      const uploadBlobRetry = async (compressedBlob, path) => {
+        // pri slabom signáli skúsime nahrávanie opakovane (upsert, takže opakovanie je bezpečné)
+        let lastErr = null;
+        for (let attempt = 0; attempt < 4; attempt++) {
+          try {
+            const { error } = await supabase.storage.from("vehicle-photos").upload(path, compressedBlob, {
+              contentType: "image/jpeg",
+              upsert: true
+            });
+            if (!error) return path; // bucket je súkromný, odkaz sa generuje pri zobrazení
+            lastErr = error;
+          } catch (netErr) {
+            lastErr = netErr;
+          }
+          if (navigator.onLine === false) break;
+          if (attempt < 3) {
+            setUploadStatusText((lang === "SK" ? "Slabý signál, opakujem nahrávanie fotky… (" : "Weak signal, retrying upload… (") + (attempt + 1) + "/3)");
+            await new Promise(r => setTimeout(r, 1500 * (attempt + 1)));
+          }
+        }
+        throw lastErr || new Error("Upload failed");
+      };
+
+      const resetAfterSave = () => {
+        setVin("");
+        setEcv("");
+        setBrand("");
+        setModel("");
+        if (currentSelectedProject?.pricing_mode === "free") setPrice("");
+        setAwCount("");
+        setRiPrice("");
+        setIsPricePending(false);
+        setDamageNote("");
+        setVinFile(null);
+        setRearFile(null);
+        setSheetFile(null);
+        setDamageFiles([]);
+        setVinPreview(null);
+        setRearPreview(null);
+        setSheetPreview(null);
+      };
+
+      const handleSaveVehicle = async (e) => {
+        e.preventDefault();
+        if (!selectedProjectId) return alert(lang === "SK" ? "Vyberte najprv platného Klienta a Lokáciu." : "Please select Client and Location.");
+
+        if (!canCloseRecord) {
+          return alert(t.missingAwRateAlert);
+        }
+        if (!/^[A-HJ-NPR-Z0-9]{17}$/.test((vin || "").trim().toUpperCase())) {
+          return alert(lang === "SK" ? "Zadajte platný VIN kód (17 znakov, bez písmen I, O, Q)." : (lang === "DE" ? "Bitte eine gültige FIN eingeben (17 Zeichen, ohne I, O, Q)." : "Enter a valid VIN (17 characters, no I, O, Q)."));
+        }
+// Kontrola duplicity VIN pred spustením nahrávania
+    const cleanVin = (vin || "").trim().toUpperCase();
+    if (cleanVin && cleanVin !== "N/A") {
+      try {
+        const { data: existingVin, error: vinCheckErr } = await supabase
+          .from("vehicles")
+          .select("id, internal_record_no, ecv, brand, model")
+          .eq("vin", cleanVin)
+          .limit(1);
+
+        if (!vinCheckErr && existingVin && existingVin.length > 0) {
+          const dup = existingVin[0];
+          const dupMsg = lang === "SK"
+            ? `Vozidlo s týmto VIN už existuje v systéme!\nZáznam: ${dup.internal_record_no || ""}\nAuto: ${dup.brand} ${dup.model} (${dup.ecv})`
+            : `Vehicle with this VIN already exists!\nRecord: ${dup.internal_record_no || ""}\nCar: ${dup.brand} ${dup.model} (${dup.ecv})`;
+          return alert(dupMsg);
+        }
+      } catch (err) {
+        console.warn("Chyba kontroly VIN:", err);
+      }
+    }
+        setIsUploading(true);
+        setUploadStatusText(t.savingVehicleStatus);
+        let queueOffline = null;
+
+        try {
+          const timestamp = Date.now();
+          const uid = currentUser.id;
+          const vehicleId = newUuid();
+
+          const vinPath = vinFile ? `${uid}/${timestamp}_vin.jpg` : null;
+          const rearPath = rearFile ? `${uid}/${timestamp}_rear.jpg` : null;
+          const sheetPath = sheetFile ? `${uid}/${timestamp}_sheet.jpg` : null;
+          const damagePaths = damageFiles.map((_, i) => `${uid}/${timestamp}_dmg_${i + 1}.jpg`);
+
+          const currentYear = new Date().getFullYear();
+          const techPrefix = (currentUser.email.split("@")[0].substring(0, 4)).toUpperCase();
+          const recPrefix = `${techPrefix}/${currentYear}/`;
+          const maxOf = (m, no) => {
+            const str = String(no || "");
+            if (!str.startsWith(recPrefix)) return m;
+            const n = parseInt(str.slice(recPrefix.length), 10);
+            return isNaN(n) ? m : Math.max(m, n);
+          };
+          // číslovanie berie do úvahy aj záznamy čakajúce v offline fronte
+          const maxRecNo = pendingSaves.reduce((m, p) => maxOf(m, p.no), vehicles.reduce((m, v) => (v.created_by !== currentUser.id ? m : maxOf(m, v.internal_record_no)), 0));
+          const internalRecordNo = `${recPrefix}${String(maxRecNo + 1).padStart(3, "0")}`;
+
+          const finalStatus = isPricePending ? "pending_price" : (isAwRateMissing ? "pending_rate" : "completed");
+          const selectedColorObj = COLOR_PALETTE.find(c => c.id === selectedColorId);
+          const colorName = selectedColorObj ? selectedColorObj.labels[lang] : selectedColorId;
+
+          const newVehicleRecord = {
+            id: vehicleId,
+            project_id: selectedProjectId,
+            created_by: currentUser.id,
+            internal_record_no: internalRecordNo,
+            client_calc_no: clientCalcNo || null,
+            price_category: selectedCategoryLabel || null,
+            ri_price: Number(riPrice) || 0.00,
+            vin: vin || "N/A",
+            ecv: hasNoEcv ? (lang === "SK" ? "Bez ŠPZ" : (lang === "DE" ? "Ohne KZ" : "No Plate")) : (ecv || "N/A"),
+            has_no_ecv: hasNoEcv,
+            brand: brand || "N/A",
+            model: model || "N/A",
+            color: colorName,
+            currency: currency,
+            price: isPricePending ? 0 : (Number(price) || 0),
+            is_price_pending: isPricePending,
+            aw_count: (currentSelectedProject?.pricing_mode === "free" && awCount) ? parseFloat(awCount) : null,
+            // ukladáme ZÁKLADNÉ % (bez CO-OP delenia); podiel CO-OP je v vehicle_coops.split_fraction
+            tech_pdr_percent: basePdrPercent,
+            tech_ri_percent: baseRiPercent,
+            note: damageNote.trim() || null,
+            note_created_at: damageNote.trim() ? new Date().toISOString() : null,
+            photo_vin_url: vinPath,
+            photo_rear_url: rearPath,
+            photo_sheet_url: sheetPath,
+            damage_photos: damagePaths,
+            status: finalStatus
+          };
+
+          const coopInserts = [
+            {
+              vehicle_id: vehicleId,
+              technician_id: currentUser.id,
+              technician_email: currentUser.email,
+              split_fraction: coopSplitFraction,
+              is_owner: true
+            }
+          ];
+
+         activeCoopPartners.forEach(p => {
+            // Zistenie skutočného ID a emailu partnera
+            const partnerTechId = p.partnerId || (p.sender_id === currentUser.id ? p.recipient_id : p.sender_id) || null;
+            const partnerTechEmail = (p.partnerEmail || (p.sender_id === currentUser.id ? p.recipient_email : p.sender_email) || "").toLowerCase();
+
+            if (partnerTechId || partnerTechEmail) {
+              coopInserts.push({
+                vehicle_id: vehicleId,
+                technician_id: partnerTechId,
+                technician_email: partnerTechEmail,
+                split_fraction: coopSplitFraction,
+                is_owner: false
+              });
+            }
+          });
+
+          // fotky sa zmenšia hneď (funguje aj bez signálu), nahrávanie ide až potom
+          const photoJobs = [];
+          if (vinFile) photoJobs.push({ path: vinPath, file: vinFile });
+          if (rearFile) photoJobs.push({ path: rearPath, file: rearFile });
+          if (sheetFile) photoJobs.push({ path: sheetPath, file: sheetFile });
+          damageFiles.forEach((f, i) => photoJobs.push({ path: damagePaths[i], file: f }));
+          const blobs = [];
+          for (const j of photoJobs) blobs.push({ path: j.path, blob: await compressImage(j.file), done: false });
+
+          // bez signálu: záznam aj fotky ostanú uložené v zariadení a odošlú sa automaticky
+          queueOffline = async () => {
+            try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (pe) {}
+            await pdrQueuePut({ id: vehicleId, userId: uid, createdAt: Date.now(), status: "pending", lastError: "", vehicle: newVehicleRecord, coops: coopInserts, photos: blobs });
+            await refreshPending();
+            resetAfterSave();
+            rememberRecentProject(selectedProjectId);
+            setPendingMsg(lang === "SK" ? "Bez signálu: záznam je uložený v zariadení a odošle sa automaticky po pripojení." : "No signal: record saved on this device and will be sent automatically.");
+            setTimeout(() => setPendingMsg(""), 12000);
+          };
+
+          if (navigator.onLine === false) { await queueOffline(); return; }
+
+          for (const ph of blobs) {
+            try {
+              await uploadBlobRetry(ph.blob, ph.path);
+              ph.done = true;
+            } catch (upErr) {
+              if (isNetErr(upErr)) { await queueOffline(); return; }
+              throw upErr;
+            }
+          }
+
+          const { data, error } = await supabase.from("vehicles").insert([newVehicleRecord]).select();
+          if (error) {
+            if (isNetErr(error)) { await queueOffline(); return; }
+            throw error;
+          }
+          const insertedVehicle = data[0];
+
+          const { data: savedCoops, error: coopInsertErr } = await supabase
+            .from("vehicle_coops")
+            .insert(coopInserts)
+            .select();
+
+          setVehicles(prev => [insertedVehicle, ...prev]);
+
+          loadVehComm();
+
+          if (coopInsertErr && isNetErr(coopInsertErr) && queueOffline) {
+            // auto je uložené, CO-OP riadky sa dohrajú z fronty po pripojení
+            await queueOffline();
+            return;
+          }
+          if (coopInsertErr) {
+            // Kooperácia sa NEULOŽILA (typicky RLS politika v Supabase) -> nehlásiť falošný úspech
+            console.error("Chyba zápisu kooperácie:", coopInsertErr);
+            alert(
+              "Auto bolo uložené, ALE spolupráca (CO-OP) sa nezapísala, preto ju kolega neuvidí.\n\nDôvod: " +
+              coopInsertErr.message
+            );
+          } else {
+            setCoopRecords(prev => [...(savedCoops || coopInserts), ...prev]);
+            alert(t.savedSuccessMsg);
+          }
+
+          resetAfterSave();
+          // setSelectedCoopPartners([]);
+          loadPartnerships();
+          rememberRecentProject(selectedProjectId);
+        } catch (err) {
+          if (queueOffline && isNetErr(err)) {
+            try { await queueOffline(); } catch (qe) { alert("Error: " + err.message); }
+          } else {
+            alert("Error: " + err.message);
+          }
+        } finally {
+          setIsUploading(false);
+          setUploadStatusText("");
+        }
+      };
+
+     // Riadok kooperácie patrí prihlásenému technikovi: podľa ID ALEBO podľa emailu (email = identita)
+     const isMyCoopRow = (c) => {
+        if (!c || !currentUser) return false;
+        const myEmail = (currentUser.email || "").toLowerCase();
+        return (
+          (c.technician_id && c.technician_id === currentUser.id) ||
+          (!!c.technician_email && c.technician_email.toLowerCase() === myEmail)
+        );
+      };
+
+     const filteredVehicles = useMemo(() => {
+        if (!currentUser) return [];
+        const myEmail = (currentUser.email || "").toLowerCase();
+
+        return vehicles.filter(v => {
+          // Vidím len svoje autá alebo autá, kde som v kooperácii
+          const isCreator = v.created_by === currentUser.id;
+          const isInCoop = coopRecords.some(c => String(c.vehicle_id) === String(v.id) && isMyCoopRow(c));
+
+          if (!isCreator && !isInCoop) return false;
+          if (repClientFilter !== "all") {
+            const clientProjectIds = projects.filter(p => p.client_id === repClientFilter).map(p => p.id);
+            if (!clientProjectIds.includes(v.project_id)) return false;
+          }
+          if (repProjectFilter !== "all" && v.project_id !== repProjectFilter) return false;
+
+          const vDate = new Date(v.created_at);
+          const now = new Date();
+         if (repDateRange === "thisWeek") {
+            const dayOfWeek = now.getDay() === 0 ? 6 : now.getDay() - 1; // 0 = pondelok
+            const startOfWeek = new Date(now);
+            startOfWeek.setDate(now.getDate() - dayOfWeek);
+            startOfWeek.setHours(0, 0, 0, 0);
+            if (vDate < startOfWeek) return false;
+          } else if (repDateRange === "thisMonth") {
+            if (vDate.getMonth() !== now.getMonth() || vDate.getFullYear() !== now.getFullYear()) return false;
+          } else if (repDateRange === "lastMonth") {
+            const lastMonth = now.getMonth() === 0 ? 11 : now.getMonth() - 1;
+            const yearOfLastMonth = now.getMonth() === 0 ? now.getFullYear() - 1 : now.getFullYear();
+            if (vDate.getMonth() !== lastMonth || vDate.getFullYear() !== yearOfLastMonth) return false;
+          } else if (repDateRange === "customMonth") {
+            if (vDate.getMonth() !== parseInt(repSelectedMonth, 10) || vDate.getFullYear() !== parseInt(repSelectedYear, 10)) return false;
+          }
+// Filter podľa stavu: Otvorené vs Uzavreté
+          if (repStatusFilter === "open" && v.is_locked) return false;
+          if (repStatusFilter === "closed" && !v.is_locked) return false;
+          if (repSearchQuery.trim()) {
+            const q = repSearchQuery.toLowerCase();
+            const matchVin = (v.vin || "").toLowerCase().includes(q);
+            const matchEcv = (v.ecv || "").toLowerCase().includes(q);
+            const matchModel = `${v.brand || ""} ${v.model || ""}`.toLowerCase().includes(q);
+            const matchCalc = (v.client_calc_no || "").toLowerCase().includes(q);
+            if (!matchVin && !matchEcv && !matchModel && !matchCalc) return false;
+          }
+          return true;
+        });
+      }, [vehicles, projects, repClientFilter, repProjectFilter, repDateRange, repSelectedMonth, repSelectedYear, repSearchQuery, repStatusFilter, currentUser, coopRecords]);
+
+      const kpiStats = useMemo(() => {
+        let totalMyShare = 0;
+        let lockedMyShare = 0;
+
+        filteredVehicles.forEach(v => {
+          const pdr = parseFloat(v.price) || 0;
+          const ri = parseFloat(v.ri_price) || 0;
+
+          // Zistenie môjho podielu na tomto konkrétnom aute
+          const coop = coopRecords.find(c => String(c.vehicle_id) === String(v.id) && isMyCoopRow(c));
+          const fraction = coop ? coop.split_fraction : 1;
+          const myVehicleShare = techShareValue(v, fraction, currentUser.id);
+
+          // Súčet za všetky autá
+          totalMyShare += myVehicleShare;
+
+          // Súčet iba za uzamknuté (hotové) autá
+          if (v.is_locked) {
+            lockedMyShare += myVehicleShare;
+          }
+        });
+
+        return {
+          count: filteredVehicles.length,
+          myShare: totalMyShare.toFixed(2),
+          lockedShare: lockedMyShare.toFixed(2)
+        };
+      }, [filteredVehicles, coopRecords, currentUser]);
+
+      const exportCsv = () => {
+        const headers = ["Internal No", "Client Calc No", "Date", "VIN", "Plate", "Make", "Model", "Color", "PDR Price", "R&I Price", "My Share", "Currency", "Status"];
+        const rows = filteredVehicles.map(v => {
+          const coop = coopRecords.find(c => String(c.vehicle_id) === String(v.id) && isMyCoopRow(c));
+          const fraction = coop ? coop.split_fraction : 1;
+          const pdr = parseFloat(v.price) || 0;
+          const ri = parseFloat(v.ri_price) || 0;
+          const share = techShareValue(v, fraction, currentUser.id).toFixed(2);
+
+          return [
+            `"${v.internal_record_no || ''}"`,
+            `"${v.client_calc_no || ''}"`,
+            `"${new Date(v.created_at).toLocaleDateString()}"`,
+            `"${v.vin}"`,
+            `"${v.ecv}"`,
+            `"${v.brand}"`,
+            `"${v.model}"`,
+            `"${v.color}"`,
+            v.price,
+            v.ri_price,
+            share,
+            v.currency,
+            v.status
+          ].join(",");
+        });
+
+        const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows].join("\n");
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", `pdr_report_${Date.now()}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      };
+
+      const exportPdf = () => {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+
+        doc.setFontSize(14);
+        doc.setFont("helvetica", "bold");
+        doc.text("PDR FlowBoard Pro - Work Summary", 14, 15);
+
+        doc.setFontSize(9);
+        doc.setFont("helvetica", "normal");
+        doc.text(`Technician: ${currentUser?.email} | ${t.pdfGenerated}: ${new Date().toLocaleDateString()}`, 14, 21);
+        doc.text(`Vehicles: ${kpiStats.count} | Total Gross: ${currSymbol}${kpiStats.gross} | My Share: ${currSymbol}${kpiStats.myShare}`, 14, 26);
+
+        const tableRows = filteredVehicles.map(v => {
+          const coop = coopRecords.find(c => String(c.vehicle_id) === String(v.id) && isMyCoopRow(c));
+          const fraction = coop ? coop.split_fraction : 1;
+          const pdr = parseFloat(v.price) || 0;
+          const ri = parseFloat(v.ri_price) || 0;
+          const share = techShareValue(v, fraction, currentUser.id).toFixed(2);
+
+          return [
+            v.internal_record_no || "",
+            new Date(v.created_at).toLocaleDateString(),
+            `${v.brand} ${v.model}\n${v.vin}\n${v.ecv}`,
+            v.price_category ? `${v.price_category}\n(${currSymbol}${v.price})` : `${currSymbol}${v.price}`,
+            `${currSymbol}${v.ri_price}`,
+            `${currSymbol}${share}`
+          ];
+        });
+
+        doc.autoTable({
+          startY: 30,
+          head: [["ID", "Date", "Vehicle / VIN / Plate", "PDR", "R&I", "My Share"]],
+          body: tableRows,
+          theme: "grid",
+          styles: { fontSize: 8, cellPadding: 2, textColor: [30, 41, 59] },
+          headStyles: { fillColor: [245, 158, 11], textColor: [17, 24, 39], fontStyle: "bold" },
+          margin: { left: 14, right: 14 }
+        });
+
+        doc.save(`pdr_summary_${Date.now()}.pdf`);
+      };
+      // Spustenie jednotlivých krokov skenovania
+      // zdroj posledného snímania: "camera" alebo "gallery" (vrátenie/ďalší krok otvorí ten istý zdroj)
+      const scanSourceRef = useRef("camera");
+      const triggerScanStep = (stepNumber, source) => {
+        const src = source || "camera";
+        scanSourceRef.current = src;
+        setScanStep(stepNumber);
+        const inp = src === "gallery" ? galleryInputRef.current : cameraInputRef.current;
+        if (inp) {
+          inp.value = "";
+          inp.click();
+        }
+      };
+
+      // Nahratie fotky z galérie: berie prvý ešte nespracovaný krok (VIN -> zadok -> kalkulácia)
+      const triggerGalleryScan = () => {
+        triggerScanStep(!vinPreview ? 1 : (!rearPreview ? 2 : (!sheetPreview ? 3 : 1)), "gallery");
+      };
+
+      // Spracovanie odfoteného obrázka cez Google Vision
+      const handlePhotoCapture = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        if (scanStep === 1) {
+          setVinFile(file);
+          setVinPreview(URL.createObjectURL(file));
+          setActiveOcrModal("vin");
+          setIsAnalyzingOcr(true);
+
+          try {
+            const rawText = await analyzeImageWithGoogleVision(file);
+            const cleanedText = rawText.toUpperCase().replace(/\s+/g, "");
+            const lineVin = pickVinFromText(rawText);
+
+            const detectedVin = lineVin ? fixVinWmi(lineVin) : sanitizeVin(cleanedText.slice(0, 17));
+            setTempOcrVin(detectedVin);
+
+            if (detectedVin.length >= 3) {
+              const wmi = detectedVin.substring(0, 3);
+              setTempOcrBrand(WMI_MAP[wmi] || brand || "");
+            }
+          } catch (err) {
+            console.warn(err);
+            setTempOcrVin("");
+          } finally {
+            setIsAnalyzingOcr(false);
+          }
+      } else if (scanStep === 2) {
+          setRearFile(file);
+          setRearPreview(URL.createObjectURL(file));
+          setActiveOcrModal("rear");
+          setIsAnalyzingOcr(true);
+
+          try {
+            // 1. Získanie plnej odozvy z Vision API
+            const base64Data = await fileToBase64(file);
+            const resultData = await callVision(base64Data, ["TEXT_DETECTION", "IMAGE_PROPERTIES"]);
+            const textAnnotations = resultData?.responses?.[0]?.textAnnotations || [];
+            const fullText = textAnnotations[0]?.description || "";
+
+            // Čierna listina nápisov a modelov (striktne ignorovať chrómové emblémy)
+            const blacklistWords = ["PASSAT", "GOLF", "OCTAVIA", "SUPERB", "FABIA", "TIGUAN", "TOUAREG", "TDI", "TSI", "4MOTION", "QUATTRO", "HYBRID", "TURBO", "KOMBI", "ALLTRACK", "VOLKSWAGEN", "SKODA", "AUDI", "SEAT"];
+
+            // KROK 0: ŠPZ ako samé znaky podľa najväčšieho textu na fotke (bez formátov jednotlivých krajín)
+            const geoPlate = pickPlateGeo(textAnnotations);
+            let bestPlate = geoPlate ? geoPlate.plate : "";
+            let plateBox = geoPlate ? geoPlate.box : null;
+
+            // KROK A (záloha): Globálna analýza celého textu cez európske regex vzory (spája okres + erb/medzeru + telo)
+            const fullTextLines = fullText.split("\n");
+            for (const rawLine of (bestPlate ? [] : fullTextLines)) {
+              const lineUpper = rawLine.toUpperCase();
+              if (blacklistWords.some(b => lineUpper.includes(b))) continue;
+
+              // 1. Slovenská / Česká / Poľská / Maďarská štruktúra (napr. PU 676CI, PU-676CI, BA 123AB, 1AB 2345)
+              const matchSK_CZ = lineUpper.match(/\b([A-Z0-9]{2,3})[\s\-\.\:\|]+([0-9A-Z]{4,5})\b/);
+              if (matchSK_CZ) {
+                const combined = (matchSK_CZ[1] + matchSK_CZ[2]).replace(/[^A-Z0-9]/g, "");
+                if (combined.length >= 6 && combined.length <= 8 && /[A-Z]/.test(combined) && /[0-9]/.test(combined)) {
+                  bestPlate = combined;
+                  break;
+                }
+              }
+
+              // 2. Nemecká / Rakúska štruktúra (okres 1-3 písmená + medzera/erb + 1-2 písmená + 1-4 čísla, napr. M XY 1234, W 12345 A)
+              const matchDE_AT = lineUpper.match(/\b([A-Z]{1,3})[\s\-\.\:\|]+([A-Z]{1,2}[\s\-]?[0-9]{1,4}[A-Z]?)\b/);
+              if (matchDE_AT) {
+                const combined = (matchDE_AT[1] + matchDE_AT[2]).replace(/[^A-Z0-9]/g, "");
+                if (combined.length >= 5 && combined.length <= 9 && /[A-Z]/.test(combined) && /[0-9]/.test(combined)) {
+                  bestPlate = combined;
+                  break;
+                }
+              }
+            }
+
+            // KROK B: Horizontálne priestorové zlúčenie susediacich blokov (Bounding Poly)
+            // Ak sú okres (napr. PU) a číslo (napr. 676CI) v dvoch osobitných blokoch vedľa seba v rovnakej výške
+            if (!bestPlate && textAnnotations.length > 2) {
+              for (let i = 1; i < textAnnotations.length; i++) {
+                const boxA = textAnnotations[i].boundingPoly?.vertices || [];
+                const wordA = (textAnnotations[i].description || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+                if (!wordA || wordA.length < 1 || wordA.length > 4) continue;
+                if (blacklistWords.some(b => wordA.includes(b))) continue;
+
+                const yA = (boxA[0]?.y + boxA[2]?.y) / 2 || 0;
+                const hA = Math.abs((boxA[2]?.y || 0) - (boxA[0]?.y || 0));
+                const rightA = Math.max(...boxA.map(v => v.x || 0));
+
+                for (let j = 1; j < textAnnotations.length; j++) {
+                  if (i === j) continue;
+                  const boxB = textAnnotations[j].boundingPoly?.vertices || [];
+                  const wordB = (textAnnotations[j].description || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+                  if (!wordB || wordB.length < 3 || wordB.length > 6) continue;
+                  if (blacklistWords.some(b => wordB.includes(b))) continue;
+
+                  const yB = (boxB[0]?.y + boxB[2]?.y) / 2 || 0;
+                  const leftB = Math.min(...boxB.map(v => v.x || 0));
+
+                  // Overenie, či ležia v rovnakom riadku (Y) a blok B nasleduje tesne za blokom A (X vzdialenosť do 1.8-násobku výšky)
+                  const sameRow = Math.abs(yA - yB) < (hA * 0.5);
+                  const isNextTo = leftB >= rightA && (leftB - rightA) < (hA * 1.8);
+
+                  if (sameRow && isNextTo) {
+                    const merged = wordA + wordB;
+                    if (merged.length >= 6 && merged.length <= 8 && /[A-Z]/.test(merged) && /[0-9]/.test(merged)) {
+                      bestPlate = merged;
+                      plateBox = [boxA[0], boxB[1], boxB[2], boxA[3]];
+                      break;
+                    }
+                  }
+                }
+                if (bestPlate) break;
+              }
+            }
+
+            // KROK C: Fallback na jedno kompaktné slovo (napr. nová slovenská ŠPZ bez znaku, holandská, francúzska)
+            if (!bestPlate) {
+              for (let i = 1; i < textAnnotations.length; i++) {
+                const item = textAnnotations[i];
+                const cleanedWord = (item.description || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+                if (blacklistWords.some(b => cleanedWord.includes(b))) continue;
+                if (cleanedWord.length >= 5 && cleanedWord.length <= 8 && /[A-Z]/.test(cleanedWord) && /[0-9]/.test(cleanedWord)) {
+                  bestPlate = cleanedWord;
+                  plateBox = item.boundingPoly?.vertices || null;
+                  break;
+                }
+              }
+            }
+
+            // Nastavenie nájdenej ŠPZ do stavu
+            if (bestPlate) {
+              setTempOcrEcv(bestPlate);
+              setTempOcrHasNoEcv(false);
+            } else {
+              setTempOcrEcv("");
+              setTempOcrHasNoEcv(true);
+            }
+
+            // 2. Analýza farby karosérie výhradne z okolia tabuľky ŠPZ (plech nárazníka/kufra)
+            let detectedColor = "Strieborná";
+            try {
+              const img = new Image();
+              img.src = URL.createObjectURL(file);
+              await new Promise(r => { img.onload = r; });
+
+              const canvas = document.createElement("canvas");
+              const ctx = canvas.getContext("2d");
+              canvas.width = img.naturalWidth || img.width;
+              canvas.height = img.naturalHeight || img.height;
+              ctx.drawImage(img, 0, 0);
+
+              let sampleX = canvas.width * 0.25;
+              let sampleY = canvas.height * 0.55;
+              let sampleW = canvas.width * 0.5;
+              let sampleH = canvas.height * 0.15;
+
+              // Ak máme presné súradnice ŠPZ, vzorkujeme plech priamo pod/nad tabuľkou
+              if (plateBox && plateBox[0] && plateBox[2]) {
+                const pMinX = Math.min(...plateBox.map(v => v.x || 0));
+                const pMaxX = Math.max(...plateBox.map(v => v.x || 0));
+                const pMaxY = Math.max(...plateBox.map(v => v.y || 0));
+                
+                sampleX = Math.max(0, pMinX);
+                sampleY = Math.min(canvas.height - 20, pMaxY + 5);
+                sampleW = Math.max(20, pMaxX - pMinX);
+                sampleH = Math.min(canvas.height - sampleY, Math.round((pMaxX - pMinX) * 0.25));
+              }
+
+              const imgData = ctx.getImageData(sampleX, sampleY, sampleW, sampleH).data;
+              let rTotal = 0, gTotal = 0, bTotal = 0, count = 0;
+
+              for (let p = 0; p < imgData.length; p += 16) {
+                const r = imgData[p];
+                const g = imgData[p + 1];
+                const b = imgData[p + 2];
+                const brightness = (r + g + b) / 3;
+
+                // Odfiltrovanie odleskov (príliš svetlé) a hlbokých tieňov/špiny
+                if (brightness > 20 && brightness < 240) {
+                  rTotal += r;
+                  gTotal += g;
+                  bTotal += b;
+                  count++;
+                }
+              }
+
+              if (count > 0) {
+                const avgR = rTotal / count;
+                const avgG = gTotal / count;
+                const avgB = bTotal / count;
+
+                let minDistance = Infinity;
+                COLOR_PALETTE.forEach(c => {
+                  const d = Math.sqrt(
+                    Math.pow(c.rgb[0] - avgR, 2) +
+                    Math.pow(c.rgb[1] - avgG, 2) +
+                    Math.pow(c.rgb[2] - avgB, 2)
+                  );
+                  if (d < minDistance) {
+                    minDistance = d;
+                    detectedColor = c.id;
+                  }
+                });
+              }
+            } catch (colorErr) {
+              console.warn("Chyba vzorkovania laku:", colorErr);
+            }
+
+            setTempOcrColorId(detectedColor);
+          } catch (err) {
+            console.warn(err);
+            setTempOcrHasNoEcv(true);
+          } finally {
+            setIsAnalyzingOcr(false);
+          }
+        } else if (scanStep === 3) {
+          setSheetFile(file);
+          setSheetPreview(URL.createObjectURL(file));
+          setActiveOcrModal("sheet");
+        }
+      };
+
+      // Potvrdenie hodnôt z modálneho okna priamo pri aute (Variant 2)
+      const confirmVinModal = () => {
+        setVin(tempOcrVin);
+        if (tempOcrBrand) setBrand(tempOcrBrand);
+        setActiveOcrModal(null);
+        triggerScanStep(2, scanSourceRef.current);
+      };
+
+      const confirmRearModal = () => {
+        setEcv(tempOcrEcv);
+        setHasNoEcv(tempOcrHasNoEcv);
+        setSelectedColorId(tempOcrColorId);
+        setActiveOcrModal(null);
+        triggerScanStep(3, scanSourceRef.current);
+      };
+
+      const confirmSheetModal = () => {
+        setActiveOcrModal(null);
+        setScanStep(0);
+      };
+
+      const handleDamagePhotoAdd = (e) => {
+        const file = e.target.files[0];
+        if (!file || damageFiles.length >= 5) return;
+        setDamageFiles([...damageFiles, file]);
+      };
+
+      // --- OBSLUŽNÉ FUNKCIE PRE KLIENTOV, LOKÁCIE A DÁTA (UMIESTNENÉ PRED RETURN) ---
+      const handleAddClient = async (e) => {
+        e.preventDefault();
+        try {
+          const newClient = {
+            name: newClientName,
+            address: newClientAddress,
+            city: newClientCity,
+            postal_code: newClientPostalCode,
+            country_code: newClientCountry,
+            contact_person: newClientContactPerson,
+            phone: newClientPhone,
+            ico: newClientIco,
+            default_pdr_percent: newClientDefaultPdr ? parseFloat(newClientDefaultPdr) : 100,
+            default_ri_percent: newClientDefaultRi ? parseFloat(newClientDefaultRi) : 100,
+            auto_numbering: hasSeqConfig,
+            fixed_seq_prefix: hasSeqConfig ? newClientSeqPrefix : null,
+            initial_seq_number: hasSeqConfig ? parseInt(newClientInitialSeq, 10) : 1,
+            created_by: currentUser.id
+          };
+          const { data, error } = await supabase.from("clients").insert([newClient]).select();
+          if (error) throw error;
+          setClients([...clients, data[0]]);
+          if (effRole === "manager") { await saveClientCommission(data[0].id, newClientCommPdr, newClientCommRi); setNewClientCommPdr(""); setNewClientCommRi(""); }
+          setShowNewClientForm(false);
+          setNewClientName("");
+          setNewClientAddress("");
+          setNewClientCity("");
+          setNewClientPostalCode("");
+          setNewClientContactPerson("");
+          setNewClientIco("");
+          alert(lang === "SK" ? "Klient úspešne pridaný!" : "Client added successfully!");
+        } catch (err) {
+          alert("Error: " + err.message);
+        }
+      };
+
+      const handleAddProject = async (e) => {
+        e.preventDefault();
+        try {
+          const newProj = {
+            client_id: addingProjectClientId,
+            name: newProjectName,
+            address: newProjectAddress,
+            city: newProjectCity,
+            postal_code: newProjectPostalCode,
+            country_code: newProjectCountry,
+            contact_person: newProjectContactPerson,
+            phone: newProjectPhone,
+            pricing_mode: newProjectPricingMode,
+            fixed_price: newProjectPricingMode === "fixed" && newProjectFixedPrice ? parseFloat(newProjectFixedPrice) : null,
+            aw_rate: newProjectPricingMode === "free" && newProjectAwRate ? parseFloat(newProjectAwRate) : null,
+            pricing_categories: newProjectPricingMode === "categories" ? projectCategoriesList : null,
+            tech_pdr_percent: newProjectTechPdrPercent ? parseFloat(newProjectTechPdrPercent) : null,
+            tech_ri_percent: newProjectTechRiPercent ? parseFloat(newProjectTechRiPercent) : null,
+            is_active: true,
+            created_by: currentUser.id
+          };
+          const { data, error } = await supabase.from("projects").insert([newProj]).select();
+          if (error) throw error;
+          setProjects([...projects, data[0]]);
+          setAddingProjectClientId(null);
+          setNewProjectName("");
+          setNewProjectAddress("");
+          setNewProjectCity("");
+          setNewProjectPostalCode("");
+          setNewProjectContactPerson("");
+          setNewProjectFixedPrice("");
+          setNewProjectAwRate("");
+          setProjectCategoriesList([]);
+          alert(lang === "SK" ? "Lokácia úspešne pridaná!" : "Location added successfully!");
+        } catch (err) {
+          alert("Error: " + err.message);
+        }
+      };
+
+      const handleUpdateSheetData = async (e) => {
+        e.preventDefault();
+        try {
+          if (activeBottomSheet.type === "client") {
+            const { error } = await supabase.from("clients").update({
+              name: sheetEditData.name,
+              address: sheetEditData.address,
+              city: sheetEditData.city,
+              postal_code: sheetEditData.postal_code,
+              country_code: sheetEditData.country_code,
+              contact_person: sheetEditData.contact_person,
+              phone: sheetEditData.phone,
+              ico: sheetEditData.ico,
+              default_pdr_percent: sheetEditData.default_pdr_percent ? parseFloat(sheetEditData.default_pdr_percent) : 100,
+              default_ri_percent: sheetEditData.default_ri_percent ? parseFloat(sheetEditData.default_ri_percent) : 100
+            }).eq("id", activeBottomSheet.data.id);
+            if (error) throw error;
+            if (effRole === "manager") await saveClientCommission(activeBottomSheet.data.id, sheetEditData.comm_pdr, sheetEditData.comm_ri);
+            setClients(clients.map(c => c.id === activeBottomSheet.data.id ? { ...c, ...sheetEditData } : c));
+          } else {
+            const { error } = await supabase.from("projects").update({
+              name: sheetEditData.name,
+              address: sheetEditData.address,
+              city: sheetEditData.city,
+              postal_code: sheetEditData.postal_code,
+              country_code: sheetEditData.country_code,
+              contact_person: sheetEditData.contact_person,
+              phone: sheetEditData.phone,
+              pricing_mode: sheetEditData.pricing_mode,
+              fixed_price: sheetEditData.fixed_price ? parseFloat(sheetEditData.fixed_price) : null,
+              aw_rate: sheetEditData.aw_rate ? parseFloat(sheetEditData.aw_rate) : null,
+              pricing_categories: sheetEditData.pricing_mode === "categories" ? sheetEditCategories : null,
+              tech_pdr_percent: sheetEditData.tech_pdr_percent ? parseFloat(sheetEditData.tech_pdr_percent) : null,
+              tech_ri_percent: sheetEditData.tech_ri_percent ? parseFloat(sheetEditData.tech_ri_percent) : null
+            }).eq("id", activeBottomSheet.data.id);
+            if (error) throw error;
+            setProjects(projects.map(p => p.id === activeBottomSheet.data.id ? { ...p, ...sheetEditData, pricing_categories: sheetEditCategories } : p));
+          }
+          setIsEditingSheet(false);
+          setActiveBottomSheet(null);
+          alert(t.saveChangesBtn);
+        } catch (err) {
+          alert("Error: " + err.message);
+        }
+      };
+
+      const handleToggleArchiveProject = async (project) => {
+        const nextStatus = project.is_active === false;
+        const msg = nextStatus ? t.restoreConfirm : t.archiveConfirm;
+        if (!window.confirm(msg)) return;
+
+        try {
+          const { error } = await supabase.from("projects").update({ is_active: nextStatus }).eq("id", project.id);
+          if (error) throw error;
+          setProjects(projects.map(p => p.id === project.id ? { ...p, is_active: nextStatus } : p));
+          setActiveBottomSheet(null);
+        } catch (err) {
+          alert("Error: " + err.message);
+        }
+      };
+
+      const handleSaveLatePrice = async (vehicleId) => {
+        const p = parseFloat(latePriceInput);
+        if (isNaN(p) || p <= 0) return alert(lang === "SK" ? "Zadajte platnú sumu." : "Enter valid price.");
+
+        try {
+          const { error } = await supabase.from("vehicles").update({
+            price: p,
+            is_price_pending: false,
+            status: "completed"
+          }).eq("id", vehicleId);
+          if (error) throw error;
+
+          setVehicles(vehicles.map(v => v.id === vehicleId ? { ...v, price: p, is_price_pending: false, status: "completed" } : v));
+          setSelectedVehicleDetail(prev => ({ ...prev, price: p, is_price_pending: false, status: "completed" }));
+          setLatePriceInput("");
+          alert(lang === "SK" ? "Cena bola úspešne doplnená!" : "Price updated!");
+        } catch (err) {
+          alert("Error: " + err.message);
+        }
+      };
+      const handleToggleLock = async (vehicleId, currentStatus) => {
+        const nextStatus = !currentStatus;
+        try {
+          const { error } = await supabase
+            .from("vehicles")
+            .update({ is_locked: nextStatus })
+            .eq("id", vehicleId);
+
+          if (error) throw error;
+
+          setVehicles(prev => prev.map(v => v.id === vehicleId ? { ...v, is_locked: nextStatus } : v));
+          if (selectedVehicleDetail && selectedVehicleDetail.id === vehicleId) {
+            setSelectedVehicleDetail(prev => ({ ...prev, is_locked: nextStatus }));
+          }
+        } catch (err) {
+          alert("Chyba pri zmene zámku: " + err.message);
+        }
+      };
+      const handleUpdateVehicleData = async (e) => {
+        e.preventDefault();
+        if (!selectedVehicleDetail) return;
+
+        try {
+          const updatedPayload = {
+            brand: editVehicleData.brand || "N/A",
+            model: editVehicleData.model || "N/A",
+            vin: sanitizeVin(editVehicleData.vin || ""),
+            ecv: editVehicleData.has_no_ecv ? (lang === "SK" ? "Bez ŠPZ" : (lang === "DE" ? "Ohne KZ" : "No Plate")) : (editVehicleData.ecv || "N/A"),
+            has_no_ecv: Boolean(editVehicleData.has_no_ecv),
+            color: editVehicleData.color || selectedVehicleDetail.color,
+            client_calc_no: editVehicleData.client_calc_no || null,
+            price: parseFloat(editVehicleData.price) || 0,
+            ri_price: parseFloat(editVehicleData.ri_price) || 0,
+            note: editVehicleData.note ? editVehicleData.note.trim() : null
+          };
+
+          const { error } = await supabase
+            .from("vehicles")
+            .update(updatedPayload)
+            .eq("id", selectedVehicleDetail.id);
+
+          if (error) throw error;
+
+          setVehicles(prev => prev.map(v => v.id === selectedVehicleDetail.id ? { ...v, ...updatedPayload } : v));
+          setSelectedVehicleDetail(prev => ({ ...prev, ...updatedPayload }));
+          setIsEditingVehicle(false);
+          alert(t.saveChangesBtn);
+        } catch (err) {
+          alert("Chyba pri ukladaní zmien: " + err.message);
+        }
+      };
+// Správa kategórií pri tvorbe novej lokácie
+      const handleAddCategoryItem = () => {
+        const p = parseFloat(tempCategoryPrice);
+        if (isNaN(p) || p <= 0) return alert(lang === "SK" ? "Zadajte platnú cenu kategórie." : "Enter valid price.");
+        const nextIndex = projectCategoriesList.length + 1;
+        setProjectCategoriesList([...projectCategoriesList, { label: `Cat ${nextIndex}`, price: p }]);
+        setTempCategoryPrice("");
+      };
+
+      const handleRemoveCategoryItem = (idx) => {
+        setProjectCategoriesList(projectCategoriesList.filter((_, i) => i !== idx));
+      };
+
+      // Správa kategórií pri editácii existujúcej lokácie v Bottom Sheete
+      const handleAddSheetEditCategory = () => {
+        const p = parseFloat(sheetEditTempCatPrice);
+        if (isNaN(p) || p <= 0) return alert(lang === "SK" ? "Zadajte platnú cenu kategórie." : "Enter valid price.");
+        const nextIndex = sheetEditCategories.length + 1;
+        setSheetEditCategories([...sheetEditCategories, { label: `Cat ${nextIndex}`, price: p }]);
+        setSheetEditTempCatPrice("");
+      };
+
+      const handleRemoveSheetEditCategory = (idx) => {
+        setSheetEditCategories(sheetEditCategories.filter((_, i) => i !== idx));
+      };
+      if (loadingUser) {
+        return (
+          <div className="flex flex-col items-center justify-center p-8 space-y-3">
+            <i className="fa-solid fa-circle-notch fa-spin text-3xl text-amber-500"></i>
+            <span className="text-xs text-gray-400">Loading PDR FlowBoard...</span>
+          </div>
+        );
+      }
+
+      if (!currentUser) {
+        return (
+          <div className="w-full max-w-sm bg-gray-950 border border-gray-800 rounded-2xl p-5 shadow-2xl space-y-4">
+            {/* Prepínač jazykov EN, DE, SK úplne hore */}
+            <div className="flex justify-end items-center gap-1">
+              {["EN", "DE", "SK"].map((l) => (
+                <button
+                  key={l}
+                  type="button"
+                  onClick={() => {
+                    setLang(l);
+                    localStorage.setItem("pdr_lang", l);
+                  }}
+                  className={`px-2 py-0.5 rounded text-[10px] font-bold tracking-wider transition-all ${
+                    lang === l
+                      ? "bg-amber-500 text-gray-950 shadow"
+                      : "bg-gray-900 text-gray-400 hover:text-white border border-gray-800"
+                  }`}
+                >
+                  {l}
+                </button>
+              ))}
+            </div>
+
+            {/* Dominantné zväčšené logo bez sivého podtitulku */}
+            <div className="text-center py-1">
+              <h1 className="text-2xl font-black text-white tracking-wider">
+                PDR <span className="text-amber-500">FlowDesk</span>
+              </h1>
+            </div>
+
+            {authError && (
+              <div className="bg-red-900/40 border border-red-700/60 p-2 rounded text-red-200 text-xs text-center font-medium">
+                {authError}
+              </div>
+            )}
+
+            {resetSuccessMsg && (
+              <div className="bg-emerald-900/40 border border-emerald-700/60 p-2 rounded text-emerald-200 text-xs text-center font-medium">
+                {resetSuccessMsg}
+              </div>
+            )}
+
+            <button
+              type="button"
+              onClick={handleGoogleSignIn}
+              className="w-full bg-white hover:bg-gray-100 text-gray-900 font-bold py-2 rounded-xl text-xs flex items-center justify-center gap-2 shadow-md transition-all active:scale-95"
+            >
+              <svg className="w-4 h-4" viewBox="0 0 24 24">
+                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
+                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
+              </svg>
+              <span>{t.googleSignInBtn}</span>
+            </button>
+
+            <div className="flex items-center gap-2">
+              <hr className="flex-1 border-gray-800" />
+              <span className="text-[10px] text-gray-500 uppercase">{t.orDivider}</span>
+              <hr className="flex-1 border-gray-800" />
+            </div>
+
+            <form onSubmit={handleAuthSubmit} className="space-y-3">
+              <input
+                type="email"
+                required
+                value={authEmail}
+                onChange={e => setAuthEmail(e.target.value)}
+                placeholder={t.emailPlaceholder}
+                className="w-full bg-gray-900 border border-gray-700 rounded-lg p-2 text-xs text-white"
+              />
+
+              {!isResetMode && (
+                <input
+                  type="password"
+                  required
+                  value={authPassword}
+                  onChange={e => setAuthPassword(e.target.value)}
+                  placeholder={t.passwordPlaceholder}
+                  className="w-full bg-gray-900 border border-gray-700 rounded-lg p-2 text-xs text-white"
+                />
+              )}
+
+              {isRegistering && !isResetMode && (
+                <>
+                  <input
+                    type="password"
+                    required
+                    value={authConfirmPassword}
+                    onChange={e => setAuthConfirmPassword(e.target.value)}
+                    placeholder={t.confirmPasswordPlaceholder}
+                    className="w-full bg-gray-900 border border-gray-700 rounded-lg p-2 text-xs text-white"
+                  />
+                  <div className="space-y-1">
+                    <label className="text-[10px] text-gray-400 font-bold uppercase">{t.accountType}</label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setAuthAccountType("solo")}
+                        className={`p-1.5 rounded text-xs font-bold border ${authAccountType === "solo" ? "bg-amber-500/20 border-amber-500 text-amber-300" : "bg-gray-900 border-gray-700 text-gray-400"}`}
+                      >
+                        {t.soloTech}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setAuthAccountType("company")}
+                        className={`p-1.5 rounded text-xs font-bold border ${authAccountType === "company" ? "bg-amber-500/20 border-amber-500 text-amber-300" : "bg-gray-900 border-gray-700 text-gray-400"}`}
+                      >
+                        {t.companyTeam}
+                      </button>
+                    </div>
+                  </div>
+                  {authAccountType === "company" && (
+                    <div className="space-y-1">
+                      <label className="text-[10px] text-gray-400 font-bold uppercase">{t.roleLabel}</label>
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setAuthRole("manager")}
+                          className={`p-1.5 rounded text-xs font-bold border ${authRole === "manager" ? "bg-amber-500/20 border-amber-500 text-amber-300" : "bg-gray-900 border-gray-700 text-gray-400"}`}
+                        >
+                          {t.roleManager}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setAuthRole("employee")}
+                          className={`p-1.5 rounded text-xs font-bold border ${authRole === "employee" ? "bg-amber-500/20 border-amber-500 text-amber-300" : "bg-gray-900 border-gray-700 text-gray-400"}`}
+                        >
+                          {t.roleEmployee}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+
+              <button
+                type="submit"
+                className="w-full bg-amber-500 hover:bg-amber-600 text-gray-950 font-bold py-2 rounded-xl text-xs shadow transition-all active:scale-95"
+              >
+                {isResetMode ? t.sendResetLinkBtn : (isRegistering ? t.registerBtn : t.loginBtn)}
+              </button>
+            </form>
+
+            <div className="text-center space-y-1 pt-1">
+              {failedAttempts >= 2 && !isResetMode && (
+                <div>
+                  <button
+                    type="button"
+                    onClick={() => { setIsResetMode(true); setAuthError(""); }}
+                    className="text-[11px] text-amber-400 underline font-bold"
+                  >
+                    {t.forgotPasswordLink}
+                  </button>
+                </div>
+              )}
+
+              {isResetMode ? (
+                <button
+                  type="button"
+                  onClick={() => { setIsResetMode(false); setAuthError(""); setResetSuccessMsg(""); }}
+                  className="text-xs text-gray-400 hover:text-white"
+                >
+                  {t.backToLoginBtn}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => { setIsRegistering(!isRegistering); setAuthError(""); }}
+                  className="text-xs text-gray-400 hover:text-white"
+                >
+                  {isRegistering ? t.switchToLogin : t.switchToReg}
+                </button>
+              )}
+            </div>
+          </div>
+        );
+      }
+
+      return (
+        <div className={`w-full max-w-md rounded-2xl shadow-2xl flex flex-col overflow-hidden text-xs border ${inMgr ? "bg-slate-950 border-sky-800/70" : "bg-gray-950 border-gray-800"}`}>
+          {/* Header - Dominantné zväčšené logo, decentná rola a meno pod ním, farebné ikony */}
+          <div className={`border-b p-2.5 flex items-center justify-between ${inMgr ? "bg-sky-950/50 border-sky-900/60" : "bg-gray-900/80 border-gray-800"}`}>
+            <div className="flex flex-col min-w-0">
+              <span className="font-black text-white tracking-wider text-base whitespace-nowrap">
+                PDR <span className={inMgr ? "text-sky-400" : "text-amber-500"}>FlowDesk</span>
+              </span>
+              <div className="flex items-center gap-1.5 text-[10px] text-gray-400 font-mono pt-0.5">
+                <span className="uppercase text-gray-400">
+                  {effRole === "manager" ? t.roleManagerLabel : t.roleTechLabel}
+                </span>
+                <span className="text-gray-600">|</span>
+                <span className="truncate max-w-[150px]" title={currentUser.email}>
+                  {currentUser.email.split("@")[0]}
+                </span>
+              </div>
+            </div>
+            <div className="flex items-center gap-2.5">
+              <button
+                type="button"
+                onClick={() => setShowCoopModal(true)}
+                className="relative text-emerald-400 hover:text-emerald-300 p-1"
+                title={t.coopTitle}
+              >
+                <i className="fa-solid fa-handshake text-base"></i>
+                {pendingCoopInvites.length > 0 && (
+                  <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full animate-ping"></span>
+                )}
+              </button>
+              <button
+                type="button"
+                onClick={() => { setShowTeamModal(true); loadTeam(); }}
+                className="relative text-sky-400 hover:text-sky-300 p-1"
+                title="Tím"
+              >
+                <i className="fa-solid fa-people-group text-base"></i>
+                {teamRows.some(r => r.status === "pending" && r.manager_id !== currentUser.id) && (
+                  <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full animate-ping"></span>
+                )}
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowSettingsModal(true)}
+                className="text-gray-400 hover:text-amber-400 p-1"
+                title={t.settingsTitle}
+              >
+                <i className="fa-solid fa-gear text-sm"></i>
+              </button>
+              <button
+                type="button"
+                onClick={() => supabase.auth.signOut()}
+                className="text-red-400 hover:text-red-300 p-1"
+                title="Sign Out"
+              >
+                <i className="fa-solid fa-right-from-bracket text-sm"></i>
+              </button>
+            </div>
+          </div>
+
+          {/* Prepínač manažér / technik */}
+          {effRole === "manager" && (
+            <div className={`px-2.5 py-2 border-b ${inMgr ? "border-sky-900/60 bg-sky-950/30" : "border-gray-800"}`}>
+              <div className="grid grid-cols-2 bg-gray-900 border border-gray-700 rounded-xl p-1 gap-1">
+                <button type="button" onClick={() => switchMgrMode(false)}
+                  className={`py-2 rounded-lg text-xs font-black flex items-center justify-center gap-1.5 transition-all ${!inMgr ? "bg-amber-500 text-gray-950 shadow" : "text-gray-400"}`}>
+                  <i className="fa-solid fa-wrench"></i> Technik
+                </button>
+                <button type="button" onClick={() => switchMgrMode(true)}
+                  className={`py-2 rounded-lg text-xs font-black flex items-center justify-center gap-1.5 transition-all ${inMgr ? "bg-sky-500 text-gray-950 shadow" : "text-gray-400"}`}>
+                  <i className="fa-solid fa-user-tie"></i> Manažér
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Navigácia záložiek */}
+          {inMgr ? (
+            <div className="grid grid-cols-3 border-b border-sky-900/60 text-center font-bold text-[11px]">
+              {[["projects", "Klienti", "Zákazky"], ["mgr_techs", "Technici", "Tím"], ["mgr_reports", "Reporty", "Prehľad"]].map(([k, l1, l2]) => (
+                <button key={k} onClick={() => setActiveTab(k)}
+                  className={`py-2 border-b-2 flex flex-col items-center justify-center ${activeTab === k ? "border-sky-500 text-sky-400 bg-sky-500/10" : "border-transparent text-gray-400 hover:text-gray-200"}`}>
+                  <span>{l1}</span>
+                  <span className="text-[9px] font-normal">{l2}</span>
+                </button>
+              ))}
+            </div>
+          ) : (
+          <div className="grid grid-cols-3 border-b border-gray-800 text-center font-bold text-[11px]">
+            <button
+              onClick={() => setActiveTab("vehicles")}
+              className={`py-2 border-b-2 flex flex-col items-center justify-center ${activeTab === "vehicles" ? "border-amber-500 text-amber-400 bg-amber-500/10" : "border-transparent text-gray-400 hover:text-gray-200"}`}
+            >
+              <span>{t.tabVehicles1}</span>
+              <span className="text-[9px] font-normal">{t.tabVehicles2}</span>
+            </button>
+            <button
+              onClick={() => setActiveTab("projects")}
+              className={`py-2 border-b-2 flex flex-col items-center justify-center ${activeTab === "projects" ? "border-amber-500 text-amber-400 bg-amber-500/10" : "border-transparent text-gray-400 hover:text-gray-200"}`}
+            >
+              <span>{t.tabProjects1}</span>
+              <span className="text-[9px] font-normal">{t.tabProjects2}</span>
+            </button>
+            <button
+              onClick={() => setActiveTab("reports")}
+              className={`py-2 border-b-2 flex flex-col items-center justify-center ${activeTab === "reports" ? "border-amber-500 text-amber-400 bg-amber-500/10" : "border-transparent text-gray-400 hover:text-gray-200"}`}
+            >
+              <span>{t.tabReports1}</span>
+              <span className="text-[9px] font-normal">{t.tabReports2}</span>
+            </button>
+          </div>
+          )}
+
+          {/* Telo aplikácie */}
+          <div className="p-3 space-y-3 flex-1 overflow-y-auto">
+            {activeTab === "vehicles" && (
+              <div className="space-y-3">
+                {/* Výber klienta, lokácie a trvalé číslo kalkulácie */}
+                <div className="bg-gray-900 border border-gray-800 rounded-xl p-2.5 space-y-2">
+                  <div className="flex justify-between items-center">
+                    <label className="text-[10px] text-gray-400 font-bold uppercase">{t.clientLabel}</label>
+                    {currentSelectedClient && (
+                      <button
+                        type="button"
+                        onClick={() => setActiveBottomSheet({ type: "client", id: currentSelectedClient.id, data: currentSelectedClient })}
+                        className="text-[10px] text-amber-400 hover:underline flex items-center gap-1 font-bold"
+                      >
+                        <i className="fa-solid fa-circle-info"></i> {t.clientCardTitle}
+                      </button>
+                    )}
+                  </div>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={pickSearch}
+                      onChange={e => setPickSearch(e.target.value)}
+                      placeholder="Hľadať klienta alebo lokalitu..."
+                      className="w-full bg-gray-950 border border-gray-700 focus:border-amber-500 rounded p-1.5 text-xs text-white"
+                    />
+                    {pickSearch.trim() && (
+                      <div className="absolute z-30 left-0 right-0 mt-1 bg-gray-950 border border-amber-500/60 rounded-lg shadow-xl max-h-56 overflow-y-auto">
+                        {pickMatches.length === 0 ? (
+                          <div className="p-2 text-[11px] text-gray-500">Nič sa nenašlo</div>
+                        ) : pickMatches.map(x => (
+                          <button key={x.p.id} type="button" onClick={() => { pickRecentProject(x.p); setPickSearch(""); }}
+                            className="w-full text-left px-2.5 py-2 text-xs text-white border-b border-gray-800 hover:bg-gray-800">
+                            <span className="font-bold">{x.cl ? x.cl.name : ""}</span><span className="text-gray-400"> • {x.p.name}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  {recentProjectIds.map(id => projects.find(p => p.id === id && p.is_active !== false)).filter(Boolean).length > 1 && (
+                    <div className="flex flex-wrap gap-1.5 pb-1">
+                      {recentProjectIds.map(id => projects.find(p => p.id === id && p.is_active !== false)).filter(Boolean).slice(0, 5).map(p => {
+                        const cl = clients.find(c => c.id === p.client_id);
+                        const active = p.id === selectedProjectId;
+                        return (
+                          <button key={p.id} type="button" onClick={() => pickRecentProject(p)}
+                            className={`px-2.5 py-1.5 rounded-full text-[11px] font-bold border max-w-[48%] truncate ${active ? "bg-amber-500/20 border-amber-500 text-amber-300" : "bg-gray-900 border-gray-700 text-gray-300"}`}>
+                            {cl ? cl.name + " • " : ""}{p.name}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                  <select
+                    value={selectedClientId}
+                    onChange={e => handleClientChange(e.target.value)}
+                    className="w-full bg-gray-950 border border-gray-700 rounded p-1.5 text-xs text-white font-bold"
+                  >
+                    {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </select>
+
+                  <div className="flex justify-between items-center pt-1">
+                    <label className="text-[10px] text-gray-400 font-bold uppercase">{t.locationLabel}</label>
+                    {currentSelectedProject && (
+                      <button
+                        type="button"
+                        onClick={() => setActiveBottomSheet({ type: "project", id: currentSelectedProject.id, data: currentSelectedProject })}
+                        className="text-[10px] text-amber-400 hover:underline flex items-center gap-1 font-bold"
+                      >
+                        <i className="fa-solid fa-location-dot"></i> {t.locationDetailTitle}
+                      </button>
+                    )}
+                  </div>
+                  <select
+                    value={selectedProjectId}
+                    onChange={e => handleProjectChange(e.target.value)}
+                    className="w-full bg-gray-950 border border-gray-700 rounded p-1.5 text-xs text-white font-bold"
+                  >
+                    {availableProjects.length === 0 ? (
+                      <option value="">No locations available</option>
+                    ) : (
+                      availableProjects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)
+                    )}
+                  </select>
+
+                  {/* Trvalé pole na číslo kalkulácie priamo pod klientom a lokáciou */}
+                  <div className="pt-1">
+                    <label className="text-[10px] text-gray-400 font-bold uppercase">{t.calcNumberLabel}</label>
+                    <input
+                      type="text"
+                      value={clientCalcNo}
+                      onChange={e => setClientCalcNo(e.target.value)}
+                      placeholder="napr. 2026/001 alebo číslo zákazky"
+                      className="w-full bg-gray-950 border border-gray-700 focus:border-amber-500 rounded p-1.5 text-xs text-amber-300 font-mono font-bold"
+                    />
+                  </div>
+                </div>
+
+                {/* Sekcia fotoaparátu a skenovania */}
+                <div className="bg-gray-900 border border-gray-800 rounded-xl p-2.5 space-y-2.5">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    ref={cameraInputRef}
+                    onChange={handlePhotoCapture}
+                    className="hidden"
+                  />
+                  <input
+                    type="file"
+                    accept="image/*"
+                    ref={galleryInputRef}
+                    onChange={handlePhotoCapture}
+                    className="hidden"
+                  />
+
+                  <button
+                    type="button"
+                    onClick={() => triggerScanStep(1)}
+                    className="w-full bg-amber-500 hover:bg-amber-600 active:scale-95 text-gray-950 font-black py-2.5 rounded-xl text-sm flex items-center justify-center gap-2 shadow-lg transition-all"
+                  >
+                    <i className="fa-solid fa-camera text-base"></i>
+                    <span>{t.scanBtn}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={triggerGalleryScan}
+                    className="w-full bg-gray-800 hover:bg-gray-700 active:scale-95 text-gray-300 font-bold py-1.5 rounded-lg text-xs border border-gray-700 flex items-center justify-center gap-2 transition-all"
+                  >
+                    <i className="fa-solid fa-image text-sm"></i>
+                    <span>{lang === "SK" ? "Nahrať z galérie" : (lang === "DE" ? "Aus Galerie scannen" : "Scan from gallery")}</span>
+                  </button>
+
+                  <div className="grid grid-cols-3 gap-1.5 text-center text-[10px] text-gray-400">
+                    <button
+                      type="button"
+                      onClick={() => triggerScanStep(1)}
+                      className={`p-1.5 rounded border flex items-center justify-center gap-1 ${vinPreview ? "border-emerald-500/60 bg-emerald-950/20 text-emerald-300" : "border-gray-800 bg-gray-950"}`}
+                    >
+                      {vinPreview && <i className="fa-solid fa-check text-emerald-400 text-xs"></i>}
+                      <span>{t.step1Label}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => triggerScanStep(2)}
+                      className={`p-1.5 rounded border flex items-center justify-center gap-1 ${rearPreview ? "border-emerald-500/60 bg-emerald-950/20 text-emerald-300" : "border-gray-800 bg-gray-950"}`}
+                    >
+                      {rearPreview && <i className="fa-solid fa-check text-emerald-400 text-xs"></i>}
+                      <span>{t.step2Label}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => triggerScanStep(3)}
+                      className={`p-1.5 rounded border flex items-center justify-center gap-1 ${sheetPreview ? "border-emerald-500/60 bg-emerald-950/20 text-emerald-300" : "border-gray-800 bg-gray-950"}`}
+                    >
+                      {sheetPreview && <i className="fa-solid fa-check text-emerald-400 text-xs"></i>}
+                      <span>{t.step3Label}</span>
+                    </button>
+                  </div>
+
+                  {/* Miniatúry so zelenými fajkami */}
+                  {(vinPreview || rearPreview || sheetPreview) && (
+                    <div className="grid grid-cols-3 gap-2 pt-1">
+                      {vinPreview && (
+                        <div className="relative aspect-video bg-gray-950 rounded border border-emerald-500/60 overflow-hidden">
+                          <img src={vinPreview} alt="VIN" className="w-full h-full object-cover" />
+                          <div className="absolute top-1 right-1 bg-emerald-500 text-gray-950 rounded-full w-4 h-4 flex items-center justify-center text-[9px] font-black">
+                            <i className="fa-solid fa-check"></i>
+                          </div>
+                        </div>
+                      )}
+                      {rearPreview && (
+                        <div className="relative aspect-video bg-gray-950 rounded border border-emerald-500/60 overflow-hidden">
+                          <img src={rearPreview} alt="Rear" className="w-full h-full object-cover" />
+                          <div className="absolute top-1 right-1 bg-emerald-500 text-gray-950 rounded-full w-4 h-4 flex items-center justify-center text-[9px] font-black">
+                            <i className="fa-solid fa-check"></i>
+                          </div>
+                        </div>
+                      )}
+                      {sheetPreview && (
+                        <div className="relative aspect-video bg-gray-950 rounded border border-emerald-500/60 overflow-hidden">
+                          <img src={sheetPreview} alt="Sheet" className="w-full h-full object-cover" />
+                          <div className="absolute top-1 right-1 bg-emerald-500 text-gray-950 rounded-full w-4 h-4 flex items-center justify-center text-[9px] font-black">
+                            <i className="fa-solid fa-check"></i>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {(pendingSaves.length > 0 || pendingMsg) && (
+                  <div className="bg-amber-500/10 border border-amber-500/60 rounded-xl p-2.5 space-y-1.5">
+                    {pendingMsg && <div className="text-[11px] text-emerald-400 font-bold">{pendingMsg}</div>}
+                    {pendingSaves.length > 0 && (
+                      <>
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="text-[11px] text-amber-300 font-bold"><i className="fa-solid fa-cloud-arrow-up mr-1"></i>{lang === "SK" ? "Čaká na odoslanie: " : "Waiting to send: "}{pendingSaves.length}</div>
+                          <button type="button" onClick={() => flushPending(true)} className="px-2.5 py-1 rounded bg-amber-500 text-gray-950 text-[11px] font-black">{lang === "SK" ? "Odoslať teraz" : "Send now"}</button>
+                        </div>
+                        {pendingSaves.map(p => (
+                          <div key={p.id} className="flex items-center justify-between gap-2 text-[11px] text-gray-300">
+                            <span className="font-mono truncate">{p.no} • {p.ecv} • {p.vin}</span>
+                            {p.status === "failed" ? (
+                              <span className="text-red-400 text-right">{p.lastError} <button type="button" onClick={() => discardPending(p.id)} className="underline ml-1">{lang === "SK" ? "zahodiť" : "discard"}</button></span>
+                            ) : (
+                              <span className="text-amber-400">{lang === "SK" ? "čaká" : "waiting"}</span>
+                            )}
+                          </div>
+                        ))}
+                      </>
+                    )}
+                  </div>
+                )}
+
+                {/* Formulár údajov vozidla */}
+                <form onSubmit={handleSaveVehicle} className="space-y-2.5">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-[10px] text-gray-400 font-bold uppercase">{t.vin}</label>
+                      <input
+                        type="text"
+                        value={vin}
+                        onChange={e => setVin(sanitizeVin(e.target.value))}
+                        className="w-full bg-gray-900 border border-gray-700 rounded p-1.5 text-xs text-white font-mono font-bold"
+                        placeholder="17 chars"
+                      />
+                    </div>
+                    <div>
+                      <div className="flex justify-between items-center">
+                        <label className="text-[10px] text-gray-400 font-bold uppercase">{t.ecv}</label>
+                        <label className="flex items-center gap-1 text-[9px] text-gray-400">
+                          <input
+                            type="checkbox"
+                            checked={hasNoEcv}
+                            onChange={e => {
+                              setHasNoEcv(e.target.checked);
+                              if (e.target.checked) setEcv("");
+                            }}
+                          />
+                          <span>{t.noEcvCheckbox}</span>
+                        </label>
+                      </div>
+                      <input
+                        type="text"
+                        disabled={hasNoEcv}
+                        value={hasNoEcv ? (lang === "SK" ? "Bez ŠPZ" : (lang === "DE" ? "Ohne KZ" : "No Plate")) : ecv}
+                        onChange={e => setEcv(e.target.value.toUpperCase())}
+                        className={`w-full border rounded p-1.5 text-xs font-bold ${hasNoEcv ? "bg-gray-800 text-gray-500 border-gray-800" : "bg-gray-900 text-white border-gray-700"}`}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-[10px] text-gray-400 font-bold uppercase">{t.brand}</label>
+                      <input
+                        type="text"
+                        value={brand}
+                        onChange={e => setBrand(e.target.value)}
+                        className="w-full bg-gray-900 border border-gray-700 rounded p-1.5 text-xs text-white font-medium"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] text-gray-400 font-bold uppercase">{t.model}</label>
+                      <input
+                        type="text"
+                        value={model}
+                        onChange={e => setModel(e.target.value)}
+                        className="w-full bg-gray-900 border border-gray-700 rounded p-1.5 text-xs text-white font-medium"
+                      />
+                    </div>
+                  </div>
+
+                  {/* 14-farebná paleta */}
+                  <div className="space-y-1">
+                    <div className="flex justify-between items-center">
+                      <label className="text-[10px] text-gray-400 font-bold uppercase">{t.color}</label>
+                      <span className="text-[10px] text-amber-400 font-bold">
+                        {COLOR_PALETTE.find(c => c.id === selectedColorId)?.labels[lang] || selectedColorId}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-7 gap-1">
+                      {COLOR_PALETTE.map(col => {
+                        const isSel = selectedColorId === col.id;
+                        return (
+                          <button
+                            key={col.id}
+                            type="button"
+                            onClick={() => setSelectedColorId(col.id)}
+                            style={{ backgroundColor: col.bg, color: col.text, borderColor: col.border }}
+                            className={`h-7 rounded border font-bold text-[9px] flex items-center justify-center transition-all ${isSel ? "ring-2 ring-amber-400 ring-offset-1 ring-offset-gray-950 scale-105" : "opacity-80 hover:opacity-100"}`}
+                          >
+                            {isSel ? "✓" : col.labels[lang].substring(0, 4)}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* PDR Ceny, Kategórie a Hodnoty */}
+                  <div className="bg-gray-900/60 border border-gray-800 rounded-xl p-2.5 space-y-2">
+                    {currentSelectedProject?.pricing_mode === "categories" ? (
+                      <div className="space-y-1">
+                        <label className="text-[10px] text-gray-400 font-bold uppercase">{t.priceLabel} (Kategória)</label>
+                        <div className="grid grid-cols-4 gap-1">
+                          {(currentSelectedProject.pricing_categories || []).map(cat => (
+                            <button
+                              key={cat.label}
+                              type="button"
+                              onClick={() => {
+                                setSelectedCategoryLabel(cat.label);
+                                setPrice(String(cat.price));
+                                setIsPricePending(false);
+                              }}
+                              className={`p-1.5 rounded text-xs font-bold border ${selectedCategoryLabel === cat.label ? "bg-amber-500 border-amber-500 text-gray-950 shadow" : "bg-gray-950 border-gray-800 text-gray-300"}`}
+                            >
+                              <div>{cat.label}</div>
+                              <div className="text-[10px] font-normal">{currSymbol}{cat.price}</div>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <div className="flex justify-between items-center">
+                            <label className="text-[10px] text-gray-400 font-bold uppercase">{t.priceLabel}</label>
+                            <label className="flex items-center gap-1 text-[9px] text-gray-400">
+                              <input
+                                type="checkbox"
+                                checked={isPricePending}
+                                onChange={e => {
+                                  setIsPricePending(e.target.checked);
+                                  if (e.target.checked) {
+                                    setPrice("");
+                                    setAwCount("");
+                                  }
+                                }}
+                              />
+                              <span>{t.pricePendingCheckbox}</span>
+                            </label>
+                          </div>
+                          <div className="relative">
+                            <input
+                              type="number"
+                              inputMode="decimal"
+                              disabled={isPricePending}
+                              value={price}
+                              onChange={e => handleDirectPriceChange(e.target.value)}
+                              className={`w-full border rounded p-1.5 text-xs font-bold ${isPricePending ? "bg-gray-800 text-gray-500 border-gray-800" : "bg-gray-900 text-amber-300 border-gray-700"}`}
+                              placeholder={isPricePending ? t.pricePendingCheckbox : "0.00"}
+                            />
+                            <span className="absolute right-2 top-2 text-[10px] text-gray-500">{currSymbol}</span>
+                          </div>
+                        </div>
+
+                        {currentSelectedProject?.pricing_mode === "free" && (
+                          <div>
+                            <label className="text-[10px] text-gray-400 font-bold uppercase">AW (Počet)</label>
+                            <input
+                              type="number"
+                              inputMode="decimal"
+                              disabled={isPricePending}
+                              value={awCount}
+                              onChange={e => handleAwChange(e.target.value)}
+                              className={`w-full border rounded p-1.5 text-xs font-bold ${isPricePending ? "bg-gray-800 text-gray-500 border-gray-800" : "bg-gray-900 text-white border-gray-700"}`}
+                              placeholder="AW"
+                            />
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    <div>
+                      <label className="text-[10px] text-gray-400 font-bold uppercase">{t.riPriceLabel}</label>
+                      <div className="relative">
+                        <input
+                          type="number"
+                          inputMode="decimal"
+                          value={riPrice}
+                          onChange={e => setRiPrice(e.target.value)}
+                          className="w-full bg-gray-900 border border-gray-700 rounded p-1.5 text-xs text-white font-bold"
+                          placeholder="0.00"
+                        />
+                        <span className="absolute right-2 top-2 text-[10px] text-gray-500">{currSymbol}</span>
+                      </div>
+                    </div>
+
+         {/* VÝBER SPOLUPRACOVNÍKOV NA TOMTO AUTE */}
+              {visibleCoopPartners.length > 0 && (
+                <div className="bg-gray-900/80 p-2 rounded-xl border border-gray-800 space-y-1.5 my-2">
+                  <div className="flex justify-between items-center text-[10px] text-gray-400 font-bold uppercase tracking-wide">
+                    <span className="flex items-center gap-1.5">
+                      <i className="fa-solid fa-users text-amber-400"></i>
+                      Spolupráca na zákazke:
+                    </span>
+                    <span className="text-[9px] text-gray-500 font-normal">
+                      {activeCoopPartners.length === 0 ? "Iba ja (100%)" : `Rovným dielom (${activeCoopPartners.length + 1} technici)`}
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5 pt-0.5">
+                    {visibleCoopPartners.map(p => {
+                      const fullEmail = p.partnerEmail || p.recipient_email || "";
+                      const shortName = fullEmail.split("@")[0];
+                      const isSelected = selectedCoopPartners.some(sp => sp.id === p.id);
+
+                      return (
+                        <button
+                          key={p.id}
+                          type="button"
+                          onClick={() => toggleCoopPartnerSelection(p)}
+                          className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                            isSelected
+                              ? "bg-emerald-600 text-white shadow-md shadow-emerald-950 border border-emerald-400"
+                              : "bg-gray-800/80 text-gray-400 hover:text-gray-200 border border-gray-700/60"
+                          }`}
+                        >
+                          <span className={`w-1.5 h-1.5 rounded-full ${isSelected ? "bg-white" : "bg-gray-500"}`}></span>
+                          {shortName}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+                    {/* Výpočet čistého podielu */}
+                    <div className="bg-gray-950 border border-gray-800 rounded p-2 flex justify-between items-center text-xs">
+                      <span className="text-gray-400 font-medium">Môj podiel ({effectivePdrPercent.toFixed(0)}% PDR):</span>
+                      <span className="text-amber-400 font-black text-sm">{currSymbol}{techEarned}</span>
+                    </div>
+                  </div>
+
+                  {/* Poznámka k vozidlu + fotografie k poznámkam */}
+                  <div className="bg-gray-900/40 border border-gray-800 rounded-xl p-2.5 space-y-2">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      capture="environment"
+                      ref={damagePhotoInputRef}
+                      onChange={handleDamagePhotoAdd}
+                      className="hidden"
+                    />
+                    <label className="text-[10px] text-gray-400 font-bold uppercase block">{t.damageNoteLabel}</label>
+                    <input
+                      type="text"
+                      value={damageNote}
+                      onChange={e => setDamageNote(e.target.value)}
+                      placeholder={t.damageNoteLabel}
+                      className="w-full bg-gray-950 border border-gray-800 rounded p-1.5 text-xs text-white"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => damagePhotoInputRef.current && damagePhotoInputRef.current.click()}
+                      className="w-full bg-gray-800 hover:bg-gray-700 text-gray-200 px-2 py-1.5 rounded text-[11px] font-bold flex items-center justify-center gap-1.5"
+                    >
+                      <i className="fa-solid fa-camera"></i> {t.addDamagePhoto} ({damageFiles.length}/5)
+                    </button>
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={isUploading}
+                    className="w-full bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-black py-2.5 rounded-xl text-xs shadow-lg transition-all flex items-center justify-center gap-2"
+                  >
+                    {isUploading ? (
+                      <>
+                        <i className="fa-solid fa-circle-notch fa-spin"></i>
+                        <span>{uploadStatusText || t.savingVehicleStatus}</span>
+                      </>
+                    ) : (
+                      <>
+                        <i className="fa-solid fa-floppy-disk"></i>
+                        <span>{t.saveVehicle}</span>
+                      </>
+                    )}
+                  </button>
+                </form>
+              </div>
+            )}
+
+          {/* ========================================================================= */}
+          {/* KROKOVÝ MODÁL PRE OKAMŽITÚ KONTROLU A OPRAVU PRI AUTE (VARIANT 2)          */}
+          {/* ========================================================================= */}
+          {activeOcrModal && (
+            <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+              <div className="w-full max-w-sm bg-gray-950 border border-amber-500/80 rounded-2xl p-4 shadow-2xl space-y-3.5">
+                <div className="flex justify-between items-center border-b border-gray-800 pb-2">
+                  <div className="font-bold text-amber-400 text-xs flex items-center gap-2">
+                    <i className="fa-solid fa-camera"></i>
+                    <span>
+                      {activeOcrModal === "vin" && t.ocrModalTitleVin}
+                      {activeOcrModal === "rear" && t.ocrModalTitleRear}
+                      {activeOcrModal === "sheet" && t.ocrModalTitleSheet}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setActiveOcrModal(null)}
+                    className="text-gray-500 hover:text-white"
+                  >
+                    <i className="fa-solid fa-xmark text-sm"></i>
+                  </button>
+                </div>
+
+                {isAnalyzingOcr ? (
+                  <div className="py-8 flex flex-col items-center justify-center space-y-2">
+                    <i className="fa-solid fa-circle-notch fa-spin text-2xl text-amber-500"></i>
+                    <span className="text-xs text-gray-400">{t.ocrModalAnalyzing}</span>
+                  </div>
+                ) : (
+                  <>
+                    <div className="relative aspect-video bg-gray-900 rounded-lg overflow-hidden border border-gray-800">
+                      <img
+                        src={activeOcrModal === "vin" ? vinPreview : (activeOcrModal === "rear" ? rearPreview : sheetPreview)}
+                        alt="Náhľad"
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+
+                    {activeOcrModal === "vin" && (
+                      <div className="space-y-2">
+                        <div>
+                          <label className="text-[10px] text-gray-400 font-bold uppercase">{t.vin}</label>
+                          <input
+                            type="text"
+                            value={tempOcrVin}
+                            onChange={e => setTempOcrVin(sanitizeVin(e.target.value))}
+                            className="w-full bg-gray-900 border border-amber-500/80 rounded p-2 text-sm text-amber-300 font-mono font-black tracking-widest text-center"
+                            placeholder="VIN (17 znakov)"
+                          />
+                          {vinWarning(tempOcrVin) && (
+                            <div className="text-[10px] text-amber-400 mt-1 font-bold"><i className="fa-solid fa-triangle-exclamation mr-1"></i>{vinWarning(tempOcrVin)}</div>
+                          )}
+                        </div>
+                        <div>
+                          <label className="text-[10px] text-gray-400 font-bold uppercase">{t.brand}</label>
+                          <input
+                            type="text"
+                            value={tempOcrBrand}
+                            onChange={e => setTempOcrBrand(e.target.value)}
+                            className="w-full bg-gray-900 border border-gray-700 rounded p-1.5 text-xs text-white font-bold"
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {activeOcrModal === "rear" && (
+                      <div className="space-y-2.5">
+                        <div>
+                          <div className="flex justify-between items-center">
+                            <label className="text-[10px] text-gray-400 font-bold uppercase">{t.ecv}</label>
+                            <label className="flex items-center gap-1.5 text-[10px] text-gray-300">
+                              <input
+                                type="checkbox"
+                                checked={tempOcrHasNoEcv}
+                                onChange={e => {
+                                  setTempOcrHasNoEcv(e.target.checked);
+                                  if (e.target.checked) setTempOcrEcv("");
+                                }}
+                              />
+                              <span>{t.noEcvCheckbox}</span>
+                            </label>
+                          </div>
+                          <input
+                            type="text"
+                            disabled={tempOcrHasNoEcv}
+                            value={tempOcrHasNoEcv ? (lang === "SK" ? "Bez ŠPZ" : (lang === "DE" ? "Ohne KZ" : "No Plate")) : tempOcrEcv}
+                            onChange={e => setTempOcrEcv(e.target.value.toUpperCase())}
+                            className={`w-full border rounded p-2 text-sm font-black tracking-widest text-center ${tempOcrHasNoEcv ? "bg-gray-800 text-gray-500 border-gray-800" : "bg-gray-900 text-white border-amber-500/80"}`}
+                          />
+                        </div>
+
+                        <div className="space-y-1">
+                          <div className="flex justify-between items-center">
+                            <label className="text-[10px] text-gray-400 font-bold uppercase">{t.color}</label>
+                            <span className="text-[10px] text-amber-400 font-bold">
+                              {COLOR_PALETTE.find(c => c.id === tempOcrColorId)?.labels[lang] || tempOcrColorId}
+                            </span>
+                          </div>
+                          <div className="grid grid-cols-7 gap-1">
+                            {COLOR_PALETTE.map(col => {
+                              const isSel = tempOcrColorId === col.id;
+                              return (
+                                <button
+                                  key={col.id}
+                                  type="button"
+                                  onClick={() => setTempOcrColorId(col.id)}
+                                  style={{ backgroundColor: col.bg, color: col.text, borderColor: col.border }}
+                                  className={`h-6 rounded border font-bold text-[8px] flex items-center justify-center ${isSel ? "ring-2 ring-amber-400 ring-offset-1 ring-offset-gray-950 scale-105" : "opacity-80"}`}
+                                >
+                                  {isSel ? "✓" : col.labels[lang].substring(0, 3)}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="grid grid-cols-2 gap-2 pt-2">
+                      <button
+                        type="button"
+                        onClick={() => triggerScanStep(scanStep, scanSourceRef.current)}
+                        className="bg-gray-800 hover:bg-gray-700 text-gray-300 font-bold py-2 rounded-xl text-xs"
+                      >
+                        {t.ocrModalRetake}
+                      </button>
+
+                      {activeOcrModal === "vin" && (
+                        <button
+                          type="button"
+                          onClick={confirmVinModal}
+                          className="bg-amber-500 hover:bg-amber-600 text-gray-950 font-black py-2 rounded-xl text-xs shadow"
+                        >
+                          {t.ocrModalConfirmNext} ➔
+                        </button>
+                      )}
+
+                      {activeOcrModal === "rear" && (
+                        <button
+                          type="button"
+                          onClick={confirmRearModal}
+                          className="bg-amber-500 hover:bg-amber-600 text-gray-950 font-black py-2 rounded-xl text-xs shadow"
+                        >
+                          {t.ocrModalConfirmNext} ➔
+                        </button>
+                      )}
+
+                      {activeOcrModal === "sheet" && (
+                        <button
+                          type="button"
+                          onClick={confirmSheetModal}
+                          className="bg-emerald-600 hover:bg-emerald-500 text-white font-black py-2 rounded-xl text-xs shadow"
+                        >
+                          {t.ocrModalConfirmFinish} ✓
+                        </button>
+                      )}
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
+            {/* Správa Klientov a Lokácií */}
+            {activeTab === "projects" && (
+              <div className="space-y-3">
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowNewClientForm(!showNewClientForm)}
+                    className="flex-1 bg-amber-500 hover:bg-amber-600 text-gray-950 font-bold py-1.5 rounded-lg text-xs"
+                  >
+                    + {t.addClientBtn}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowArchivedProjects(!showArchivedProjects)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold border ${showArchivedProjects ? "bg-amber-500/20 border-amber-500 text-amber-300" : "bg-gray-900 border-gray-700 text-gray-400"}`}
+                  >
+                    {showArchivedProjects ? (lang === "SK" ? "Skryť archív" : "Hide Archive") : (lang === "SK" ? "Zobraziť archív" : "Show Archive")}
+                  </button>
+                </div>
+
+                {/* Formulár nového klienta */}
+                {showNewClientForm && (
+                  <form onSubmit={handleAddClient} className="bg-gray-900 border border-amber-500/60 rounded-xl p-3 space-y-2">
+                    <div className="font-bold text-amber-400 text-xs">{lang === "SK" ? "Nový Klient (Firma)" : "New Client (Company)"}</div>
+                    <input
+                      type="text"
+                      required
+                      value={newClientName}
+                      onChange={e => setNewClientName(e.target.value)}
+                      placeholder={t.clientNamePlaceholder}
+                      className="w-full bg-gray-950 border border-gray-700 rounded p-1.5 text-xs text-white"
+                    />
+                    <input
+                      type="text"
+                      value={newClientAddress}
+                      onChange={e => setNewClientAddress(e.target.value)}
+                      placeholder={t.clientAddressPlaceholder}
+                      className="w-full bg-gray-950 border border-gray-700 rounded p-1.5 text-xs text-white"
+                    />
+                    <div className="grid grid-cols-2 gap-2">
+                      <input
+                        type="text"
+                        value={newClientCity}
+                        onChange={e => setNewClientCity(e.target.value)}
+                        placeholder={t.cityPlaceholder}
+                        className="w-full bg-gray-950 border border-gray-700 rounded p-1.5 text-xs text-white"
+                      />
+                      <input
+                        type="text"
+                        value={newClientPostalCode}
+                        onChange={e => setNewClientPostalCode(e.target.value)}
+                        placeholder={t.postalCodePlaceholder}
+                        className="w-full bg-gray-950 border border-gray-700 rounded p-1.5 text-xs text-white"
+                      />
+                    </div>
+                    <CountryPicker
+                      selectedCode={newClientCountry}
+                      onSelect={c => {
+                        setNewClientCountry(c.code);
+                        setNewClientPhone(c.dial);
+                      }}
+                      lang={lang}
+                      placeholder={t.countryPlaceholder}
+                    />
+                    <div className="grid grid-cols-2 gap-2">
+                      <input
+                        type="text"
+                        value={newClientContactPerson}
+                        onChange={e => setNewClientContactPerson(e.target.value)}
+                        placeholder={t.contactPersonPlaceholder}
+                        className="w-full bg-gray-950 border border-gray-700 rounded p-1.5 text-xs text-white"
+                      />
+                      <input
+                        type="text"
+                        value={newClientPhone}
+                        onChange={e => setNewClientPhone(sanitizePhone(e.target.value))}
+                        placeholder={t.phonePlaceholder}
+                        className="w-full bg-gray-950 border border-gray-700 rounded p-1.5 text-xs text-white"
+                      />
+                    </div>
+                    <input
+                      type="text"
+                      value={newClientIco}
+                      onChange={e => setNewClientIco(sanitizeIco(e.target.value))}
+                      placeholder={t.icoPlaceholder}
+                      className="w-full bg-gray-950 border border-gray-700 rounded p-1.5 text-xs text-white"
+                    />
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="text-[9px] text-gray-400">{t.defaultPdrPercentLabel}</label>
+                        <input
+                          type="number"
+                          value={newClientDefaultPdr}
+                          onChange={e => setNewClientDefaultPdr(e.target.value)}
+                          placeholder="100"
+                          className="w-full bg-gray-950 border border-gray-700 rounded p-1 text-xs text-white font-bold"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[9px] text-gray-400">{t.defaultRiPercentLabel}</label>
+                        <input
+                          type="number"
+                          value={newClientDefaultRi}
+                          onChange={e => setNewClientDefaultRi(e.target.value)}
+                          placeholder="100"
+                          className="w-full bg-gray-950 border border-gray-700 rounded p-1 text-xs text-white font-bold"
+                        />
+                      </div>
+                    </div>
+                    {effRole === "manager" && (
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="text-[9px] text-sky-400">Provízia manažéra PDR (%)</label>
+                          <input type="number" min="0" max="100" value={newClientCommPdr} onChange={e => setNewClientCommPdr(e.target.value)} placeholder="0" className="w-full bg-gray-950 border border-sky-700 rounded p-1 text-xs text-white font-bold" />
+                        </div>
+                        <div>
+                          <label className="text-[9px] text-sky-400">Provízia manažéra R&I (%)</label>
+                          <input type="number" min="0" max="100" value={newClientCommRi} onChange={e => setNewClientCommRi(e.target.value)} placeholder="0" className="w-full bg-gray-950 border border-sky-700 rounded p-1 text-xs text-white font-bold" />
+                        </div>
+                      </div>
+                    )}
+                    <div className="pt-1 border-t border-gray-800 space-y-1.5">
+                      <label className="flex items-center gap-1.5 text-xs text-gray-300">
+                        <input
+                          type="checkbox"
+                          checked={hasSeqConfig}
+                          onChange={e => setHasSeqConfig(e.target.checked)}
+                        />
+                        <span>{t.predefinedSeqCheckbox}</span>
+                      </label>
+                      {hasSeqConfig && (
+                        <div className="grid grid-cols-2 gap-2">
+                          <input
+                            type="text"
+                            value={newClientSeqPrefix}
+                            onChange={e => setNewClientSeqPrefix(e.target.value)}
+                            placeholder="{ROK}/"
+                            className="w-full bg-gray-950 border border-gray-700 rounded p-1 text-xs text-white"
+                          />
+                          <input
+                            type="number"
+                            value={newClientInitialSeq}
+                            onChange={e => setNewClientInitialSeq(e.target.value)}
+                            placeholder="1"
+                            className="w-full bg-gray-950 border border-gray-700 rounded p-1 text-xs text-white"
+                          />
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex justify-end gap-2 pt-1">
+                      <button
+                        type="button"
+                        onClick={() => setShowNewClientForm(false)}
+                        className="bg-gray-800 px-3 py-1 rounded text-xs text-gray-300 font-bold"
+                      >
+                        {t.cancelBtn}
+                      </button>
+                      <button
+                        type="submit"
+                        className="bg-amber-500 text-gray-950 px-3 py-1 rounded text-xs font-bold"
+                      >
+                        {t.saveChangesBtn}
+                      </button>
+                    </div>
+                  </form>
+                )}
+
+                {/* Formulár novej lokácie */}
+                {addingProjectClientId && (
+                  <form onSubmit={handleAddProject} className="bg-gray-900 border border-amber-500/60 rounded-xl p-3 space-y-2">
+                    <div className="font-bold text-amber-400 text-xs">{lang === "SK" ? "Nová Lokácia / Dielňa" : "New Location / Shop"}</div>
+                    <input
+                      type="text"
+                      required
+                      value={newProjectName}
+                      onChange={e => setNewProjectName(e.target.value)}
+                      placeholder="Názov dielne (napr. Opel Paríž)"
+                      className="w-full bg-gray-950 border border-gray-700 rounded p-1.5 text-xs text-white"
+                    />
+                    <input
+                      type="text"
+                      value={newProjectAddress}
+                      onChange={e => setNewProjectAddress(e.target.value)}
+                      placeholder={t.clientAddressPlaceholder}
+                      className="w-full bg-gray-950 border border-gray-700 rounded p-1.5 text-xs text-white"
+                    />
+                    <div className="grid grid-cols-2 gap-2">
+                      <input
+                        type="text"
+                        value={newProjectCity}
+                        onChange={e => setNewProjectCity(e.target.value)}
+                        placeholder={t.cityPlaceholder}
+                        className="w-full bg-gray-950 border border-gray-700 rounded p-1.5 text-xs text-white"
+                      />
+                      <input
+                        type="text"
+                        value={newProjectPostalCode}
+                        onChange={e => setNewProjectPostalCode(e.target.value)}
+                        placeholder={t.postalCodePlaceholder}
+                        className="w-full bg-gray-950 border border-gray-700 rounded p-1.5 text-xs text-white"
+                      />
+                    </div>
+                    <CountryPicker
+                      selectedCode={newProjectCountry}
+                      onSelect={c => {
+                        setNewProjectCountry(c.code);
+                        setNewProjectPhone(c.dial);
+                      }}
+                      lang={lang}
+                      placeholder={t.countryPlaceholder}
+                    />
+                    <div className="grid grid-cols-2 gap-2">
+                      <input
+                        type="text"
+                        value={newProjectContactPerson}
+                        onChange={e => setNewProjectContactPerson(e.target.value)}
+                        placeholder={t.contactPersonPlaceholder}
+                        className="w-full bg-gray-950 border border-gray-700 rounded p-1.5 text-xs text-white"
+                      />
+                      <input
+                        type="text"
+                        value={newProjectPhone}
+                        onChange={e => setNewProjectPhone(sanitizePhone(e.target.value))}
+                        placeholder={t.phonePlaceholder}
+                        className="w-full bg-gray-950 border border-gray-700 rounded p-1.5 text-xs text-white"
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="text-[9px] text-gray-400">{t.defaultPdrPercentLabel}</label>
+                        <input
+                          type="number"
+                          value={newProjectTechPdrPercent}
+                          onChange={e => setNewProjectTechPdrPercent(e.target.value)}
+                          placeholder="Podľa klienta"
+                          className="w-full bg-gray-950 border border-gray-700 rounded p-1 text-xs text-white font-bold"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[9px] text-gray-400">{t.defaultRiPercentLabel}</label>
+                        <input
+                          type="number"
+                          value={newProjectTechRiPercent}
+                          onChange={e => setNewProjectTechRiPercent(e.target.value)}
+                          placeholder="Podľa klienta"
+                          className="w-full bg-gray-950 border border-gray-700 rounded p-1 text-xs text-white font-bold"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Cenový model lokácie */}
+                    <div className="space-y-1.5 pt-1 border-t border-gray-800">
+                      <label className="text-[10px] text-gray-400 font-bold uppercase">{t.pricingModeLabel}</label>
+                      <div className="grid grid-cols-3 gap-1">
+                        <button
+                          type="button"
+                          onClick={() => setNewProjectPricingMode("free")}
+                          className={`p-1.5 rounded text-xs font-bold border ${newProjectPricingMode === "free" ? "bg-amber-500/20 border-amber-500 text-amber-300" : "bg-gray-950 border-gray-800 text-gray-400"}`}
+                        >
+                          Voľná / AW
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setNewProjectPricingMode("fixed")}
+                          className={`p-1.5 rounded text-xs font-bold border ${newProjectPricingMode === "fixed" ? "bg-amber-500/20 border-amber-500 text-amber-300" : "bg-gray-950 border-gray-800 text-gray-400"}`}
+                        >
+                          Fixná
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setNewProjectPricingMode("categories")}
+                          className={`p-1.5 rounded text-xs font-bold border ${newProjectPricingMode === "categories" ? "bg-amber-500/20 border-amber-500 text-amber-300" : "bg-gray-950 border-gray-800 text-gray-400"}`}
+                        >
+                          Kategórie
+                        </button>
+                      </div>
+
+                      {newProjectPricingMode === "free" && (
+                        <div>
+                          <label className="text-[9px] text-gray-400">{t.awRateLabel}</label>
+                          <input
+                            type="number"
+                            value={newProjectAwRate}
+                            onChange={e => setNewProjectAwRate(e.target.value)}
+                            placeholder="Sadzba v EUR za 1 AW"
+                            className="w-full bg-gray-950 border border-gray-700 rounded p-1 text-xs text-white font-bold"
+                          />
+                        </div>
+                      )}
+
+                      {newProjectPricingMode === "fixed" && (
+                        <div>
+                          <label className="text-[9px] text-gray-400">{t.fixedRateLabel}</label>
+                          <input
+                            type="number"
+                            value={newProjectFixedPrice}
+                            onChange={e => setNewProjectFixedPrice(e.target.value)}
+                            placeholder="Fixná cena za auto"
+                            className="w-full bg-gray-950 border border-gray-700 rounded p-1 text-xs text-white font-bold"
+                          />
+                        </div>
+                      )}
+
+                      {newProjectPricingMode === "categories" && (
+                        <div className="space-y-1.5">
+                          <div className="flex gap-1.5">
+                            <input
+                              type="number"
+                              value={tempCategoryPrice}
+                              onChange={e => setTempCategoryPrice(e.target.value)}
+                              placeholder="Cena ďalšej Cat v EUR"
+                              className="w-full bg-gray-950 border border-gray-700 rounded p-1 text-xs text-white font-bold"
+                            />
+                            <button
+                              type="button"
+                              onClick={handleAddCategoryItem}
+                              className="bg-amber-500 text-gray-950 px-3 py-1 rounded text-xs font-bold whitespace-nowrap"
+                            >
+                              {t.addCatBtn}
+                            </button>
+                          </div>
+                          <div className="grid grid-cols-2 gap-1 max-h-32 overflow-y-auto">
+                            {projectCategoriesList.map((cat, idx) => (
+                              <div key={idx} className="bg-gray-950 border border-gray-800 p-1 rounded flex justify-between items-center text-xs">
+                                <span>{cat.label}: {currSymbol}{cat.price}</span>
+                                <button type="button" onClick={() => handleRemoveCategoryItem(idx)} className="text-red-400 px-1 font-bold">×</button>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex justify-end gap-2 pt-1">
+                      <button
+                        type="button"
+                        onClick={() => setAddingProjectClientId(null)}
+                        className="bg-gray-800 px-3 py-1 rounded text-xs text-gray-300 font-bold"
+                      >
+                        {t.cancelBtn}
+                      </button>
+                      <button
+                        type="submit"
+                        className="bg-amber-500 text-gray-950 px-3 py-1 rounded text-xs font-bold"
+                      >
+                        {t.saveChangesBtn}
+                      </button>
+                    </div>
+                  </form>
+                )}
+
+                {/* Zoznam klientov a lokácií */}
+                <div className="space-y-2">
+                  {[...clients].sort((a, b) => ((a.created_by === currentUser.id ? 0 : 1) - (b.created_by === currentUser.id ? 0 : 1)) || String(a.created_by).localeCompare(String(b.created_by))).map(c => {
+                    const clientProjects = projects.filter(p => p.client_id === c.id && (showArchivedProjects || p.is_active !== false));
+                    const isForeign = c.created_by && c.created_by !== currentUser.id;
+                    const mgrRow = isForeign ? teamRows.find(r => r.manager_id === c.created_by && r.status === "accepted") : null;
+                    return (
+                      <div key={c.id} className={`rounded-xl p-2.5 space-y-2 border ${isForeign ? "bg-sky-950/30 border-sky-700/60" : "bg-gray-900 border-gray-800"}`}>
+                        {isForeign && (
+                          <div className="text-[10px] font-bold uppercase tracking-wide text-sky-400 flex items-center gap-1.5">
+                            <i className="fa-solid fa-people-group"></i>
+                            <span>{mgrRow ? "Manažér: " + (mgrRow.manager_email || "") : "Zdieľané od kolegu"}</span>
+                          </div>
+                        )}
+                        <div className="flex justify-between items-center">
+                          <button
+                            type="button"
+                            onClick={() => setActiveBottomSheet({ type: "client", id: c.id, data: c })}
+                            className="font-bold text-amber-400 hover:underline text-left text-xs flex items-center gap-1.5"
+                          >
+                            <span>{c.name}</span>
+                            <i className="fa-solid fa-circle-info text-[10px] text-gray-500"></i>
+                          </button>
+                          {!isForeign && (
+                          <button
+                            type="button"
+                            onClick={() => setAddingProjectClientId(c.id)}
+                            className="bg-gray-800 hover:bg-gray-700 text-gray-200 px-2 py-0.5 rounded text-[10px] font-bold"
+                          >
+                            + {t.addLocationBtn}
+                          </button>
+                          )}
+                        </div>
+
+                        <div className="space-y-1">
+                          {clientProjects.length === 0 ? (
+                            <div className="text-[10px] text-gray-500 italic p-1">{lang === "SK" ? "Žiadne lokácie" : "No locations"}</div>
+                          ) : (
+                            clientProjects.map(p => (
+                              <div
+                                key={p.id}
+                                onClick={() => setActiveBottomSheet({ type: "project", id: p.id, data: p })}
+                                className={`p-2 rounded-lg border flex justify-between items-center cursor-pointer ${p.is_active === false ? "bg-gray-950/40 border-gray-900 opacity-60" : "bg-gray-950 border-gray-800/80 hover:border-amber-500/40"}`}
+                              >
+                                <div className="space-y-0.5">
+                                  <div className="font-bold text-gray-200 flex items-center gap-1.5">
+                                    <span>{p.name}</span>
+                                    {p.is_active === false && <span className="text-[9px] text-red-400 font-normal">({t.archiveBtn})</span>}
+                                  </div>
+                                  <div className="text-[10px] text-gray-500">{p.city || "Bez adresy"}</div>
+                                </div>
+                                <div className="text-right">
+                                  <span className="bg-gray-900 text-amber-400 border border-gray-800 px-1.5 py-0.5 rounded text-[10px] font-mono">
+                                    {p.pricing_mode === "fixed" ? `${currSymbol}${p.fixed_price}` : (p.pricing_mode === "categories" ? "Kategórie" : "AW / Voľná")}
+                                  </span>
+                                </div>
+                              </div>
+                            ))
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Manažérsky režim: Technici / Reporty */}
+            {inMgr && (activeTab === "mgr_techs" || activeTab === "mgr_reports") && (
+              <div className="space-y-3">
+                {activeTab === "mgr_techs" && (
+                  <div className="space-y-2">
+                    {mgrTeam.length === 0 && (
+                      <div className="text-xs text-gray-500 text-center py-6">Zatiaľ nemáš v tíme žiadneho technika. Pozvi ho cez ikonu Tím v hlavičke.</div>
+                    )}
+                    {mgrTeam.map(m => {
+                      const mine = mgrVehicles.filter(v => mgrVehStats(v).per.some(p => p.id === m.member_id));
+                      let payout = 0, comm = 0;
+                      const byJob = {};
+                      mine.forEach(v => {
+                        const p = mgrVehStats(v).per.find(x => x.id === m.member_id);
+                        payout += p.payout; comm += p.comm;
+                        const proj = projects.find(pp => pp.id === v.project_id);
+                        const cl = clients.find(c => c.id === proj?.client_id);
+                        const key = v.project_id;
+                        byJob[key] = byJob[key] || { name: `${cl?.name || "?"} • ${proj?.name || "?"}`, n: 0, payout: 0, comm: 0 };
+                        byJob[key].n += 1; byJob[key].payout += p.payout; byJob[key].comm += p.comm;
+                      });
+                      const assigned = assignRows.filter(a => a.technician_id === m.member_id).map(a => projects.find(pp => pp.id === a.project_id)).filter(Boolean);
+                      const open = mgrOpenTech === m.member_id;
+                      return (
+                        <div key={m.id} className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
+                          <button onClick={() => setMgrOpenTech(open ? null : m.member_id)} className="w-full text-left p-2.5 flex items-center justify-between gap-2">
+                            <div className="min-w-0">
+                              <div className="text-sm font-bold text-white truncate">{String(m.member_email).split("@")[0]}</div>
+                              <div className="text-[10px] text-gray-500 truncate">{m.member_email}</div>
+                            </div>
+                            <div className="text-right shrink-0">
+                              <div className="text-[10px] text-gray-400">{mine.length} áut</div>
+                              <div className="text-xs font-black text-sky-400">{fmtEur(comm)}</div>
+                            </div>
+                          </button>
+                          {open && (
+                            <div className="border-t border-gray-800 p-2.5 space-y-2 text-xs">
+                              <div className="grid grid-cols-3 gap-1.5 text-center">
+                                <div className="bg-gray-950 rounded-lg py-1.5"><div className="text-[9px] text-gray-400 uppercase">Opravil</div><div className="font-black text-white">{mine.length}</div></div>
+                                <div className="bg-gray-950 rounded-lg py-1.5"><div className="text-[9px] text-gray-400 uppercase">Jeho výplata</div><div className="font-black text-emerald-400">{fmtEur(payout)}</div></div>
+                                <div className="bg-gray-950 rounded-lg py-1.5"><div className="text-[9px] text-gray-400 uppercase">Zarobil mi</div><div className="font-black text-sky-400">{fmtEur(comm)}</div></div>
+                              </div>
+                              <div>
+                                <div className="text-[10px] text-gray-400 font-bold uppercase mb-1">Priradené zákazky</div>
+                                {assigned.length === 0 ? <div className="text-gray-500">Žiadne</div> : assigned.map(pp => (
+                                  <div key={pp.id} className="text-gray-300">• {clients.find(c => c.id === pp.client_id)?.name || "?"} / {pp.name}</div>
+                                ))}
+                              </div>
+                              <div>
+                                <div className="text-[10px] text-gray-400 font-bold uppercase mb-1">Zárobok podľa zákazky</div>
+                                {Object.values(byJob).length === 0 ? <div className="text-gray-500">Zatiaľ žiadne autá</div> : Object.values(byJob).map((j, i) => (
+                                  <div key={i} className="flex justify-between gap-2 text-gray-300"><span className="truncate">{j.name} ({j.n}×)</span><span className="text-sky-400 font-bold shrink-0">{fmtEur(j.comm)}</span></div>
+                                ))}
+                              </div>
+                              <button onClick={() => { setMgrFTech(m.member_id); setActiveTab("mgr_reports"); }} className="w-full py-1.5 rounded-lg bg-sky-600/20 border border-sky-500 text-sky-300 font-bold">Zobraziť jeho autá</button>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {activeTab === "mgr_reports" && (
+                  <div className="space-y-2">
+                    <div className="grid grid-cols-2 gap-1.5">
+                      <select value={mgrFClient} onChange={e => setMgrFClient(e.target.value)} className="bg-gray-900 border border-gray-700 rounded p-1.5 text-xs text-white">
+                        <option value="">Všetci klienti</option>
+                        {clients.filter(c => c.created_by === currentUser.id).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                      </select>
+                      <select value={mgrFTech} onChange={e => setMgrFTech(e.target.value)} className="bg-gray-900 border border-gray-700 rounded p-1.5 text-xs text-white">
+                        <option value="">Všetci technici</option>
+                        {mgrTeam.map(m => <option key={m.id} value={m.member_id}>{String(m.member_email).split("@")[0]}</option>)}
+                      </select>
+                      <select value={mgrFPeriod} onChange={e => setMgrFPeriod(e.target.value)} className="bg-gray-900 border border-gray-700 rounded p-1.5 text-xs text-white">
+                        <option value="all">Celé obdobie</option>
+                        <option value="month">Tento mesiac</option>
+                        <option value="prev">Minulý mesiac</option>
+                      </select>
+                      <input value={mgrQ} onChange={e => setMgrQ(e.target.value)} placeholder="VIN / ŠPZ / zákazka" className="bg-gray-900 border border-gray-700 rounded p-1.5 text-xs text-white" />
+                    </div>
+                    <div className="grid grid-cols-4 gap-1.5 text-center">
+                      <div className="bg-gray-900 border border-gray-800 rounded-xl py-1.5"><div className="text-[9px] text-gray-400 uppercase">Autá</div><div className="text-sm font-black text-white">{mgrTotals.count}</div></div>
+                      <div className="bg-gray-900 border border-gray-800 rounded-xl py-1.5"><div className="text-[9px] text-gray-400 uppercase">Obrat</div><div className="text-sm font-black text-white">{fmtEur(mgrTotals.gross)}</div></div>
+                      <div className="bg-gray-900 border border-gray-800 rounded-xl py-1.5"><div className="text-[9px] text-gray-400 uppercase">Technici</div><div className="text-sm font-black text-emerald-400">{fmtEur(mgrTotals.payout)}</div></div>
+                      <div className="bg-gray-900 border border-gray-800 rounded-xl py-1.5"><div className="text-[9px] text-gray-400 uppercase">Provízia</div><div className="text-sm font-black text-sky-400">{fmtEur(mgrTotals.comm)}</div></div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-1.5">
+                      <button onClick={mgrExportPdf} className="py-1.5 rounded-lg bg-sky-600/20 border border-sky-500 text-xs font-bold text-sky-300">PDF export</button>
+                      <button onClick={mgrExportCsv} className="py-1.5 rounded-lg bg-gray-800 border border-gray-700 text-xs font-bold text-gray-200">CSV export</button>
+                    </div>
+                    {mgrFiltered.length === 0 && <div className="text-xs text-gray-500 text-center py-6">Žiadne autá podľa filtra.</div>}
+                    {mgrFiltered.map(v => {
+                      const proj = projects.find(p => p.id === v.project_id);
+                      const cl = clients.find(c => c.id === proj?.client_id);
+                      const s = mgrVehStats(v);
+                      return (
+                        <div key={v.id} className="bg-gray-900 border border-gray-800 rounded-xl p-2.5 text-xs space-y-0.5">
+                          <div className="flex justify-between gap-2">
+                            <span className="font-bold text-white truncate">{v.brand} {v.model}</span>
+                            <span className="text-sky-400 font-black shrink-0">{fmtEur(s.comm)}</span>
+                          </div>
+                          <div className="text-gray-400 truncate">{cl?.name || "?"} • {proj?.name || "?"}</div>
+                          <div className="text-gray-500 truncate">{v.ecv} | {v.vin} | {new Date(v.created_at).toLocaleDateString("sk-SK")}</div>
+                          <div className="text-gray-400">Obrat {fmtEur(s.gross)} • technik(ci): {s.per.map(p => `${p.email ? String(p.email).split("@")[0] : mgrTechName(p.id)} ${fmtEur(p.payout)}`).join(", ")}</div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Záložka Register & Reports */}
+            {activeTab === "reports" && (
+              <div className="space-y-3">
+                {/* Kompaktné KPI boxy s čistým podielom technika */}
+                <div className="grid grid-cols-3 gap-1.5">
+                  <div className="bg-gray-900 border border-gray-800 py-1.5 px-2 rounded-xl text-center">
+                    <div className="text-[9px] text-gray-400 font-bold uppercase truncate">{t.kpiVehicles}</div>
+                    <div className="text-sm font-black text-white">{kpiStats.count}</div>
+                  </div>
+                  <div className="bg-gray-900 border border-gray-800 py-1.5 px-2 rounded-xl text-center">
+                    <div className="text-[9px] text-amber-400 font-bold uppercase truncate">Môj podiel</div>
+                    <div className="text-sm font-black text-amber-400">{currSymbol}{kpiStats.myShare}</div>
+                  </div>
+                  <div className="bg-gray-900 border border-emerald-900/40 bg-emerald-950/10 py-1.5 px-2 rounded-xl text-center">
+                    <div className="text-[9px] text-emerald-400 font-bold uppercase truncate">Uzavreté</div>
+                    <div className="text-sm font-black text-emerald-400">{currSymbol}{kpiStats.lockedShare}</div>
+                  </div>
+                </div>
+
+                {/* Filtre */}
+                <div className="bg-gray-900 border border-gray-800 rounded-xl p-2.5 space-y-2">
+                  <div className="grid grid-cols-2 gap-2">
+                    <select
+                      value={repClientFilter}
+                      onChange={e => {
+                        setRepClientFilter(e.target.value);
+                        setRepProjectFilter("all");
+                      }}
+                      className="w-full bg-gray-950 border border-gray-700 rounded p-1 text-xs text-white"
+                    >
+                      <option value="all">{t.allClients}</option>
+                      {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    </select>
+
+                    <select
+                      value={repProjectFilter}
+                      onChange={e => setRepProjectFilter(e.target.value)}
+                      className="w-full bg-gray-950 border border-gray-700 rounded p-1 text-xs text-white"
+                    >
+                      <option value="all">{t.allLocations}</option>
+                      {projects
+                        .filter(p => repClientFilter === "all" || p.client_id === repClientFilter)
+                        .map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                    </select>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                  <select
+                    value={repDateRange}
+                    onChange={e => setRepDateRange(e.target.value)}
+                    className="w-full bg-gray-950 border border-gray-700 rounded p-1 text-xs text-white"
+                  >
+                    <option value="all">{t.allDates}</option>
+                    <option value="thisWeek">Aktuálny týždeň</option>
+                    <option value="thisMonth">{t.thisMonth}</option>
+                    <option value="lastMonth">{t.lastMonth}</option>
+                    <option value="customMonth">{t.customMonthYear}</option>
+                  </select>
+
+                  <select
+                    value={repStatusFilter}
+                    onChange={e => setRepStatusFilter(e.target.value)}
+                    className="w-full bg-gray-950 border border-gray-700 rounded p-1 text-xs text-white"
+                  >
+                    <option value="all">Všetky stavy</option>
+                    <option value="open">Otvorené</option>
+                    <option value="closed">Uzavreté</option>
+                  </select>
+                </div>
+                  
+
+                    {repDateRange === "customMonth" && (
+                      <div className="grid grid-cols-2 gap-1">
+                        <select
+                          value={repSelectedMonth}
+                          onChange={e => setRepSelectedMonth(e.target.value)}
+                          className="w-full bg-gray-950 border border-gray-700 rounded p-1 text-[10px] text-white"
+                        >
+                          {(MONTHS_LIST[lang] || MONTHS_LIST.SK).map((m, idx) => (
+                            <option key={idx} value={idx}>{m.substring(0, 3)}</option>
+                          ))}
+                        </select>
+                        <input
+                          type="number"
+                          value={repSelectedYear}
+                          onChange={e => setRepSelectedYear(e.target.value)}
+                          className="w-full bg-gray-950 border border-gray-700 rounded p-1 text-[10px] text-white"
+                        />
+                      </div>
+                    )}
+               
+
+                  <input
+                    type="text"
+                    value={repSearchQuery}
+                    onChange={e => setRepSearchQuery(e.target.value)}
+                    placeholder={t.searchPlaceholder}
+                    className="w-full bg-gray-950 border border-gray-700 rounded p-1.5 text-xs text-white"
+                  />
+                </div>
+
+                {/* Exporty */}
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={exportPdf}
+                    className="flex-1 bg-amber-500 hover:bg-amber-600 text-gray-950 font-bold py-1.5 rounded-lg text-xs flex items-center justify-center gap-1.5"
+                  >
+                    <i className="fa-solid fa-file-pdf"></i> {t.downloadPdfBtn}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={exportCsv}
+                    className="bg-gray-800 hover:bg-gray-700 text-gray-200 px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5"
+                  >
+                    <i className="fa-solid fa-file-csv"></i> {t.downloadCsvBtn}
+                  </button>
+                </div>
+
+                {/* Zoznam zaevidovaných áut s CO-OP odznakom a dvojitou cenou */}
+                <div className="space-y-1.5">
+                  {filteredVehicles.length === 0 ? (
+                    <div className="text-center p-4 text-gray-500 text-xs">{t.noVehicles}</div>
+                  ) : (
+                    filteredVehicles.map(v => {
+                      const myEmail = (currentUser?.email || "").toLowerCase();
+                      const vehicleCoops = coopRecords.filter(c => String(c.vehicle_id) === String(v.id));
+                      const isCoop = vehicleCoops.length > 1;
+                      const myCoop = vehicleCoops.find(isMyCoopRow);
+                      const fraction = myCoop ? myCoop.split_fraction : 1;
+
+                      const pdrVal = parseFloat(v.price) || 0;
+                      const riVal = parseFloat(v.ri_price) || 0;
+                      const myEarned = techShareValue(v, fraction, currentUser.id).toFixed(2);
+                      const totalGross = (pdrVal + riVal).toFixed(2);
+
+                      // Zistenie názvu projektu a klienta pre mikro-hlavičku
+                      const proj = projects.find(p => p.id === v.project_id);
+                      const client = clients.find(c => c.id === proj?.client_id);
+                      const clientName = client?.name || "Klient";
+                      const locationName = proj?.name || "Lokácia";
+
+                      return (
+                        <div
+                          key={v.id}
+                          onClick={() => setSelectedVehicleDetail(v)}
+                          className="bg-gray-900 border border-gray-800 hover:border-amber-500/60 p-2.5 rounded-xl flex justify-between items-center cursor-pointer transition-all"
+                        >
+                          <div className="space-y-0.5 min-w-0 flex-1 pr-2">
+                            {/* Mikro-hlavička: Klient • Lokácia */}
+                            <div className="text-[10px] text-gray-400 font-medium truncate flex items-center gap-1">
+                              <span className="truncate">{clientName}</span>
+                              <span className="text-gray-600 font-bold">•</span>
+                              <span className="truncate text-gray-300">{locationName}</span>
+                            </div>
+
+                            <div className="font-bold text-gray-200 flex items-center gap-1.5">
+                              <span className="truncate">{v.brand} {v.model}</span>
+                              {isCoop && (
+                                <span className="bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[9px] px-1.5 py-0.5 rounded font-black flex items-center gap-1">
+                                  <span>🤝</span> {t.coopBadge} ({vehicleCoops.length})
+                                </span>
+                              )}
+                              {v.status === "pending_price" && (
+                                <span className="bg-red-500/20 text-red-400 border border-red-500/40 text-[9px] px-1 rounded font-bold">Cena ?</span>
+                              )}
+                            </div>
+                            <div className="text-[10px] font-mono text-gray-400">{v.ecv} | {v.vin.substring(0, 10)}...</div>
+                            <div className="text-[9px] text-gray-500">{new Date(v.created_at).toLocaleDateString()} | {v.internal_record_no}</div>
+                          </div>
+
+                          <div className="text-right flex flex-col items-end justify-between">
+                            {/* Bublinka / Zámok nad cenou */}
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleToggleLock(v.id, v.is_locked);
+                              }}
+                              className={`mb-1 px-1.5 py-0.5 rounded text-[9px] font-bold flex items-center gap-1 transition-all border ${
+                                v.is_locked
+                                  ? "bg-emerald-950/60 border-emerald-500/50 text-emerald-400"
+                                  : "bg-gray-800/80 border-gray-700 text-gray-400 hover:text-amber-400 hover:border-amber-500/40"
+                              }`}
+                              title={v.is_locked ? "Uzavreté (kliknutím odomknete)" : "Otvorené (kliknutím uzamknete)"}
+                            >
+                              <i className={`fa-solid ${v.is_locked ? "fa-lock text-emerald-400" : "fa-lock-open text-gray-400"}`}></i>
+                              <span>{v.is_locked ? "Uzavreté" : "Otvorené"}</span>
+                            </button>
+
+                            {v.status === "pending_price" ? (
+                              <div className="font-black text-red-400 text-xs">Cena neznáma</div>
+                            ) : (
+                              <div className="space-y-0.5">
+                                <div className="font-black text-emerald-400 text-sm">
+                                  {currSymbol}{myEarned}
+                                </div>
+                                <div className="text-[9px] text-gray-400 font-mono">
+                                  {t.coopTotalGross}: {currSymbol}{totalGross}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* ========================================================================= */}
+          {/* DETAIL VOZIDLA (MODÁL) S MOŽNOSŤOU DOPLNENIA CENY A ROZPADOM KOOPERÁCIE   */}
+          {/* ========================================================================= */}
+          {selectedVehicleDetail && (
+            <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+              <div className="w-full max-w-sm bg-gray-950 border border-amber-500/80 rounded-2xl p-4 shadow-2xl space-y-3 max-h-[90vh] overflow-y-auto text-xs">
+               <div className="flex justify-between items-center border-b border-gray-800 pb-2">
+                  <div className="font-bold text-amber-400 text-sm flex items-center gap-1.5 truncate">
+                    <span>{selectedVehicleDetail.brand} {selectedVehicleDetail.model}</span>
+                    {selectedVehicleDetail.is_locked && (
+                      <span className="text-[10px] text-emerald-400 bg-emerald-950/60 border border-emerald-500/40 px-1.5 py-0.5 rounded flex items-center gap-1">
+                        <i className="fa-solid fa-lock"></i> Uzavreté
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-2.5">
+                    {/* Tlačidlo Upraviť / Zrušiť s poistkou proti zamknutým autám */}
+                    {selectedVehicleDetail.is_locked ? (
+                      <span className="text-[10px] text-gray-500 italic">Uzamknuté</span>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (!isEditingVehicle) {
+                            setEditVehicleData({
+                              ...selectedVehicleDetail,
+                              has_no_ecv: selectedVehicleDetail.has_no_ecv || selectedVehicleDetail.ecv === "Bez ŠPZ" || selectedVehicleDetail.ecv === "Ohne KZ" || selectedVehicleDetail.ecv === "No Plate"
+                            });
+                            setIsEditingVehicle(true);
+                          } else {
+                            setIsEditingVehicle(false);
+                          }
+                        }}
+                        className="text-amber-400 text-xs font-bold hover:underline"
+                      >
+                        {isEditingVehicle ? t.cancelBtn : t.editBtn}
+                      </button>
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedVehicleDetail(null);
+                        setIsEditingVehicle(false);
+                      }}
+                      className="text-gray-500 hover:text-white"
+                    >
+                      <i className="fa-solid fa-xmark text-base"></i>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Prepínanie: Formulár úpravy vs. Pasívne zobrazenie */}
+                {isEditingVehicle ? (
+                  <form onSubmit={handleUpdateVehicleData} className="space-y-2 text-xs">
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="text-[9px] text-gray-400 font-bold uppercase">{t.brand}</label>
+                        <input
+                          type="text"
+                          value={editVehicleData.brand || ""}
+                          onChange={e => setEditVehicleData({ ...editVehicleData, brand: e.target.value })}
+                          className="w-full bg-gray-900 border border-gray-700 rounded p-1.5 text-xs text-white"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[9px] text-gray-400 font-bold uppercase">{t.model}</label>
+                        <input
+                          type="text"
+                          value={editVehicleData.model || ""}
+                          onChange={e => setEditVehicleData({ ...editVehicleData, model: e.target.value })}
+                          className="w-full bg-gray-900 border border-gray-700 rounded p-1.5 text-xs text-white"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="text-[9px] text-gray-400 font-bold uppercase">{t.vin}</label>
+                        <input
+                          type="text"
+                          value={editVehicleData.vin || ""}
+                          onChange={e => setEditVehicleData({ ...editVehicleData, vin: sanitizeVin(e.target.value) })}
+                          className="w-full bg-gray-900 border border-gray-700 rounded p-1.5 text-xs text-white font-mono font-bold"
+                        />
+                      </div>
+                      <div>
+                        <div className="flex justify-between items-center">
+                          <label className="text-[9px] text-gray-400 font-bold uppercase">{t.ecv}</label>
+                          <label className="flex items-center gap-1 text-[8px] text-gray-400">
+                            <input
+                              type="checkbox"
+                              checked={Boolean(editVehicleData.has_no_ecv)}
+                              onChange={e => setEditVehicleData({
+                                ...editVehicleData,
+                                has_no_ecv: e.target.checked,
+                                ecv: e.target.checked ? "" : editVehicleData.ecv
+                              })}
+                            />
+                            <span>{t.noEcvCheckbox}</span>
+                          </label>
+                        </div>
+                        <input
+                          type="text"
+                          disabled={editVehicleData.has_no_ecv}
+                          value={editVehicleData.has_no_ecv ? (lang === "SK" ? "Bez ŠPZ" : (lang === "DE" ? "Ohne KZ" : "No Plate")) : (editVehicleData.ecv || "")}
+                          onChange={e => setEditVehicleData({ ...editVehicleData, ecv: e.target.value.toUpperCase() })}
+                          className={`w-full border rounded p-1.5 text-xs font-bold ${editVehicleData.has_no_ecv ? "bg-gray-800 text-gray-500 border-gray-800" : "bg-gray-900 text-white border-gray-700"}`}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="text-[9px] text-gray-400 font-bold uppercase">{t.calcNumberLabel}</label>
+                        <input
+                          type="text"
+                          value={editVehicleData.client_calc_no || ""}
+                          onChange={e => setEditVehicleData({ ...editVehicleData, client_calc_no: e.target.value })}
+                          className="w-full bg-gray-900 border border-gray-700 rounded p-1.5 text-xs text-amber-300 font-mono font-bold"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[9px] text-gray-400 font-bold uppercase">{t.color}</label>
+                        <input
+                          type="text"
+                          value={editVehicleData.color || ""}
+                          onChange={e => setEditVehicleData({ ...editVehicleData, color: e.target.value })}
+                          className="w-full bg-gray-900 border border-gray-700 rounded p-1.5 text-xs text-white"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="text-[9px] text-gray-400 font-bold uppercase">{t.priceLabel} (PDR)</label>
+                        <div className="relative">
+                          <input
+                            type="number"
+                            inputMode="decimal"
+                            value={editVehicleData.price ?? ""}
+                            onChange={e => setEditVehicleData({ ...editVehicleData, price: e.target.value })}
+                            className="w-full bg-gray-900 border border-gray-700 rounded p-1.5 text-xs text-amber-300 font-bold"
+                          />
+                          <span className="absolute right-2 top-1.5 text-[10px] text-gray-500">{currSymbol}</span>
+                        </div>
+                      </div>
+                      <div>
+                        <label className="text-[9px] text-gray-400 font-bold uppercase">{t.riPriceLabel}</label>
+                        <div className="relative">
+                          <input
+                            type="number"
+                            inputMode="decimal"
+                            value={editVehicleData.ri_price ?? ""}
+                            onChange={e => setEditVehicleData({ ...editVehicleData, ri_price: e.target.value })}
+                            className="w-full bg-gray-900 border border-gray-700 rounded p-1.5 text-xs text-white font-bold"
+                          />
+                          <span className="absolute right-2 top-1.5 text-[10px] text-gray-500">{currSymbol}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="text-[9px] text-gray-400 font-bold uppercase">{t.damageNoteLabel}</label>
+                      <input
+                        type="text"
+                        value={editVehicleData.note || ""}
+                        onChange={e => setEditVehicleData({ ...editVehicleData, note: e.target.value })}
+                        className="w-full bg-gray-900 border border-gray-700 rounded p-1.5 text-xs text-white"
+                      />
+                    </div>
+
+                    <button
+                      type="submit"
+                      className="w-full bg-amber-500 hover:bg-amber-600 text-gray-950 font-black py-2 rounded-xl text-xs shadow transition-all active:scale-95"
+                    >
+                      {t.saveChangesBtn}
+                    </button>
+                  </form>
+                ) : (
+                  <div className="space-y-1.5 font-mono">
+                    <div><span className="text-gray-500">VIN:</span> <span className="text-white font-bold">{selectedVehicleDetail.vin}</span></div>
+                    <div><span className="text-gray-500">ŠPZ:</span> <span className="text-white font-bold">{selectedVehicleDetail.ecv}</span></div>
+                    <div><span className="text-gray-500">Farba:</span> <span className="text-white">{selectedVehicleDetail.color}</span></div>
+                    <div><span className="text-gray-500">Dátum:</span> <span className="text-gray-300">{new Date(selectedVehicleDetail.created_at).toLocaleString()}</span></div>
+                    <div><span className="text-gray-500">Číslo kalkulácie:</span> <span className="text-amber-300 font-bold">{selectedVehicleDetail.client_calc_no || "N/A"}</span></div>
+                    <div><span className="text-gray-500">PDR Cena (100%):</span> <span className="text-amber-400 font-bold">{currSymbol}{selectedVehicleDetail.price}</span></div>
+                    <div><span className="text-gray-500">R&I Cena (100%):</span> <span className="text-gray-300">{currSymbol}{selectedVehicleDetail.ri_price}</span></div>
+                  </div>
+                )}
+
+                {/* Rozpad technikov zapojených do kooperácie */}
+                {(() => {
+                  const coops = coopRecords.filter(c => String(c.vehicle_id) === String(selectedVehicleDetail.id));
+                  if (coops.length === 0) return null;
+                  return (
+                    <div className="bg-gray-900 border border-gray-800 rounded-xl p-2.5 space-y-1.5">
+                      <div className="text-[10px] text-amber-400 font-bold uppercase flex items-center gap-1">
+                        <span>🤝</span> {t.coopParticipants} ({coops.length}):
+                      </div>
+                      <div className="space-y-1">
+                        {coops.map((c, i) => {
+                          const pdr = parseFloat(selectedVehicleDetail.price) || 0;
+                          const ri = parseFloat(selectedVehicleDetail.ri_price) || 0;
+                          const techShare = (selectedVehicleDetail.manager_id && !commOf(selectedVehicleDetail.id, c.technician_id || "x")) ? "—" : techShareValue(selectedVehicleDetail, c.split_fraction, c.technician_id).toFixed(2);
+                          const isMe = isMyCoopRow(c);
+                          return (
+                            <div key={i} className={`p-1.5 rounded flex justify-between items-center text-[10px] ${isMe ? "bg-amber-500/20 text-amber-300 font-bold" : "bg-gray-950 text-gray-300"}`}>
+                              <span className="truncate">{c.technician_email}</span>
+                              <span className="font-mono text-emerald-400 font-black">{currSymbol}{techShare}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* Dodatočné zadanie ceny pri pending_price */}
+                {selectedVehicleDetail.status === "pending_price" && (
+                  <div className="bg-gray-900 border border-red-500/60 p-2.5 rounded-xl space-y-2">
+                    <div className="text-red-300 font-bold text-[11px]">{t.latePricePlaceholder} {currSymbol}:</div>
+                    <div className="flex gap-2">
+                      <input
+                        type="number"
+                        inputMode="decimal"
+                        value={latePriceInput}
+                        onChange={e => setLatePriceInput(e.target.value)}
+                        placeholder="0.00"
+                        className="w-full bg-gray-950 border border-gray-700 rounded p-1.5 text-xs text-white font-bold"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleSaveLatePrice(selectedVehicleDetail.id)}
+                        className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-3 py-1.5 rounded text-xs whitespace-nowrap"
+                      >
+                        {t.savePriceBtn}
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Náhľady fotiek auta */}
+                <div className="grid grid-cols-3 gap-1.5 pt-1">
+                  {selectedVehicleDetail.photo_vin_url && (
+                    <SignedPhoto value={selectedVehicleDetail.photo_vin_url} alt="VIN" />
+                  )}
+                  {selectedVehicleDetail.photo_rear_url && (
+                    <SignedPhoto value={selectedVehicleDetail.photo_rear_url} alt="Rear" />
+                  )}
+                  {selectedVehicleDetail.photo_sheet_url && (
+                    <SignedPhoto value={selectedVehicleDetail.photo_sheet_url} alt="Sheet" />
+                  )}
+                </div>
+
+                {/* Fotky poškodenia */}
+                {selectedVehicleDetail.damage_photos && selectedVehicleDetail.damage_photos.length > 0 && (
+                  <div className="space-y-1 pt-1">
+                    <div className="text-[10px] text-gray-400 font-bold uppercase">{t.damagePhotosCount} ({selectedVehicleDetail.damage_photos.length}):</div>
+                    <div className="grid grid-cols-3 gap-1.5">
+                      {selectedVehicleDetail.damage_photos.map((dUrl, idx) => (
+                        <SignedPhoto key={idx} value={dUrl} alt={`Dmg ${idx}`} />
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {selectedVehicleDetail.note && (
+                  <div className="bg-gray-900 p-2 rounded border border-gray-800 text-[11px] text-gray-300">
+                    <span className="text-gray-500 font-bold block text-[9px] uppercase">{t.damageNoteLabel}:</span>
+                    {selectedVehicleDetail.note}
+                  </div>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => setSelectedVehicleDetail(null)}
+                  className="w-full bg-gray-800 hover:bg-gray-700 text-gray-200 font-bold py-2 rounded-xl text-xs"
+                >
+                  {t.closeBtn}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* ========================================================================= */}
+          {/* BOTTOM SHEET DETAIL / EDITÁCIA KLIENTA A LOKÁCIE                          */}
+          {/* ========================================================================= */}
+          {activeBottomSheet && (
+            <div className="fixed inset-0 z-40 bg-black/60 flex items-end justify-center">
+              <div className="w-full max-w-md bg-gray-950 border-t border-gray-800 rounded-t-2xl p-4 space-y-3 bottom-sheet max-h-[85vh] overflow-y-auto">
+                <div className="flex justify-between items-center border-b border-gray-800 pb-2">
+                  <div className="font-bold text-amber-400 text-sm">
+                    {activeBottomSheet.type === "client" ? t.clientCardTitle : t.locationDetailTitle}
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      hidden={activeBottomSheet.data.created_by !== currentUser.id}
+                      onClick={() => {
+                        if (!isEditingSheet) {
+                          setSheetEditData({ ...activeBottomSheet.data, comm_pdr: (clientComm[activeBottomSheet.data.id] || {}).pdr ?? 0, comm_ri: (clientComm[activeBottomSheet.data.id] || {}).ri ?? 0 });
+                          if (activeBottomSheet.type === "project") {
+                            setSheetEditCategories(activeBottomSheet.data.pricing_categories || []);
+                          }
+                          setIsEditingSheet(true);
+                        } else {
+                          setIsEditingSheet(false);
+                        }
+                      }}
+                      className="text-amber-400 text-xs font-bold hover:underline"
+                    >
+                      {isEditingSheet ? t.cancelBtn : t.editBtn}
+                    </button>
+                    <button type="button" onClick={() => { setActiveBottomSheet(null); setIsEditingSheet(false); }} className="text-gray-500 hover:text-white">
+                      <i className="fa-solid fa-xmark text-base"></i>
+                    </button>
+                  </div>
+                </div>
+
+                {isEditingSheet ? (
+                  <form onSubmit={handleUpdateSheetData} className="space-y-2 text-xs">
+                    <input
+                      type="text"
+                      required
+                      value={sheetEditData.name || ""}
+                      onChange={e => setSheetEditData({ ...sheetEditData, name: e.target.value })}
+                      placeholder="Názov"
+                      className="w-full bg-gray-900 border border-gray-700 rounded p-1.5 text-xs text-white"
+                    />
+                    <input
+                      type="text"
+                      value={sheetEditData.address || ""}
+                      onChange={e => setSheetEditData({ ...sheetEditData, address: e.target.value })}
+                      placeholder={t.clientAddressPlaceholder}
+                      className="w-full bg-gray-900 border border-gray-700 rounded p-1.5 text-xs text-white"
+                    />
+                    <div className="grid grid-cols-2 gap-2">
+                      <input
+                        type="text"
+                        value={sheetEditData.city || ""}
+                        onChange={e => setSheetEditData({ ...sheetEditData, city: e.target.value })}
+                        placeholder={t.cityPlaceholder}
+                        className="w-full bg-gray-900 border border-gray-700 rounded p-1.5 text-xs text-white"
+                      />
+                      <input
+                        type="text"
+                        value={sheetEditData.postal_code || ""}
+                        onChange={e => setSheetEditData({ ...sheetEditData, postal_code: e.target.value })}
+                        placeholder={t.postalCodePlaceholder}
+                        className="w-full bg-gray-900 border border-gray-700 rounded p-1.5 text-xs text-white"
+                      />
+                    </div>
+                    <CountryPicker
+                      selectedCode={sheetEditData.country_code || "DE"}
+                      onSelect={c => setSheetEditData({ ...sheetEditData, country_code: c.code })}
+                      lang={lang}
+                      placeholder={t.countryPlaceholder}
+                    />
+                    <div className="grid grid-cols-2 gap-2">
+                      <input
+                        type="text"
+                        value={sheetEditData.contact_person || ""}
+                        onChange={e => setSheetEditData({ ...sheetEditData, contact_person: e.target.value })}
+                        placeholder={t.contactPersonPlaceholder}
+                        className="w-full bg-gray-900 border border-gray-700 rounded p-1.5 text-xs text-white"
+                      />
+                      <input
+                        type="text"
+                        value={sheetEditData.phone || ""}
+                        onChange={e => setSheetEditData({ ...sheetEditData, phone: sanitizePhone(e.target.value) })}
+                        placeholder={t.phonePlaceholder}
+                        className="w-full bg-gray-900 border border-gray-700 rounded p-1.5 text-xs text-white"
+                      />
+                    </div>
+
+                    {activeBottomSheet.type === "client" && (
+                      <input
+                        type="text"
+                        value={sheetEditData.ico || ""}
+                        onChange={e => setSheetEditData({ ...sheetEditData, ico: sanitizeIco(e.target.value) })}
+                        placeholder={t.icoPlaceholder}
+                        className="w-full bg-gray-900 border border-gray-700 rounded p-1.5 text-xs text-white"
+                      />
+                    )}
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="text-[9px] text-gray-400">{t.defaultPdrPercentLabel}</label>
+                        <input
+                          type="number"
+                          value={sheetEditData.default_pdr_percent ?? sheetEditData.tech_pdr_percent ?? ""}
+                          onChange={e => {
+                            if (activeBottomSheet.type === "client") setSheetEditData({ ...sheetEditData, default_pdr_percent: e.target.value });
+                            else setSheetEditData({ ...sheetEditData, tech_pdr_percent: e.target.value });
+                          }}
+                          placeholder="100"
+                          className="w-full bg-gray-900 border border-gray-700 rounded p-1 text-xs text-white font-bold"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[9px] text-gray-400">{t.defaultRiPercentLabel}</label>
+                        <input
+                          type="number"
+                          value={sheetEditData.default_ri_percent ?? sheetEditData.tech_ri_percent ?? ""}
+                          onChange={e => {
+                            if (activeBottomSheet.type === "client") setSheetEditData({ ...sheetEditData, default_ri_percent: e.target.value });
+                            else setSheetEditData({ ...sheetEditData, tech_ri_percent: e.target.value });
+                          }}
+                          placeholder="100"
+                          className="w-full bg-gray-900 border border-gray-700 rounded p-1 text-xs text-white font-bold"
+                        />
+                      </div>
+                    </div>
+
+                    {activeBottomSheet.type === "client" && effRole === "manager" && (
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="text-[9px] text-sky-400">Provízia manažéra PDR (%)</label>
+                          <input type="number" min="0" max="100" value={sheetEditData.comm_pdr ?? ""} onChange={e => setSheetEditData({ ...sheetEditData, comm_pdr: e.target.value })} className="w-full bg-gray-900 border border-sky-700 rounded p-1 text-xs text-white font-bold" />
+                        </div>
+                        <div>
+                          <label className="text-[9px] text-sky-400">Provízia manažéra R&I (%)</label>
+                          <input type="number" min="0" max="100" value={sheetEditData.comm_ri ?? ""} onChange={e => setSheetEditData({ ...sheetEditData, comm_ri: e.target.value })} className="w-full bg-gray-900 border border-sky-700 rounded p-1 text-xs text-white font-bold" />
+                        </div>
+                      </div>
+                    )}
+
+                    {activeBottomSheet.type === "project" && (
+                      <div className="space-y-1.5 pt-1 border-t border-gray-800">
+                        <label className="text-[10px] text-gray-400 font-bold uppercase">{t.pricingModeLabel}</label>
+                        <div className="grid grid-cols-3 gap-1">
+                          <button
+                            type="button"
+                            onClick={() => setSheetEditData({ ...sheetEditData, pricing_mode: "free" })}
+                            className={`p-1.5 rounded text-xs font-bold border ${sheetEditData.pricing_mode === "free" ? "bg-amber-500/20 border-amber-500 text-amber-300" : "bg-gray-900 border-gray-800 text-gray-400"}`}
+                          >
+                            Voľná / AW
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setSheetEditData({ ...sheetEditData, pricing_mode: "fixed" })}
+                            className={`p-1.5 rounded text-xs font-bold border ${sheetEditData.pricing_mode === "fixed" ? "bg-amber-500/20 border-amber-500 text-amber-300" : "bg-gray-900 border-gray-800 text-gray-400"}`}
+                          >
+                            Fixná
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setSheetEditData({ ...sheetEditData, pricing_mode: "categories" })}
+                            className={`p-1.5 rounded text-xs font-bold border ${sheetEditData.pricing_mode === "categories" ? "bg-amber-500/20 border-amber-500 text-amber-300" : "bg-gray-900 border-gray-800 text-gray-400"}`}
+                          >
+                            Kategórie
+                          </button>
+                        </div>
+
+                        {sheetEditData.pricing_mode === "free" && (
+                          <div>
+                            <label className="text-[9px] text-gray-400">{t.awRateLabel}</label>
+                            <input
+                              type="number"
+                              value={sheetEditData.aw_rate || ""}
+                              onChange={e => setSheetEditData({ ...sheetEditData, aw_rate: e.target.value })}
+                              placeholder="Sadzba za 1 AW"
+                              className="w-full bg-gray-900 border border-gray-700 rounded p-1 text-xs text-white font-bold"
+                            />
+                          </div>
+                        )}
+
+                        {sheetEditData.pricing_mode === "fixed" && (
+                          <div>
+                            <label className="text-[9px] text-gray-400">{t.fixedRateLabel}</label>
+                            <input
+                              type="number"
+                              value={sheetEditData.fixed_price || ""}
+                              onChange={e => setSheetEditData({ ...sheetEditData, fixed_price: e.target.value })}
+                              placeholder="Fixná cena"
+                              className="w-full bg-gray-900 border border-gray-700 rounded p-1 text-xs text-white font-bold"
+                            />
+                          </div>
+                        )}
+
+                        {sheetEditData.pricing_mode === "categories" && (
+                          <div className="space-y-1.5">
+                            <div className="flex gap-1.5">
+                              <input
+                                type="number"
+                                value={sheetEditTempCatPrice}
+                                onChange={e => setSheetEditTempCatPrice(e.target.value)}
+                                placeholder="Cena novej Cat v EUR"
+                                className="w-full bg-gray-900 border border-gray-700 rounded p-1 text-xs text-white font-bold"
+                              />
+                              <button
+                                type="button"
+                                onClick={handleAddSheetEditCategory}
+                                className="bg-amber-500 text-gray-950 px-3 py-1 rounded text-xs font-bold whitespace-nowrap"
+                              >
+                                + Cat
+                              </button>
+                            </div>
+                            <div className="grid grid-cols-2 gap-1 max-h-28 overflow-y-auto">
+                              {sheetEditCategories.map((cat, idx) => (
+                                <div key={idx} className="bg-gray-900 border border-gray-800 p-1 rounded flex justify-between items-center text-xs">
+                                  <span>{cat.label}: {currSymbol}{cat.price}</span>
+                                  <button type="button" onClick={() => handleRemoveSheetEditCategory(idx)} className="text-red-400 px-1 font-bold">×</button>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    <button
+                      type="submit"
+                      className="w-full bg-amber-500 text-gray-950 font-bold py-2 rounded-xl text-xs mt-2"
+                    >
+                      {t.saveChangesBtn}
+                    </button>
+                  </form>
+                ) : (
+                  <div className="space-y-3 text-xs">
+                    <div>
+                      <div className="font-bold text-white text-base">{activeBottomSheet.data.name}</div>
+                      <div className="text-gray-400">{activeBottomSheet.data.address || "Bez adresy"}, {activeBottomSheet.data.city || ""} {activeBottomSheet.data.postal_code || ""}</div>
+                    </div>
+
+                    {activeBottomSheet.data.contact_person && (
+                      <div><span className="text-gray-500">Kontakt:</span> <span className="text-gray-200 font-bold">{activeBottomSheet.data.contact_person}</span></div>
+                    )}
+                    {activeBottomSheet.data.phone && (
+                      <div><span className="text-gray-500">Telefón:</span> <span className="text-gray-200 font-mono">{activeBottomSheet.data.phone}</span></div>
+                    )}
+                    {activeBottomSheet.data.ico && (
+                      <div><span className="text-gray-500">IČO / UID:</span> <span className="text-gray-200 font-mono">{activeBottomSheet.data.ico}</span></div>
+                    )}
+
+                    {activeBottomSheet.data.phone && (
+                      <div className="flex gap-2 pt-1">
+                        <a
+                          href={`tel:${activeBottomSheet.data.phone}`}
+                          className="flex-1 bg-emerald-600 text-white font-bold py-2 rounded-xl text-center flex items-center justify-center gap-1.5 shadow"
+                        >
+                          <i className="fa-solid fa-phone"></i> {t.callBtn}
+                        </a>
+                        <a
+                          href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${activeBottomSheet.data.name} ${activeBottomSheet.data.address || ''} ${activeBottomSheet.data.city || ''}`)}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="flex-1 bg-blue-600 text-white font-bold py-2 rounded-xl text-center flex items-center justify-center gap-1.5 shadow"
+                        >
+                          <i className="fa-solid fa-map-location-dot"></i> {t.navigateBtn}
+                        </a>
+                      </div>
+                    )}
+
+                    {activeBottomSheet.type === "client" && effRole === "manager" && activeBottomSheet.data.created_by === currentUser.id && (
+                      <div className="text-sky-300 font-bold">Provízia manažéra: PDR {(clientComm[activeBottomSheet.data.id] || {}).pdr ?? 0} % | R&I {(clientComm[activeBottomSheet.data.id] || {}).ri ?? 0} %</div>
+                    )}
+
+                    {activeBottomSheet.type === "project" && effRole === "manager" && activeBottomSheet.data.created_by === currentUser.id && (
+                      <div className="pt-2 border-t border-gray-800 space-y-1.5">
+                        <div className="text-[10px] text-sky-400 font-bold uppercase tracking-wide">Technici na zákazke</div>
+                        {teamRows.filter(r => r.manager_id === currentUser.id && r.status === "accepted" && r.member_id).length === 0 && (
+                          <div className="text-gray-500">Najprv pozvite technikov do tímu (ikona Tím).</div>
+                        )}
+                        {teamRows.filter(r => r.manager_id === currentUser.id && r.status === "accepted" && r.member_id).map(m => {
+                          const row = assignRows.find(a => a.project_id === activeBottomSheet.data.id && a.technician_id === m.member_id);
+                          const cc = clientComm[activeBottomSheet.data.client_id] || { pdr: 0, ri: 0 };
+                          return (
+                            <div key={m.id} className="bg-gray-900 rounded-xl border border-gray-800 p-2 space-y-1.5">
+                              <label className="flex items-center gap-2 text-gray-200">
+                                <input type="checkbox" checked={!!row} onChange={() => toggleAssign(activeBottomSheet.data.id, m.member_id)} />
+                                <span className="font-mono truncate">{m.member_email}</span>
+                              </label>
+                              {row && (
+                                <div className="grid grid-cols-2 gap-2">
+                                  <div>
+                                    <label className="text-[9px] text-gray-400">Provízia PDR % (prázdne = {cc.pdr})</label>
+                                    <input key={"p" + row.id + String(row.commission_pdr)} type="number" min="0" max="100" defaultValue={row.commission_pdr ?? ""} onBlur={e => saveAssignOverride(row.id, "commission_pdr", e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded p-1 text-xs text-white font-bold" />
+                                  </div>
+                                  <div>
+                                    <label className="text-[9px] text-gray-400">Provízia R&I % (prázdne = {cc.ri})</label>
+                                    <input key={"r" + row.id + String(row.commission_ri)} type="number" min="0" max="100" defaultValue={row.commission_ri ?? ""} onBlur={e => saveAssignOverride(row.id, "commission_ri", e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded p-1 text-xs text-white font-bold" />
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+
+                    {activeBottomSheet.type === "project" && activeBottomSheet.data.created_by === currentUser.id && (
+                      <div className="pt-2 border-t border-gray-800">
+                        <button
+                          type="button"
+                          onClick={() => handleToggleArchiveProject(activeBottomSheet.data)}
+                          className={`w-full py-2 rounded-xl font-bold text-xs ${activeBottomSheet.data.is_active === false ? "bg-emerald-600/20 text-emerald-400 border border-emerald-500/40" : "bg-red-600/20 text-red-400 border border-red-500/40"}`}
+                        >
+                          {activeBottomSheet.data.is_active === false ? t.restoreBtn : t.archiveBtn}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* ========================================================================= */}
+          {/* MODÁL SPOLUPRÁCE & PARTNERI (KOOPERÁCIE)                                   */}
+          {/* ========================================================================= */}
+          {showTeamModal && (
+            <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+              <div className="w-full max-w-sm bg-gray-950 border border-sky-500/80 rounded-2xl p-4 shadow-2xl space-y-3 text-xs max-h-[90vh] overflow-y-auto">
+                <div className="flex justify-between items-center border-b border-gray-800 pb-2">
+                  <div className="font-bold text-sky-400 flex items-center gap-2">
+                    <i className="fa-solid fa-people-group"></i>
+                    <span>Tím</span>
+                  </div>
+                  <button type="button" onClick={() => setShowTeamModal(false)} className="text-gray-500 hover:text-white">
+                    <i className="fa-solid fa-xmark text-base"></i>
+                  </button>
+                </div>
+
+                {teamMsg && (
+                  <div className="p-2 rounded bg-sky-500/20 text-sky-300 border border-sky-500/40 text-center font-bold">{teamMsg}</div>
+                )}
+
+                {teamRows.filter(r => r.manager_id !== currentUser.id && r.status === "pending").length > 0 && (
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] text-amber-400 font-bold uppercase tracking-wide">Pozvánky do tímu:</label>
+                    {teamRows.filter(r => r.manager_id !== currentUser.id && r.status === "pending").map(r => (
+                      <div key={r.id} className="bg-gray-900 p-2 rounded-xl border border-amber-500/40 flex justify-between items-center gap-2">
+                        <span className="font-mono text-xs text-gray-200 truncate">{r.manager_email || "Manažér"}</span>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <button type="button" onClick={() => handleAcceptTeamInvite(r.id)} className="bg-emerald-600 hover:bg-emerald-500 text-white px-2.5 py-1 rounded-lg text-[10px] font-bold">Prijať</button>
+                          <button type="button" onClick={() => handleRemoveTeamRow(r.id)} className="bg-gray-800 hover:bg-red-950 text-gray-400 hover:text-red-400 px-2 py-1 rounded-lg text-[10px] font-bold border border-gray-700">Odmietnuť</button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {teamRows.filter(r => r.manager_id !== currentUser.id && r.status === "accepted").length > 0 && (
+                  <div className="space-y-1.5 pt-2 border-t border-gray-800">
+                    <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wide">Moji manažéri:</label>
+                    {teamRows.filter(r => r.manager_id !== currentUser.id && r.status === "accepted").map(r => (
+                      <div key={r.id} className="bg-gray-900 p-2 rounded-xl border border-gray-800 flex justify-between items-center gap-2">
+                        <span className="font-mono text-xs text-gray-200 truncate">{r.manager_email || "Manažér"}</span>
+                        <button type="button" onClick={() => handleRemoveTeamRow(r.id, "Opustiť tento tím? Stratíte prístup k jeho zákazkám.")} className="text-gray-500 hover:text-red-400 px-2 py-1 text-[10px] font-bold">Opustiť</button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {effRole === "manager" && (
+                  <div className="space-y-2 pt-2 border-t border-gray-800">
+                    <form onSubmit={handleInviteTeamMember} className="space-y-1.5">
+                      <label className="text-[10px] text-gray-400 font-bold uppercase">Pozvať technika do tímu</label>
+                      <div className="flex gap-1.5">
+                        <input type="email" required value={teamInviteEmail} onChange={e => setTeamInviteEmail(e.target.value)} placeholder="technik@email.com" className="w-full bg-gray-900 border border-gray-700 rounded p-1.5 text-xs text-white" />
+                        <button type="submit" className="bg-sky-500 text-gray-950 px-3 py-1.5 rounded font-bold whitespace-nowrap">Pozvať</button>
+                      </div>
+                    </form>
+                    <label className="text-[10px] text-sky-400 font-bold uppercase tracking-wide">Môj tím:</label>
+                    {teamRows.filter(r => r.manager_id === currentUser.id).length === 0 && (
+                      <div className="text-gray-500 text-center py-2">Zatiaľ žiadni technici.</div>
+                    )}
+                    {teamRows.filter(r => r.manager_id === currentUser.id).map(r => (
+                      <div key={r.id} className="bg-gray-900 p-2 rounded-xl border border-gray-800 flex justify-between items-center gap-2">
+                        <div className="min-w-0">
+                          <div className="font-mono text-xs text-gray-200 truncate">{r.member_email}</div>
+                          <div className={`text-[10px] font-bold ${r.status === "accepted" ? "text-emerald-400" : "text-amber-400"}`}>{r.status === "accepted" ? "V tíme" : "Čaká na prijatie"}</div>
+                        </div>
+                        <button type="button" onClick={() => handleRemoveTeamRow(r.id, "Odstrániť technika z tímu? Zmizne mu aj priradenie k vašim zákazkám.")} className="text-gray-500 hover:text-red-400 px-2 py-1 text-[10px] font-bold">Odstrániť</button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {effRole !== "manager" && teamRows.length === 0 && (
+                  <div className="text-gray-500 text-center py-3">Zatiaľ nie ste v žiadnom tíme. Pozvánku vám pošle manažér na váš e-mail.</div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {showCoopModal && (
+            <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+              <div className="w-full max-w-sm bg-gray-950 border border-amber-500/80 rounded-2xl p-4 shadow-2xl space-y-3 text-xs">
+                <div className="flex justify-between items-center border-b border-gray-800 pb-2">
+                  <div className="font-bold text-amber-400 flex items-center gap-2">
+                    <i className="fa-solid fa-handshake"></i>
+                    <span>{t.coopTitle}</span>
+                  </div>
+                  <button type="button" onClick={() => setShowCoopModal(false)} className="text-gray-500 hover:text-white">
+                    <i className="fa-solid fa-xmark text-base"></i>
+                  </button>
+                </div>
+
+                {coopMsg && (
+                  <div className="p-2 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40 text-center font-bold">
+                    {coopMsg}
+                  </div>
+                )}
+
+                <form onSubmit={handleSendCoopInvite} className="space-y-2">
+                  <label className="text-[10px] text-gray-400 font-bold uppercase">{t.invitePartnerBtn}</label>
+                  <div className="flex gap-1.5">
+                    <input
+                      type="email"
+                      required
+                      value={newPartnerEmail}
+                      onChange={e => setNewPartnerEmail(e.target.value)}
+                      placeholder="kolega@pdr.com"
+                      className="w-full bg-gray-900 border border-gray-700 rounded p-1.5 text-xs text-white"
+                    />
+                    <button type="submit" className="bg-amber-500 text-gray-950 px-3 py-1.5 rounded font-bold whitespace-nowrap">
+                      Pozvať
+                    </button>
+                  </div>
+                </form>
+
+                {/* 1. PRIJATÉ POZVÁNKY (Čakajú na moje potvrdenie) */}
+                {pendingCoopInvites && pendingCoopInvites.length > 0 && (
+                  <div className="space-y-1.5 pt-2 border-t border-gray-800">
+                    <label className="text-[10px] text-amber-400 font-bold uppercase tracking-wide">
+                      {t.pendingPartnersLabel || "Prijaté pozvánky"}:
+                    </label>
+                    {pendingCoopInvites.map(inv => (
+                      <div key={inv.id} className="bg-gray-900 p-2 rounded-xl border border-amber-500/40 flex justify-between items-center">
+                        <span className="font-mono text-xs text-gray-200">{inv.sender_email || inv.recipient_email || "Kolega"}</span>
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => handleAcceptCoopInvite(inv.id)}
+                            className="bg-emerald-600 hover:bg-emerald-500 text-white px-2.5 py-1 rounded-lg text-[10px] font-bold"
+                          >
+                            Prijať
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveOrRejectPartner(inv.id)}
+                            className="bg-gray-800 hover:bg-red-950 text-gray-400 hover:text-red-400 px-2 py-1 rounded-lg text-[10px] font-bold border border-gray-700"
+                          >
+                            Odmietnuť
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* 2. ODOSLANÉ POZVÁNKY (Čakajú na schválenie druhou stranou) */}
+                {sentCoopInvites && sentCoopInvites.length > 0 && (
+                  <div className="space-y-1.5 pt-2 border-t border-gray-800">
+                    <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wide">
+                      Odoslané pozvánky:
+                    </label>
+                    {sentCoopInvites.map(inv => (
+                      <div key={inv.id} className="bg-gray-900/60 p-2 rounded-xl border border-gray-800 flex justify-between items-center">
+                        <div className="flex items-center gap-1.5 font-mono text-xs text-gray-400">
+                          <i className="fa-regular fa-clock text-[10px] text-amber-400"></i>
+                          <span>{inv.recipient_email}</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveOrRejectPartner(inv.id)}
+                          className="text-gray-500 hover:text-red-400 text-[10px] font-bold px-2 py-0.5 rounded hover:bg-red-500/10 transition-colors"
+                        >
+                          Zrušiť
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* 3. AKTÍVNI PARTNERI NA DIELNI */}
+                <div className="space-y-1.5 pt-2 border-t border-gray-800">
+                  <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wide">
+                    {t.activePartnersLabel}:
+                  </label>
+                  {(!coopPartners || coopPartners.length === 0) ? (
+                    <div className="text-gray-500 italic p-1 text-xs">{t.noPartnersMsg}</div>
+                  ) : (
+                    coopPartners.map(p => (
+                      <div key={p.id} className="bg-gray-900 p-2 rounded-xl border border-gray-800 flex justify-between items-center">
+                        <div className="flex items-center gap-2">
+                          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                          <span className="font-bold text-gray-200 text-xs">{p.partnerEmail || p.recipient_email}</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveOrRejectPartner(p.id)}
+                          className="text-gray-500 hover:text-red-400 text-[10px] font-bold px-2 py-1 rounded border border-transparent hover:border-red-500/30 hover:bg-red-500/10 transition-all"
+                          title="Ukončiť spoluprácu"
+                        >
+                          Odpojiť
+                        </button>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ========================================================================= */}
+          {/* MODÁL NASTAVENIA ÚČTU A ZMENY HESLA                                       */}
+          {/* ========================================================================= */}
+          {showSettingsModal && (
+            <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+              <div className="w-full max-w-sm bg-gray-950 border border-amber-500/80 rounded-2xl p-4 shadow-2xl space-y-3 text-xs">
+                <div className="flex justify-between items-center border-b border-gray-800 pb-2">
+                  <div className="font-bold text-amber-400 flex items-center gap-2">
+                    <i className="fa-solid fa-gear"></i>
+                    <span>{t.settingsTitle}</span>
+                  </div>
+                  <button type="button" onClick={() => setShowSettingsModal(false)} className="text-gray-500 hover:text-white">
+                    <i className="fa-solid fa-xmark text-base"></i>
+                  </button>
+                </div>
+
+                {settingsMsg && (
+                  <div className="p-2 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-center font-bold">
+                    {settingsMsg}
+                  </div>
+                )}
+
+                <div className="space-y-1">
+                  <span className="text-gray-400">Prihlásený email:</span>
+                  <div className="font-bold text-white font-mono">{currentUser.email}</div>
+                </div>
+
+                {/* Voľba meny a jazyka */}
+                <div className="grid grid-cols-2 gap-2 pt-2 border-t border-gray-800">
+                  <div>
+                    <label className="text-[10px] text-gray-400 font-bold uppercase">{t.languageLabel}</label>
+                    <select
+                      value={lang}
+                      onChange={e => {
+                        setLang(e.target.value);
+                        localStorage.setItem("pdr_lang", e.target.value);
+                      }}
+                      className="w-full bg-gray-900 border border-gray-700 rounded p-1 text-xs text-white font-bold"
+                    >
+                      <option value="SK">Slovenčina</option>
+                      <option value="DE">Deutsch</option>
+                      <option value="EN">English</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-gray-400 font-bold uppercase">Mena</label>
+                    <select
+                      value={currency}
+                      onChange={e => {
+                        setCurrency(e.target.value);
+                        localStorage.setItem("pdr_curr", e.target.value);
+                      }}
+                      className="w-full bg-gray-900 border border-gray-700 rounded p-1 text-xs text-white font-bold"
+                    >
+                      <option value="EUR">EUR (€)</option>
+                      <option value="USD">USD ($)</option>
+                    </select>
+                  </div>
+                </div>
+
+                <form onSubmit={handlePasswordUpdate} className="space-y-2 pt-2 border-t border-gray-800">
+                  <label className="text-[10px] text-gray-400 font-bold uppercase">Nové heslo</label>
+                  <input
+                    type="password"
+                    required
+                    value={newAccountPassword}
+                    onChange={e => setNewAccountPassword(e.target.value)}
+                    placeholder={t.passwordPlaceholder}
+                    className="w-full bg-gray-900 border border-gray-700 rounded p-1.5 text-xs text-white"
+                  />
+                  <button
+                    type="submit"
+                    className="w-full bg-amber-500 text-gray-950 font-bold py-2 rounded-xl text-xs"
+                  >
+                    {t.updatePasswordBtn}
+                  </button>
+                </form>
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    ReactDOM.render(<App />, document.getElementById("root"));
+  
