@@ -121,9 +121,7 @@
       { id: "orange", bg: "#EA580C", text: "#FFFFFF", border: "#C2410C", labels: { EN: "Orange", DE: "Orange", SK: "Oranžová" } },
       { id: "brown", bg: "#78350F", text: "#FFFFFF", border: "#582509", labels: { EN: "Brown", DE: "Braun", SK: "Hnedá" } },
       { id: "gold_bronze", bg: "#B4833E", text: "#111827", border: "#926322", labels: { EN: "Gold/Brz", DE: "Gold/Brz", SK: "Zlatá/Brz" } },
-      { id: "burgundy", bg: "#831843", text: "#FFFFFF", border: "#601031", labels: { EN: "Burgundy", DE: "Bordeaux", SK: "Bordová" } },
-      { id: "wrap", bg: "#0D9488", text: "#FFFFFF", border: "#0F766E", labels: { EN: "Wrap", DE: "Folie", SK: "Fólia" } },
-      { id: "matt", bg: "#475569", text: "#FFFFFF", border: "#334155", labels: { EN: "Matt", DE: "Matt", SK: "Matt" } }
+      { id: "burgundy", bg: "#831843", text: "#FFFFFF", border: "#601031", labels: { EN: "Burgundy", DE: "Bordeaux", SK: "Bordová" } }
     ];
 
     const TRANSLATIONS = {
@@ -211,8 +209,8 @@
         missingAwRateAlert: "Missing AW rate in Location settings. Fill rate or check 'Price unknown'.",
         blockedSubmission: "Blocked (Specify AW rate)",
         damagePhotosCount: "Damage details",
-        damageNoteLabel: "Damage Note / Timestamp",
-        addDamagePhoto: "+ Damage Photo",
+        damageNoteLabel: "Vehicle note",
+        addDamagePhoto: "+ Photos for notes",
         uploadedPhotos: "Uploaded",
         allClients: "All Clients",
         allLocations: "All Locations",
@@ -348,8 +346,8 @@
         missingAwRateAlert: "Fehlender AW-Satz in den Standorteinstellungen. Satz festlegen oder 'Preis unbekannt' wählen.",
         blockedSubmission: "Gesperrt (AW-Satz ergänzen)",
         damagePhotosCount: "Schadensdetails",
-        damageNoteLabel: "Schadensnotiz / Zeitstempel",
-        addDamagePhoto: "+ Schadensfoto",
+        damageNoteLabel: "Fahrzeugnotiz",
+        addDamagePhoto: "+ Fotos zur Notiz",
         uploadedPhotos: "Hochgeladen",
         allClients: "Alle Kunden",
         allLocations: "Alle Standorte",
@@ -485,8 +483,8 @@
         missingAwRateAlert: "Chýba sadzba za 1 AW v nastaveniach lokácie. Nastavte sadzbu alebo označte 'Cena neznáma'.",
         blockedSubmission: "Blokované (Doplňte sadzbu AW)",
         damagePhotosCount: "Detaily poškodenia",
-        damageNoteLabel: "Ochranná poznámka / Pečiatka",
-        addDamagePhoto: "+ Foto poškodenia",
+        damageNoteLabel: "Poznámka k vozidlu",
+        addDamagePhoto: "+ Fotografie k poznámkam",
         uploadedPhotos: "Nahraté",
         allClients: "Všetci klienti",
         allLocations: "Všetky lokácie",
@@ -1084,7 +1082,17 @@ const [sentCoopInvites, setSentCoopInvites] = useState([]);
       };
 
       // ===== Manažérsky pohľad (Technici / Reporty) =====
-      const [mgrSub, setMgrSub] = useState("techs");
+      const [mgrMode, setMgrMode] = useState(() => { try { return localStorage.getItem("pdr_mgr_mode") !== "0"; } catch (e) { return true; } });
+      const inMgr = effRole === "manager" && mgrMode;
+      const switchMgrMode = (on) => {
+        setMgrMode(on);
+        try { localStorage.setItem("pdr_mgr_mode", on ? "1" : "0"); } catch (e) {}
+        setActiveTab(on ? "projects" : "vehicles");
+      };
+      useEffect(() => {
+        if (inMgr && !["projects", "mgr_techs", "mgr_reports"].includes(activeTab)) setActiveTab("projects");
+        if (!inMgr && ["mgr_techs", "mgr_reports"].includes(activeTab)) setActiveTab("vehicles");
+      }, [inMgr]);
       const [mgrFClient, setMgrFClient] = useState("");
       const [mgrFTech, setMgrFTech] = useState("");
       const [mgrFPeriod, setMgrFPeriod] = useState("all");
@@ -2041,21 +2049,22 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
         doc.save(`pdr_summary_${Date.now()}.pdf`);
       };
       // Spustenie jednotlivých krokov skenovania
-      const triggerScanStep = (stepNumber) => {
+      // zdroj posledného snímania: "camera" alebo "gallery" (vrátenie/ďalší krok otvorí ten istý zdroj)
+      const scanSourceRef = useRef("camera");
+      const triggerScanStep = (stepNumber, source) => {
+        const src = source || "camera";
+        scanSourceRef.current = src;
         setScanStep(stepNumber);
-        if (cameraInputRef.current) {
-          cameraInputRef.current.value = "";
-          cameraInputRef.current.click();
+        const inp = src === "gallery" ? galleryInputRef.current : cameraInputRef.current;
+        if (inp) {
+          inp.value = "";
+          inp.click();
         }
       };
 
       // Nahratie fotky z galérie: berie prvý ešte nespracovaný krok (VIN -> zadok -> kalkulácia)
       const triggerGalleryScan = () => {
-        setScanStep(!vinPreview ? 1 : (!rearPreview ? 2 : (!sheetPreview ? 3 : 1)));
-        if (galleryInputRef.current) {
-          galleryInputRef.current.value = "";
-          galleryInputRef.current.click();
-        }
+        triggerScanStep(!vinPreview ? 1 : (!rearPreview ? 2 : (!sheetPreview ? 3 : 1)), "gallery");
       };
 
       // Spracovanie odfoteného obrázka cez Google Vision
@@ -2285,7 +2294,7 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
         setVin(tempOcrVin);
         if (tempOcrBrand) setBrand(tempOcrBrand);
         setActiveOcrModal(null);
-        triggerScanStep(2);
+        triggerScanStep(2, scanSourceRef.current);
       };
 
       const confirmRearModal = () => {
@@ -2293,7 +2302,7 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
         setHasNoEcv(tempOcrHasNoEcv);
         setSelectedColorId(tempOcrColorId);
         setActiveOcrModal(null);
-        triggerScanStep(3);
+        triggerScanStep(3, scanSourceRef.current);
       };
 
       const confirmSheetModal = () => {
@@ -2730,12 +2739,12 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
       }
 
       return (
-        <div className="w-full max-w-md bg-gray-950 border border-gray-800 rounded-2xl shadow-2xl flex flex-col overflow-hidden text-xs">
+        <div className={`w-full max-w-md rounded-2xl shadow-2xl flex flex-col overflow-hidden text-xs border ${inMgr ? "bg-slate-950 border-sky-800/70" : "bg-gray-950 border-gray-800"}`}>
           {/* Header - Dominantné zväčšené logo, decentná rola a meno pod ním, farebné ikony */}
-          <div className="bg-gray-900/80 border-b border-gray-800 p-2.5 flex items-center justify-between">
+          <div className={`border-b p-2.5 flex items-center justify-between ${inMgr ? "bg-sky-950/50 border-sky-900/60" : "bg-gray-900/80 border-gray-800"}`}>
             <div className="flex flex-col min-w-0">
               <span className="font-black text-white tracking-wider text-base whitespace-nowrap">
-                PDR <span className="text-amber-500">FlowDesk</span>
+                PDR <span className={inMgr ? "text-sky-400" : "text-amber-500"}>FlowDesk</span>
               </span>
               <div className="flex items-center gap-1.5 text-[10px] text-gray-400 font-mono pt-0.5">
                 <span className="uppercase text-gray-400">
@@ -2789,8 +2798,35 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
             </div>
           </div>
 
-          {/* Navigácia 3 záložiek */}
-          <div className={`grid ${effRole === "manager" ? "grid-cols-4" : "grid-cols-3"} border-b border-gray-800 text-center font-bold text-[11px]`}>
+          {/* Prepínač manažér / technik */}
+          {effRole === "manager" && (
+            <div className={`px-2.5 py-2 border-b ${inMgr ? "border-sky-900/60 bg-sky-950/30" : "border-gray-800"}`}>
+              <div className="grid grid-cols-2 bg-gray-900 border border-gray-700 rounded-xl p-1 gap-1">
+                <button type="button" onClick={() => switchMgrMode(false)}
+                  className={`py-2 rounded-lg text-xs font-black flex items-center justify-center gap-1.5 transition-all ${!inMgr ? "bg-amber-500 text-gray-950 shadow" : "text-gray-400"}`}>
+                  <i className="fa-solid fa-wrench"></i> Technik
+                </button>
+                <button type="button" onClick={() => switchMgrMode(true)}
+                  className={`py-2 rounded-lg text-xs font-black flex items-center justify-center gap-1.5 transition-all ${inMgr ? "bg-sky-500 text-gray-950 shadow" : "text-gray-400"}`}>
+                  <i className="fa-solid fa-user-tie"></i> Manažér
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Navigácia záložiek */}
+          {inMgr ? (
+            <div className="grid grid-cols-3 border-b border-sky-900/60 text-center font-bold text-[11px]">
+              {[["projects", "Klienti", "Zákazky"], ["mgr_techs", "Technici", "Tím"], ["mgr_reports", "Reporty", "Prehľad"]].map(([k, l1, l2]) => (
+                <button key={k} onClick={() => setActiveTab(k)}
+                  className={`py-2 border-b-2 flex flex-col items-center justify-center ${activeTab === k ? "border-sky-500 text-sky-400 bg-sky-500/10" : "border-transparent text-gray-400 hover:text-gray-200"}`}>
+                  <span>{l1}</span>
+                  <span className="text-[9px] font-normal">{l2}</span>
+                </button>
+              ))}
+            </div>
+          ) : (
+          <div className="grid grid-cols-3 border-b border-gray-800 text-center font-bold text-[11px]">
             <button
               onClick={() => setActiveTab("vehicles")}
               className={`py-2 border-b-2 flex flex-col items-center justify-center ${activeTab === "vehicles" ? "border-amber-500 text-amber-400 bg-amber-500/10" : "border-transparent text-gray-400 hover:text-gray-200"}`}
@@ -2812,16 +2848,8 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
               <span>{t.tabReports1}</span>
               <span className="text-[9px] font-normal">{t.tabReports2}</span>
             </button>
-            {effRole === "manager" && (
-              <button
-                onClick={() => setActiveTab("manager")}
-                className={`py-2 border-b-2 flex flex-col items-center justify-center ${activeTab === "manager" ? "border-sky-500 text-sky-400 bg-sky-500/10" : "border-transparent text-sky-500/70 hover:text-sky-300"}`}
-              >
-                <span>Manažér</span>
-                <span className="text-[9px] font-normal">Technici / Reporty</span>
-              </button>
-            )}
           </div>
+          )}
 
           {/* Telo aplikácie */}
           <div className="p-3 space-y-3 flex-1 overflow-y-auto">
@@ -3212,7 +3240,7 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
                     </div>
                   </div>
 
-                  {/* Foto poškodenia & Ochranná pečiatka */}
+                  {/* Poznámka k vozidlu + fotografie k poznámkam */}
                   <div className="bg-gray-900/40 border border-gray-800 rounded-xl p-2.5 space-y-2">
                     <input
                       type="file"
@@ -3222,17 +3250,7 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
                       onChange={handleDamagePhotoAdd}
                       className="hidden"
                     />
-                    <div className="flex justify-between items-center">
-                      <button
-                        type="button"
-                        onClick={() => damagePhotoInputRef.current && damagePhotoInputRef.current.click()}
-                        className="bg-gray-800 hover:bg-gray-700 text-gray-200 px-2 py-1 rounded text-[10px] font-bold flex items-center gap-1"
-                      >
-                        <i className="fa-solid fa-camera"></i> {t.addDamagePhoto} ({damageFiles.length}/5)
-                      </button>
-                    </div>
-           
-
+                    <label className="text-[10px] text-gray-400 font-bold uppercase block">{t.damageNoteLabel}</label>
                     <input
                       type="text"
                       value={damageNote}
@@ -3240,6 +3258,13 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
                       placeholder={t.damageNoteLabel}
                       className="w-full bg-gray-950 border border-gray-800 rounded p-1.5 text-xs text-white"
                     />
+                    <button
+                      type="button"
+                      onClick={() => damagePhotoInputRef.current && damagePhotoInputRef.current.click()}
+                      className="w-full bg-gray-800 hover:bg-gray-700 text-gray-200 px-2 py-1.5 rounded text-[11px] font-bold flex items-center justify-center gap-1.5"
+                    >
+                      <i className="fa-solid fa-camera"></i> {t.addDamagePhoto} ({damageFiles.length}/5)
+                    </button>
                   </div>
 
                   <button
@@ -3382,7 +3407,7 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
                     <div className="grid grid-cols-2 gap-2 pt-2">
                       <button
                         type="button"
-                        onClick={() => triggerScanStep(scanStep)}
+                        onClick={() => triggerScanStep(scanStep, scanSourceRef.current)}
                         className="bg-gray-800 hover:bg-gray-700 text-gray-300 font-bold py-2 rounded-xl text-xs"
                       >
                         {t.ocrModalRetake}
@@ -3840,16 +3865,10 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
               </div>
             )}
 
-            {/* Záložka Manažér: Technici / Reporty */}
-            {activeTab === "manager" && effRole === "manager" && (
+            {/* Manažérsky režim: Technici / Reporty */}
+            {inMgr && (activeTab === "mgr_techs" || activeTab === "mgr_reports") && (
               <div className="space-y-3">
-                <div className="grid grid-cols-2 gap-1.5">
-                  {[["techs", "Technici"], ["reports", "Reporty"]].map(([k, label]) => (
-                    <button key={k} onClick={() => setMgrSub(k)} className={`py-1.5 rounded-lg text-xs font-bold border ${mgrSub === k ? "bg-sky-600/20 border-sky-500 text-sky-300" : "bg-gray-900 border-gray-800 text-gray-400"}`}>{label}</button>
-                  ))}
-                </div>
-
-                {mgrSub === "techs" && (
+                {activeTab === "mgr_techs" && (
                   <div className="space-y-2">
                     {mgrTeam.length === 0 && (
                       <div className="text-xs text-gray-500 text-center py-6">Zatiaľ nemáš v tíme žiadneho technika. Pozvi ho cez ikonu Tím v hlavičke.</div>
@@ -3900,7 +3919,7 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
                                   <div key={i} className="flex justify-between gap-2 text-gray-300"><span className="truncate">{j.name} ({j.n}×)</span><span className="text-sky-400 font-bold shrink-0">{fmtEur(j.comm)}</span></div>
                                 ))}
                               </div>
-                              <button onClick={() => { setMgrFTech(m.member_id); setMgrSub("reports"); }} className="w-full py-1.5 rounded-lg bg-sky-600/20 border border-sky-500 text-sky-300 font-bold">Zobraziť jeho autá</button>
+                              <button onClick={() => { setMgrFTech(m.member_id); setActiveTab("mgr_reports"); }} className="w-full py-1.5 rounded-lg bg-sky-600/20 border border-sky-500 text-sky-300 font-bold">Zobraziť jeho autá</button>
                             </div>
                           )}
                         </div>
@@ -3909,7 +3928,7 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
                   </div>
                 )}
 
-                {mgrSub === "reports" && (
+                {activeTab === "mgr_reports" && (
                   <div className="space-y-2">
                     <div className="grid grid-cols-2 gap-1.5">
                       <select value={mgrFClient} onChange={e => setMgrFClient(e.target.value)} className="bg-gray-900 border border-gray-700 rounded p-1.5 text-xs text-white">
