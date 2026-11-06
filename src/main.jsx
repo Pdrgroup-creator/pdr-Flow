@@ -1383,6 +1383,7 @@ const [sentCoopInvites, setSentCoopInvites] = useState([]);
       const [mgrFPeriod, setMgrFPeriod] = useState("all");
       const [mgrQ, setMgrQ] = useState("");
       const [mgrFProjs, setMgrFProjs] = useState([]);
+      const [mgrLocOpen, setMgrLocOpen] = useState(false);
       const [mgrLocQ, setMgrLocQ] = useState("");
       const [mgrFrom, setMgrFrom] = useState("");
       const [mgrTo, setMgrTo] = useState("");
@@ -4489,13 +4490,16 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
                           <label className="text-[10px] text-gray-400">Do<input type="date" value={mgrTo} onChange={e => setMgrTo(e.target.value)} className="w-full bg-gray-900 border border-gray-700 rounded p-1.5 text-xs text-white" /></label>
                         </>
                       )}
-                      <input value={mgrLocQ} onChange={e => setMgrLocQ(e.target.value)} placeholder="Hľadať projekt / lokalitu..." className="bg-gray-900 border border-gray-700 rounded p-1.5 text-xs text-white" />
-                      <div className="col-span-2 bg-gray-900 border border-gray-700 rounded p-1.5 max-h-40 overflow-y-auto space-y-1">
-                        <div className="flex justify-between items-center text-[10px] text-gray-400">
-                          <span>Projekty / Lokality: {mgrFProjs.length ? mgrFProjs.length + " vybraných" : "všetky"}</span>
-                          {mgrFProjs.length > 0 && (<button type="button" onClick={() => setMgrFProjs([])} className="text-sky-400 font-bold">Zrušiť výber</button>)}
+                      <input value={mgrLocQ} onChange={e => { setMgrLocQ(e.target.value); if (e.target.value) setMgrLocOpen(true); }} placeholder="Hľadať projekt / lokalitu..." className="bg-gray-900 border border-gray-700 rounded p-1.5 text-xs text-white" />
+                      <div className="col-span-2 bg-gray-900 border border-gray-700 rounded p-1.5 space-y-1">
+                        <div className="flex justify-between items-center gap-2 text-[10px] text-gray-400">
+                          <button type="button" onClick={() => setMgrLocOpen(o => !o)} className="flex items-center gap-1.5 text-left flex-1 min-w-0">
+                            <i className={`fa-solid fa-chevron-${mgrLocOpen ? "up" : "down"} text-[9px]`}></i>
+                            <span className={mgrFProjs.length ? "text-sky-300 font-bold" : ""}>Projekty / Lokality: {mgrFProjs.length ? mgrFProjs.length + " vybraných" : "všetky"}</span>
+                          </button>
+                          {mgrFProjs.length > 0 && (<button type="button" onClick={() => setMgrFProjs([])} className="text-sky-400 font-bold shrink-0">Zrušiť výber</button>)}
                         </div>
-                        {(() => {
+                        {mgrLocOpen && (<div className="max-h-40 overflow-y-auto space-y-1">{(() => {
                           const ids = clients.filter(c => c.created_by === currentUser.id).map(c => c.id);
                           const ws = normSearch(mgrLocQ).trim().split(/\s+/).filter(Boolean);
                           const nm = (p) => (clients.find(c => c.id === p.client_id)?.name || "?");
@@ -4507,7 +4511,7 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
                                 <span className="truncate">{nm(p) + " • " + p.name}</span>
                               </label>
                             ));
-                        })()}
+                        })()}</div>)}
                       </div>
                     </div>
                     <div className="grid grid-cols-4 gap-1.5 text-center">
