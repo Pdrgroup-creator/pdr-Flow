@@ -831,6 +831,75 @@ const fileToBase64 = (file) => {
       return data;
     };
 
+    // VIN z textu: hľadá po riadkoch (nie zlepený celý text) a opravuje znaky, ktoré VIN nemôže obsahovať (O/Q -> 0, I -> 1)
+    const pickVinFromText = (raw) => {
+      const fix = (s) => s.replace(/[OQ]/g, "0").replace(/I/g, "1");
+      const lines = String(raw || "").toUpperCase().split("\n").map((l) => fix(l.replace(/[^A-Z0-9]/g, ""))).filter(Boolean);
+      for (const l of lines) {
+        const m = l.match(/[A-HJ-NPR-Z0-9]{17}/);
+        if (m && /[A-Z]/.test(m[0]) && /\d{4}/.test(m[0])) return m[0];
+      }
+      return "";
+    };
+
+    // Oprava výrobcu (prvé 3 znaky) podľa zoznamu WMI: len jediná zámena podobného znaku (W/V/U, B/8, S/5, Z/2)
+    const fixVinWmi = (vin) => {
+      if (!vin || vin.length !== 17 || WMI_MAP[vin.substring(0, 3)]) return vin;
+      const conf = { W: ["V"], V: ["W", "U"], U: ["V"], B: ["8"], "8": ["B"], S: ["5"], "5": ["S"], Z: ["2"], "2": ["Z"] };
+      const hits = [];
+      for (let p = 0; p < 3; p++) {
+        for (const alt of conf[vin[p]] || []) {
+          const w = vin.substring(0, p) + alt + vin.substring(p + 1, 3);
+          if (WMI_MAP[w]) hits.push(w);
+        }
+      }
+      return hits.length === 1 ? hits[0] + vin.substring(3) : vin;
+    };
+
+    // ŠPZ bez ohľadu na krajinu: vyberie riadok s najväčšími znakmi na fotke (znaky ŠPZ sú vždy najväčší text),
+    // malý kód krajiny (NL, CZ) a nápisy predajcu sa vyradia výškou písma
+    const pickPlateGeo = (anns) => {
+      const words = [];
+      for (let i = 1; i < Math.min((anns || []).length, 400); i++) {
+        const vs = anns[i].boundingPoly?.vertices || [];
+        if (vs.length < 4) continue;
+        const txt = (anns[i].description || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+        if (!txt) continue;
+        const xs = vs.map((v) => v.x || 0), ys = vs.map((v) => v.y || 0);
+        const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
+        words.push({ txt, x0, x1, y0, y1, h: y1 - y0, cy: (y0 + y1) / 2 });
+      }
+      // spájame slová, ktoré ležia vedľa seba, majú podobnú veľkosť písma a (aj pri naklonenej ŠPZ) približne rovnakú výšku
+      const par = words.map((_, i) => i);
+      const find = (i) => (par[i] === i ? i : (par[i] = find(par[i])));
+      for (let i = 0; i < words.length; i++) {
+        for (let j = i + 1; j < words.length; j++) {
+          const a = words[i], b = words[j];
+          const hm = Math.max(a.h, b.h);
+          if (Math.min(a.h, b.h) / hm < 0.6) continue;
+          if (Math.abs(a.cy - b.cy) > hm * 0.9) continue;
+          const gap = Math.max(a.x0, b.x0) - Math.min(a.x1, b.x1);
+          if (gap > hm * 1.5) continue;
+          par[find(i)] = find(j);
+        }
+      }
+      const groups = {};
+      words.forEach((w, i) => { (groups[find(i)] = groups[find(i)] || []).push(w); });
+      let best = null;
+      for (const g of Object.values(groups)) {
+        g.sort((a, b) => a.x0 - b.x0);
+        const s = g.map((x) => x.txt).join("");
+        if (s.length < 4 || s.length > 10 || !/[A-Z]/.test(s) || !/[0-9]/.test(s) || /^WWW/.test(s)) continue;
+        const h = Math.max(...g.map((x) => x.h));
+        if (!best || h > best.h) {
+          const mx0 = Math.min(...g.map((x) => x.x0)), mx1 = Math.max(...g.map((x) => x.x1));
+          const my0 = Math.min(...g.map((x) => x.y0)), my1 = Math.max(...g.map((x) => x.y1));
+          best = { plate: s, h, box: [{ x: mx0, y: my0 }, { x: mx1, y: my0 }, { x: mx1, y: my1 }, { x: mx0, y: my1 }] };
+        }
+      }
+      return best;
+    };
+
     const analyzeImageWithGoogleVision = async (file) => {
       const base64Data = await new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -2121,9 +2190,9 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
           try {
             const rawText = await analyzeImageWithGoogleVision(file);
             const cleanedText = rawText.toUpperCase().replace(/\s+/g, "");
-            const vinMatch = cleanedText.match(/[A-HJ-NPR-Z0-9]{17}/);
+            const lineVin = pickVinFromText(rawText);
 
-            const detectedVin = vinMatch ? vinMatch[0] : sanitizeVin(cleanedText.slice(0, 17));
+            const detectedVin = lineVin ? fixVinWmi(lineVin) : sanitizeVin(cleanedText.slice(0, 17));
             setTempOcrVin(detectedVin);
 
             if (detectedVin.length >= 3) {
@@ -2152,12 +2221,14 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
             // Čierna listina nápisov a modelov (striktne ignorovať chrómové emblémy)
             const blacklistWords = ["PASSAT", "GOLF", "OCTAVIA", "SUPERB", "FABIA", "TIGUAN", "TOUAREG", "TDI", "TSI", "4MOTION", "QUATTRO", "HYBRID", "TURBO", "KOMBI", "ALLTRACK", "VOLKSWAGEN", "SKODA", "AUDI", "SEAT"];
 
-            let bestPlate = "";
-            let plateBox = null;
+            // KROK 0: ŠPZ ako samé znaky podľa najväčšieho textu na fotke (bez formátov jednotlivých krajín)
+            const geoPlate = pickPlateGeo(textAnnotations);
+            let bestPlate = geoPlate ? geoPlate.plate : "";
+            let plateBox = geoPlate ? geoPlate.box : null;
 
-            // KROK A: Globálna analýza celého textu cez európske regex vzory (spája okres + erb/medzeru + telo)
+            // KROK A (záloha): Globálna analýza celého textu cez európske regex vzory (spája okres + erb/medzeru + telo)
             const fullTextLines = fullText.split("\n");
-            for (const rawLine of fullTextLines) {
+            for (const rawLine of (bestPlate ? [] : fullTextLines)) {
               const lineUpper = rawLine.toUpperCase();
               if (blacklistWords.some(b => lineUpper.includes(b))) continue;
 
