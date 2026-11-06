@@ -1240,16 +1240,22 @@ const [sentCoopInvites, setSentCoopInvites] = useState([]);
       const switchMgrMode = (on) => {
         setMgrMode(on);
         try { localStorage.setItem("pdr_mgr_mode", on ? "1" : "0"); } catch (e) {}
-        setActiveTab(on ? "projects" : "vehicles");
+        setActiveTab(on ? "mgr_techs" : "vehicles");
       };
       useEffect(() => {
-        if (inMgr && !["projects", "mgr_techs", "mgr_reports"].includes(activeTab)) setActiveTab("projects");
+        if (inMgr && !["projects", "mgr_techs", "mgr_reports"].includes(activeTab)) setActiveTab("mgr_techs");
         if (!inMgr && ["mgr_techs", "mgr_reports"].includes(activeTab)) setActiveTab("vehicles");
       }, [inMgr]);
       const [mgrFClient, setMgrFClient] = useState("");
       const [mgrFTech, setMgrFTech] = useState("");
       const [mgrFPeriod, setMgrFPeriod] = useState("all");
       const [mgrQ, setMgrQ] = useState("");
+      const [mgrFProj, setMgrFProj] = useState("");
+      const [mgrLocQ, setMgrLocQ] = useState("");
+      const [mgrFrom, setMgrFrom] = useState("");
+      const [mgrTo, setMgrTo] = useState("");
+      const [clientQ, setClientQ] = useState("");
+      const [openClients, setOpenClients] = useState({});
       const [mgrOpenTech, setMgrOpenTech] = useState(null);
       const fmtEur = (n) => "€" + (Number(n) || 0).toFixed(2);
 
@@ -1280,15 +1286,35 @@ const [sentCoopInvites, setSentCoopInvites] = useState([]);
         return r ? String(r.member_email || "").split("@")[0] : "";
       };
 
+      const mgrRange = () => {
+        const now = new Date(), y = now.getFullYear(), mo = now.getMonth();
+        const sod = new Date(y, mo, now.getDate());
+        const addD = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
+        const wd = (sod.getDay() + 6) % 7;
+        switch (mgrFPeriod) {
+          case "today": return [sod, addD(sod, 1)];
+          case "week": return [addD(sod, -wd), addD(sod, 7 - wd)];
+          case "prevweek": return [addD(sod, -wd - 7), addD(sod, -wd)];
+          case "30d": return [addD(sod, -29), addD(sod, 1)];
+          case "month": return [new Date(y, mo, 1), new Date(y, mo + 1, 1)];
+          case "prev": return [new Date(y, mo - 1, 1), new Date(y, mo, 1)];
+          case "quarter": { const qs = Math.floor(mo / 3) * 3; return [new Date(y, qs, 1), new Date(y, qs + 3, 1)]; }
+          case "year": return [new Date(y, 0, 1), new Date(y + 1, 0, 1)];
+          case "custom": return [mgrFrom ? new Date(mgrFrom + "T00:00:00") : null, mgrTo ? addD(new Date(mgrTo + "T00:00:00"), 1) : null];
+          default: return null;
+        }
+      };
+
       const mgrFiltered = mgrVehicles.filter(v => {
         const proj = projects.find(p => p.id === v.project_id);
         if (mgrFClient && (!proj || proj.client_id !== mgrFClient)) return false;
         if (mgrFTech && v.created_by !== mgrFTech && !coopRecords.some(c => String(c.vehicle_id) === String(v.id) && String(c.technician_id) === mgrFTech)) return false;
-        if (mgrFPeriod !== "all") {
-          const d = new Date(v.created_at), now = new Date();
-          const m = mgrFPeriod === "month" ? 0 : 1;
-          const ref = new Date(now.getFullYear(), now.getMonth() - m, 1);
-          if (d.getFullYear() !== ref.getFullYear() || d.getMonth() !== ref.getMonth()) return false;
+        if (mgrFProj && v.project_id !== mgrFProj) return false;
+        const rng = mgrRange();
+        if (rng) {
+          const d = new Date(v.created_at);
+          if (rng[0] && d < rng[0]) return false;
+          if (rng[1] && d >= rng[1]) return false;
         }
         const q = mgrQ.trim().toLowerCase();
         if (q) {
@@ -1332,10 +1358,12 @@ const [sentCoopInvites, setSentCoopInvites] = useState([]);
         doc.setFont("helvetica", "normal");
         const cName = mgrFClient ? (clients.find(c => c.id === mgrFClient)?.name || "") : "all";
         const tName = mgrFTech ? mgrTechName(mgrFTech) : "all";
-        const per = mgrFPeriod === "month" ? "this month" : (mgrFPeriod === "prev" ? "previous month" : "all time");
+        const per = ({ all: "all time", today: "today", week: "this week", prevweek: "previous week", "30d": "last 30 days", month: "this month", prev: "previous month", quarter: "this quarter", year: "this year", custom: (mgrFrom || "...") + " - " + (mgrTo || "...") })[mgrFPeriod] || "all time";
+        const locName = mgrFProj ? (projects.find(p => p.id === mgrFProj)?.name || "") : "all";
         doc.text(asc("Manager: " + currentUser?.email + " | Generated: " + new Date().toLocaleDateString()), 14, 21);
-        doc.text(asc("Client: " + cName + " | Technician: " + tName + " | Period: " + per), 14, 26);
-        doc.text("Vehicles: " + mgrTotals.count + " | Turnover: " + fmtEur(mgrTotals.gross) + " | Technicians: " + fmtEur(mgrTotals.payout) + " | My commission: " + fmtEur(mgrTotals.comm), 14, 31);
+        doc.text(asc("Client: " + cName + " | Location: " + locName), 14, 26);
+        doc.text(asc("Technician: " + tName + " | Period: " + per), 14, 31);
+        doc.text("Vehicles: " + mgrTotals.count + " | Turnover: " + fmtEur(mgrTotals.gross) + " | Technicians: " + fmtEur(mgrTotals.payout) + " | My commission: " + fmtEur(mgrTotals.comm), 14, 36);
         const body = mgrFiltered.map(v => {
           const proj = projects.find(p => p.id === v.project_id);
           const cl = clients.find(c => c.id === proj?.client_id);
@@ -1350,7 +1378,7 @@ const [sentCoopInvites, setSentCoopInvites] = useState([]);
           ];
         });
         doc.autoTable({
-          startY: 35,
+          startY: 41,
           head: [["Date", "Client / Job", "Vehicle / VIN / Plate", "Technician payout", "Turnover", "My commission"]],
           body,
           theme: "grid",
@@ -3076,7 +3104,7 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
           {/* Navigácia záložiek */}
           {inMgr ? (
             <div className="grid grid-cols-3 border-b border-sky-900/60 text-center font-bold text-[11px]">
-              {[["projects", "Klienti", "Zákazky"], ["mgr_techs", "Technici", "Tím"], ["mgr_reports", "Reporty", "Prehľad"]].map(([k, l1, l2]) => (
+              {[["mgr_techs", "Technici", "Tím"], ["projects", "Klienti", "Zákazky"], ["mgr_reports", "Report", "Prehľad"]].map(([k, l1, l2]) => (
                 <button key={k} onClick={() => setActiveTab(k)}
                   className={`py-2 border-b-2 flex flex-col items-center justify-center ${activeTab === k ? "border-sky-500 text-sky-400 bg-sky-500/10" : "border-transparent text-gray-400 hover:text-gray-200"}`}>
                   <span>{l1}</span>
@@ -3393,7 +3421,7 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
                         {COLOR_PALETTE.find(c => c.id === selectedColorId)?.labels[lang] || selectedColorId}
                       </span>
                     </div>
-                    <div className="grid grid-cols-7 gap-1">
+                    <div className="grid grid-cols-6 gap-1">
                       {COLOR_PALETTE.map(col => {
                         const isSel = selectedColorId === col.id;
                         return (
@@ -3691,7 +3719,7 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
                               {COLOR_PALETTE.find(c => c.id === tempOcrColorId)?.labels[lang] || tempOcrColorId}
                             </span>
                           </div>
-                          <div className="grid grid-cols-7 gap-1">
+                          <div className="grid grid-cols-6 gap-1">
                             {COLOR_PALETTE.map(col => {
                               const isSel = tempOcrColorId === col.id;
                               return (
@@ -3762,7 +3790,7 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
                   <button
                     type="button"
                     onClick={() => setShowNewClientForm(!showNewClientForm)}
-                    className="flex-1 bg-amber-500 hover:bg-amber-600 text-gray-950 font-bold py-1.5 rounded-lg text-xs"
+                    className={inMgr ? "flex-1 bg-sky-500 hover:bg-sky-600 text-gray-950 font-bold py-1.5 rounded-lg text-xs" : "flex-1 bg-amber-500 hover:bg-amber-600 text-gray-950 font-bold py-1.5 rounded-lg text-xs"}
                   >
                     + {t.addClientBtn}
                   </button>
@@ -3773,6 +3801,11 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
                   >
                     {showArchivedProjects ? (lang === "SK" ? "Skryť archív" : "Hide Archive") : (lang === "SK" ? "Zobraziť archív" : "Show Archive")}
                   </button>
+                </div>
+
+                <div className="relative">
+                  <input type="text" value={clientQ} onChange={e => setClientQ(e.target.value)} placeholder="Hľadať klienta, mesto, IČO alebo lokalitu..." className={"w-full bg-gray-950 border rounded p-1.5 pr-7 text-xs text-white " + (inMgr ? "border-sky-700 focus:border-sky-500" : "border-gray-700 focus:border-amber-500")} />
+                  {clientQ && <button type="button" onClick={() => setClientQ("")} className="absolute right-2 top-1.5 text-gray-400 text-xs"><i className="fa-solid fa-xmark"></i></button>}
                 </div>
 
                 {/* Formulár nového klienta */}
@@ -4111,8 +4144,15 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
                     const clientProjects = projects.filter(p => p.client_id === c.id && (showArchivedProjects || p.is_active !== false));
                     const isForeign = c.created_by && c.created_by !== currentUser.id;
                     const mgrRow = isForeign ? teamRows.find(r => r.manager_id === c.created_by && r.status === "accepted") : null;
+                    const cwords = normSearch(clientQ).trim().split(/\s+/).filter(Boolean);
+                    const clientHay = normSearch([c.name, c.city, c.ico, c.address].join(" "));
+                    const nameHit = cwords.every(w => clientHay.includes(w));
+                    const projHits = clientProjects.filter(p => cwords.every(w => normSearch([c.name, c.city, p.name, p.city, p.address].join(" ")).includes(w)));
+                    if (cwords.length && !nameHit && projHits.length === 0) return null;
+                    const shownProjects = (!cwords.length || nameHit) ? clientProjects : projHits;
+                    const open = cwords.length > 0 || !!openClients[c.id];
                     return (
-                      <div key={c.id} className={`rounded-xl p-2.5 space-y-2 border ${isForeign ? "bg-sky-950/30 border-sky-700/60" : "bg-gray-900 border-gray-800"}`}>
+                      <div key={c.id} className={"rounded-xl p-2.5 space-y-2 border " + ((isForeign || inMgr) ? "bg-sky-950/30 border-sky-700/60" : "bg-gray-900 border-gray-800")}>
                         {isForeign && (
                           <div className="text-[10px] font-bold uppercase tracking-wide text-sky-400 flex items-center gap-1.5">
                             <i className="fa-solid fa-people-group"></i>
@@ -4122,12 +4162,16 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
                         <div className="flex justify-between items-center">
                           <button
                             type="button"
-                            onClick={() => setActiveBottomSheet({ type: "client", id: c.id, data: c })}
-                            className="font-bold text-amber-400 hover:underline text-left text-xs flex items-center gap-1.5"
+                            onClick={() => setOpenClients(prev => ({ ...prev, [c.id]: !prev[c.id] }))}
+                            className="flex-1 min-w-0 text-left flex items-center gap-2"
                           >
-                            <span>{c.name}</span>
-                            <i className="fa-solid fa-circle-info text-[10px] text-gray-500"></i>
+                            <i className={"fa-solid text-[10px] w-3 " + (open ? "fa-chevron-down " : "fa-chevron-right ") + (inMgr ? "text-sky-400" : "text-amber-400")}></i>
+                            <span className="min-w-0">
+                              <span className={"block font-bold text-xs truncate " + (inMgr ? "text-sky-400" : "text-amber-400")}>{c.name}</span>
+                              <span className="block text-[10px] text-gray-500 truncate">{[c.city, (lang === "SK" ? "Lokality: " : "Locations: ") + clientProjects.length].filter(Boolean).join(" • ")}</span>
+                            </span>
                           </button>
+                          <button type="button" onClick={() => setActiveBottomSheet({ type: "client", id: c.id, data: c })} className="text-gray-500 hover:text-gray-300 px-2 py-1" title="Detail klienta"><i className="fa-solid fa-circle-info text-xs"></i></button>
                           {!isForeign && (
                           <button
                             type="button"
@@ -4139,11 +4183,12 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
                           )}
                         </div>
 
+                        {open && (
                         <div className="space-y-1">
-                          {clientProjects.length === 0 ? (
+                          {shownProjects.length === 0 ? (
                             <div className="text-[10px] text-gray-500 italic p-1">{lang === "SK" ? "Žiadne lokácie" : "No locations"}</div>
                           ) : (
-                            clientProjects.map(p => (
+                            shownProjects.map(p => (
                               <div
                                 key={p.id}
                                 onClick={() => setActiveBottomSheet({ type: "project", id: p.id, data: p })}
@@ -4165,6 +4210,7 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
                             ))
                           )}
                         </div>
+                        )}
                       </div>
                     );
                   })}
@@ -4248,10 +4294,35 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
                       </select>
                       <select value={mgrFPeriod} onChange={e => setMgrFPeriod(e.target.value)} className="bg-gray-900 border border-gray-700 rounded p-1.5 text-xs text-white">
                         <option value="all">Celé obdobie</option>
+                        <option value="today">Dnes</option>
+                        <option value="week">Tento týždeň</option>
+                        <option value="prevweek">Minulý týždeň</option>
+                        <option value="30d">Posledných 30 dní</option>
                         <option value="month">Tento mesiac</option>
                         <option value="prev">Minulý mesiac</option>
+                        <option value="quarter">Tento štvrťrok</option>
+                        <option value="year">Tento rok</option>
+                        <option value="custom">Vlastný rozsah...</option>
                       </select>
                       <input value={mgrQ} onChange={e => setMgrQ(e.target.value)} placeholder="VIN / ŠPZ / zákazka" className="bg-gray-900 border border-gray-700 rounded p-1.5 text-xs text-white" />
+                      {mgrFPeriod === "custom" && (
+                        <>
+                          <label className="text-[10px] text-gray-400">Od<input type="date" value={mgrFrom} onChange={e => setMgrFrom(e.target.value)} className="w-full bg-gray-900 border border-gray-700 rounded p-1.5 text-xs text-white" /></label>
+                          <label className="text-[10px] text-gray-400">Do<input type="date" value={mgrTo} onChange={e => setMgrTo(e.target.value)} className="w-full bg-gray-900 border border-gray-700 rounded p-1.5 text-xs text-white" /></label>
+                        </>
+                      )}
+                      <input value={mgrLocQ} onChange={e => setMgrLocQ(e.target.value)} placeholder="Hľadať lokalitu / zákazku..." className="bg-gray-900 border border-gray-700 rounded p-1.5 text-xs text-white" />
+                      <select value={mgrFProj} onChange={e => setMgrFProj(e.target.value)} className="bg-gray-900 border border-gray-700 rounded p-1.5 text-xs text-white">
+                        <option value="">Všetky lokality</option>
+                        {(() => {
+                          const ids = clients.filter(c => c.created_by === currentUser.id).map(c => c.id);
+                          const ws = normSearch(mgrLocQ).trim().split(/\s+/).filter(Boolean);
+                          const nm = (p) => (clients.find(c => c.id === p.client_id)?.name || "?");
+                          return projects
+                            .filter(p => ids.includes(p.client_id) && (!mgrFClient || p.client_id === mgrFClient) && (p.id === mgrFProj || ws.every(w => normSearch(nm(p) + " " + p.name + " " + (p.city || "")).includes(w))))
+                            .map(p => <option key={p.id} value={p.id}>{nm(p) + " • " + p.name}</option>);
+                        })()}
+                      </select>
                     </div>
                     <div className="grid grid-cols-4 gap-1.5 text-center">
                       <div className="bg-gray-900 border border-gray-800 rounded-xl py-1.5"><div className="text-[9px] text-gray-400 uppercase">Autá</div><div className="text-sm font-black text-white">{mgrTotals.count}</div></div>
