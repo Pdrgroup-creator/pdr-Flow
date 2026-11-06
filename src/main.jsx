@@ -1121,7 +1121,7 @@ const [sentCoopInvites, setSentCoopInvites] = useState([]);
             setVehicles(vData.filter(v => !isMgrView(v)));
             setMgrVehicles(vData.filter(isMgrView));
           }
-          loadVehComm();
+          loadVehComm(); loadChgMeta();
 
           loadPartnerships();
         } catch (e) {
@@ -1226,7 +1226,100 @@ const [sentCoopInvites, setSentCoopInvites] = useState([]);
         } catch (e) { console.warn("Commissions:", e.message); }
       };
       const commOf = (vehicleId, techId) => vehComm.find(r => String(r.vehicle_id) === String(vehicleId) && String(r.technician_id) === String(techId));
+      const [chgList, setChgList] = useState([]);
+      const [chgSeen, setChgSeen] = useState({});
+      const [histVeh, setHistVeh] = useState(null);
+      const [histRows, setHistRows] = useState([]);
+      const [histLoading, setHistLoading] = useState(false);
+      const loadChgMeta = async () => {
+        try {
+          const a = await supabase.from("vehicle_changes").select("vehicle_id, changed_by, changed_at").order("changed_at", { ascending: false }).limit(3000);
+          const b = await supabase.from("vehicle_change_seen").select("vehicle_id, seen_at");
+          if (a.data) setChgList(a.data);
+          if (b.data) { const mm = {}; b.data.forEach(r => { mm[r.vehicle_id] = r.seen_at; }); setChgSeen(mm); }
+        } catch (e) {}
+      };
+      const hasUnseenChange = (vid) => !!currentUser && chgList.some(c => String(c.vehicle_id) === String(vid) && c.changed_by !== currentUser.id && (!chgSeen[vid] || new Date(c.changed_at) > new Date(chgSeen[vid])));
+      const openHistory = async (v) => {
+        setHistVeh(v); setHistRows([]); setHistLoading(true);
+        try {
+          const { data } = await supabase.from("vehicle_changes").select("*").eq("vehicle_id", v.id).order("changed_at", { ascending: false });
+          setHistRows(data || []);
+          const nowIso = new Date().toISOString();
+          await supabase.from("vehicle_change_seen").upsert({ vehicle_id: v.id, user_id: currentUser.id, seen_at: nowIso }, { onConflict: "vehicle_id,user_id" });
+          setChgSeen(p => ({ ...p, [v.id]: nowIso }));
+        } catch (e) {}
+        setHistLoading(false);
+      };
+      const isMultiVeh = (v) => !!v.manager_id || coopRecords.filter(c => String(c.vehicle_id) === String(v.id)).length > 1;
+      const askReason = (what) => {
+        const r = window.prompt(what + "\n\nDôvod zmeny (povinný):", "");
+        if (r === null) return null;
+        const s = r.trim();
+        if (!s) { alert("Dôvod zmeny je povinný."); return null; }
+        return s;
+      };
+      const patchVehLocal = (id, patch) => {
+        setVehicles(prev => prev.map(x => x.id === id ? { ...x, ...patch } : x));
+        setMgrVehicles(prev => prev.map(x => x.id === id ? { ...x, ...patch } : x));
+        setSelectedVehicleDetail(prev => (prev && prev.id === id) ? { ...prev, ...patch } : prev);
+      };
+      const doStorno = async (v, restore) => {
+        const label = (restore ? "Obnoviť auto " : "Stornovať auto ") + (v.brand || "") + " " + (v.model || "") + " " + (v.ecv || "");
+        const reason = askReason(label);
+        if (!reason) return;
+        const next = restore ? (v.is_price_pending ? "pending_price" : "completed") : "cancelled";
+        try {
+          const { error } = await supabase.from("vehicles").update({ status: next, change_reason: reason }).eq("id", v.id);
+          if (error) throw error;
+          patchVehLocal(v.id, { status: next });
+          loadChgMeta();
+        } catch (err) {
+          alert("Chyba: " + err.message);
+        }
+      };
+      const mgrSetPrice = async (v) => {
+        const np = window.prompt("Nová cena PDR:", String(v.price || 0));
+        if (np === null) return;
+        const nr = window.prompt("Nová cena R&I:", String(v.ri_price || 0));
+        if (nr === null) return;
+        const p = parseFloat(String(np).replace(",", ".")), r = parseFloat(String(nr).replace(",", "."));
+        if (isNaN(p) || isNaN(r) || p < 0 || r < 0) { alert("Neplatná suma."); return; }
+        if (p === (parseFloat(v.price) || 0) && r === (parseFloat(v.ri_price) || 0)) return;
+        const reason = askReason("Zmena ceny – technici ju uvidia v histórii zmien.");
+        if (!reason) return;
+        const patch = { price: p, ri_price: r, price_changed_by_manager: true, original_price: v.original_price != null ? v.original_price : v.price };
+        try {
+          const { error } = await supabase.from("vehicles").update({ ...patch, change_reason: reason }).eq("id", v.id);
+          if (error) throw error;
+          patchVehLocal(v.id, patch);
+          loadChgMeta();
+        } catch (err) {
+          alert("Chyba pri zmene ceny: " + err.message);
+        }
+      };
+      const chgText = (r) => {
+        const cs = (x) => (x === null || x === undefined || x === "") ? "—" : x;
+        const arrow = (o, n, u) => cs(o) + (u || "") + " → " + cs(n) + (u || "");
+        const f = r.field || "";
+        if (r.kind === "storno") return "Auto stornované";
+        if (r.kind === "restore") return "Auto obnovené zo storna";
+        if (r.kind === "lock") return "Auto uzavreté";
+        if (r.kind === "unlock") return "Auto odomknuté";
+        if (r.kind === "status") return "Stav: " + arrow(r.old_value, r.new_value);
+        if (r.kind === "coop") return (f === "coop_added" ? "Pridaný CO-OP: " + cs(r.new_value) : "Odobraný CO-OP: " + cs(r.old_value));
+        if (f === "price") return "Cena PDR: " + arrow(r.old_value, r.new_value, " " + currSymbol);
+        if (f === "ri_price") return "Cena R&I: " + arrow(r.old_value, r.new_value, " " + currSymbol);
+        if (f === "tech_pdr_percent") return "% technika PDR: " + arrow(r.old_value, r.new_value, " %");
+        if (f === "tech_ri_percent") return "% technika R&I: " + arrow(r.old_value, r.new_value, " %");
+        if (f === "tech_commission_percent") return "Provízia: " + arrow(r.old_value, r.new_value, " %");
+        if (f === "commission") return "Provízia manažéra (PDR / R&I): " + arrow(r.old_value, r.new_value);
+        if (f.indexOf("coop_split") === 0) return "Podiel CO-OP (" + f.replace("coop_split ", "") + "): " + arrow(r.old_value, r.new_value);
+        return f + ": " + arrow(r.old_value, r.new_value);
+      };
+
       const techShareValue = (v, fraction, techId) => {
+        if (v.status === "cancelled") return 0;
         const cm = commOf(v.id, techId);
         const cp = cm ? (parseFloat(cm.commission_pdr) || 0) : 0;
         const cr = cm ? (parseFloat(cm.commission_ri) || 0) : 0;
@@ -1260,9 +1353,7 @@ const [sentCoopInvites, setSentCoopInvites] = useState([]);
       const fmtEur = (n) => "€" + (Number(n) || 0).toFixed(2);
 
       const mgrVehStats = (v) => {
-        const pdr = parseFloat(v.price) || 0, ri = parseFloat(v.ri_price) || 0;
-        const rows = coopRecords.filter(c => String(c.vehicle_id) === String(v.id));
-        const list = rows.length ? rows : [{ technician_id: v.created_by, technician_email: "", split_fraction: 1 }];
+        const _cx = v.status === "cancelled"; const pdr = _cx ? 0 : (parseFloat(v.price) || 0), ri = _cx ? 0 : (parseFloat(v.ri_price) || 0); const rows = coopRecords.filter(c => String(c.vehicle_id) === String(v.id)); const list = rows.length ? rows : [{ technician_id: v.created_by, technician_email: "", split_fraction: 1 }];
         let payout = 0, comm = 0;
         const per = [];
         list.forEach(c => {
@@ -1326,7 +1417,7 @@ const [sentCoopInvites, setSentCoopInvites] = useState([]);
 
       const mgrTotals = mgrFiltered.reduce((a, v) => {
         const s = mgrVehStats(v);
-        a.count += 1; a.gross += s.gross; a.payout += s.payout; a.comm += s.comm;
+        if (v.status !== "cancelled") a.count += 1; a.gross += s.gross; a.payout += s.payout; a.comm += s.comm;
         return a;
       }, { count: 0, gross: 0, payout: 0, comm: 0 });
 
@@ -2249,7 +2340,7 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
         });
 
         return {
-          count: filteredVehicles.length,
+          count: filteredVehicles.filter(v => v.status !== "cancelled").length,
           myShare: totalMyShare.toFixed(2),
           lockedShare: lockedMyShare.toFixed(2)
         };
@@ -2257,7 +2348,7 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
 
       const exportCsv = () => {
         const headers = ["Internal No", "Client Calc No", "Date", "VIN", "Plate", "Make", "Model", "Color", "PDR Price", "R&I Price", "My Share", "Currency", "Status"];
-        const rows = filteredVehicles.map(v => {
+        const rows = filteredVehicles.filter(v => v.status !== "cancelled").map(v => {
           const coop = coopRecords.find(c => String(c.vehicle_id) === String(v.id) && isMyCoopRow(c));
           const fraction = coop ? coop.split_fraction : 1;
           const pdr = parseFloat(v.price) || 0;
@@ -2304,7 +2395,7 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
         doc.text(`Technician: ${currentUser?.email} | ${t.pdfGenerated}: ${new Date().toLocaleDateString()}`, 14, 21);
         doc.text(`Vehicles: ${kpiStats.count} | Total Gross: ${currSymbol}${kpiStats.gross} | My Share: ${currSymbol}${kpiStats.myShare}`, 14, 26);
 
-        const tableRows = filteredVehicles.map(v => {
+        const tableRows = filteredVehicles.filter(v => v.status !== "cancelled").map(v => {
           const coop = coopRecords.find(c => String(c.vehicle_id) === String(v.id) && isMyCoopRow(c));
           const fraction = coop ? coop.split_fraction : 1;
           const pdr = parseFloat(v.price) || 0;
@@ -2796,9 +2887,15 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
             note: editVehicleData.note ? editVehicleData.note.trim() : null
           };
 
+          let _reason = null;
+          if (isMultiVeh(selectedVehicleDetail) && selectedVehicleDetail.status !== "pending_price" && !selectedVehicleDetail.is_price_pending && (parseFloat(selectedVehicleDetail.price) || 0) > 0 &&
+              (updatedPayload.price !== (parseFloat(selectedVehicleDetail.price) || 0) || updatedPayload.ri_price !== (parseFloat(selectedVehicleDetail.ri_price) || 0))) {
+            _reason = askReason("Zmena ceny na aute s viacerými používateľmi.");
+            if (!_reason) return;
+          }
           const { error } = await supabase
             .from("vehicles")
-            .update(updatedPayload)
+            .update(_reason ? { ...updatedPayload, change_reason: _reason } : updatedPayload)
             .eq("id", selectedVehicleDetail.id);
 
           if (error) throw error;
@@ -4342,12 +4439,17 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
                       return (
                         <div key={v.id} className="bg-gray-900 border border-gray-800 rounded-xl p-2.5 text-xs space-y-0.5">
                           <div className="flex justify-between gap-2">
-                            <span className="font-bold text-white truncate">{v.brand} {v.model}</span>
+                            <span className="font-bold text-white truncate">{v.brand} {v.model}{hasUnseenChange(v.id) && (<i className="fa-solid fa-clock-rotate-left text-red-500 ml-1.5"></i>)}{v.status === "cancelled" && (<span className="ml-1.5 bg-gray-700/60 text-gray-300 border border-gray-500/50 text-[9px] px-1 rounded font-bold">STORNO</span>)}</span>
                             <span className="text-sky-400 font-black shrink-0">{fmtEur(s.comm)}</span>
                           </div>
                           <div className="text-gray-400 truncate">{cl?.name || "?"} • {proj?.name || "?"}</div>
                           <div className="text-gray-500 truncate">{v.ecv} | {v.vin} | {new Date(v.created_at).toLocaleDateString("sk-SK")}</div>
                           <div className="text-gray-400">Obrat {fmtEur(s.gross)} • technik(ci): {s.per.map(p => `${p.email ? String(p.email).split("@")[0] : mgrTechName(p.id)} ${fmtEur(p.payout)}`).join(", ")}</div>
+                          <div className="flex flex-wrap gap-1.5 pt-1.5">
+                            <button type="button" onClick={() => openHistory(v)} className="text-[10px] font-bold px-2 py-1 rounded border border-gray-700 text-gray-300 flex items-center gap-1"><i className="fa-solid fa-clock-rotate-left"></i> História</button>
+                            {v.status !== "cancelled" && (<button type="button" onClick={() => mgrSetPrice(v)} className="text-[10px] font-bold px-2 py-1 rounded border border-sky-700/60 text-sky-300 flex items-center gap-1"><i className="fa-solid fa-pen"></i> Zmeniť cenu</button>)}
+                            <button type="button" onClick={() => doStorno(v, v.status === "cancelled")} className="text-[10px] font-bold px-2 py-1 rounded border border-red-800/60 text-red-300 flex items-center gap-1"><i className="fa-solid fa-ban"></i> {v.status === "cancelled" ? "Obnoviť" : "Stornovať"}</button>
+                          </div>
                         </div>
                       );
                     })}
@@ -4502,7 +4604,7 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
                         <div
                           key={v.id}
                           onClick={() => setSelectedVehicleDetail(v)}
-                          className="bg-gray-900 border border-gray-800 hover:border-amber-500/60 p-2.5 rounded-xl flex justify-between items-center cursor-pointer transition-all"
+                          className={`bg-gray-900 border border-gray-800 hover:border-amber-500/60 p-2.5 rounded-xl flex justify-between items-center cursor-pointer transition-all ${v.status === "cancelled" ? "opacity-50" : ""}`}
                         >
                           <div className="space-y-0.5 min-w-0 flex-1 pr-2">
                             {/* Mikro-hlavička: Klient • Lokácia */}
@@ -4514,6 +4616,8 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
 
                             <div className="font-bold text-gray-200 flex items-center gap-1.5">
                               <span className="truncate">{v.brand} {v.model}</span>
+                              {hasUnseenChange(v.id) && (<span className="text-red-500 text-[12px]" title="Zmena od iného používateľa"><i className="fa-solid fa-clock-rotate-left"></i></span>)}
+                              {v.status === "cancelled" && (<span className="bg-gray-700/60 text-gray-300 border border-gray-500/50 text-[9px] px-1 rounded font-bold">STORNO</span>)}
                               {isCoop && (
                                 <span className="bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[9px] px-1.5 py-0.5 rounded font-black flex items-center gap-1">
                                   <span>🤝</span> {t.coopBadge} ({vehicleCoops.length})
@@ -4571,6 +4675,37 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
           {/* ========================================================================= */}
           {/* DETAIL VOZIDLA (MODÁL) S MOŽNOSŤOU DOPLNENIA CENY A ROZPADOM KOOPERÁCIE   */}
           {/* ========================================================================= */}
+          {histVeh && (
+            <div className="fixed inset-0 z-[60] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setHistVeh(null)}>
+              <div className="w-full max-w-sm bg-gray-950 border border-red-500/60 rounded-2xl p-4 space-y-3 max-h-[85vh] overflow-y-auto text-xs" onClick={e => e.stopPropagation()}>
+                <div className="flex justify-between items-center border-b border-gray-800 pb-2">
+                  <div className="font-bold text-red-300 text-sm"><i className="fa-solid fa-clock-rotate-left mr-1.5"></i>História zmien</div>
+                  <button type="button" onClick={() => setHistVeh(null)} className="text-gray-500 hover:text-white"><i className="fa-solid fa-xmark text-base"></i></button>
+                </div>
+                <div className="text-gray-400">{histVeh.brand} {histVeh.model} • {histVeh.ecv}</div>
+                {histLoading ? (
+                  <div className="text-center text-gray-500 py-3"><i className="fa-solid fa-circle-notch fa-spin"></i></div>
+                ) : histRows.length === 0 ? (
+                  <div className="text-gray-500 text-center py-3">Zatiaľ žiadne zmeny.</div>
+                ) : (
+                  <div className="space-y-1.5">
+                    {histRows.map(r => (
+                      <div key={r.id} className="bg-gray-900 border border-gray-800 rounded-lg p-2 space-y-0.5">
+                        <div className="flex justify-between gap-2 text-[10px] text-gray-400">
+                          <span className="truncate font-bold text-gray-300">{currentUser && r.changed_by === currentUser.id ? "Ty" : (r.changed_by_email || "?")}</span>
+                          <span className="shrink-0">{new Date(r.changed_at).toLocaleString("sk-SK")}</span>
+                        </div>
+                        <div className="text-gray-100 font-semibold">{chgText(r)}</div>
+                        {r.reason && (<div className="text-amber-300 text-[11px]">Dôvod: {r.reason}</div>)}
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <button type="button" onClick={() => setHistVeh(null)} className="w-full bg-gray-800 hover:bg-gray-700 text-gray-200 font-bold py-2 rounded-xl text-xs">{t.closeBtn}</button>
+              </div>
+            </div>
+          )}
+
           {selectedVehicleDetail && (
             <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
               <div className="w-full max-w-sm bg-gray-950 border border-amber-500/80 rounded-2xl p-4 shadow-2xl space-y-3 max-h-[90vh] overflow-y-auto text-xs">
@@ -4843,6 +4978,15 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
                   </div>
                 )}
 
+                {selectedVehicleDetail.status === "cancelled" && (<div className="bg-gray-800 border border-gray-600 text-gray-300 rounded-lg p-2 text-[11px] font-bold">Auto je stornované – nezapočítava sa do súčtov a reportov.</div>)}
+                <div className="flex gap-2">
+                  <button type="button" onClick={() => openHistory(selectedVehicleDetail)} className="flex-1 bg-gray-900 border border-gray-700 text-gray-200 font-bold py-2 rounded-xl text-xs flex items-center justify-center gap-1.5">
+                    <i className={"fa-solid fa-clock-rotate-left" + (hasUnseenChange(selectedVehicleDetail.id) ? " text-red-500" : "")}></i> História zmien
+                  </button>
+                  <button type="button" onClick={() => doStorno(selectedVehicleDetail, selectedVehicleDetail.status === "cancelled")} className="flex-1 bg-gray-900 border border-red-800/60 text-red-300 font-bold py-2 rounded-xl text-xs flex items-center justify-center gap-1.5">
+                    <i className="fa-solid fa-ban"></i> {selectedVehicleDetail.status === "cancelled" ? "Obnoviť auto" : "Stornovať auto"}
+                  </button>
+                </div>
                 <button
                   type="button"
                   onClick={() => setSelectedVehicleDetail(null)}
