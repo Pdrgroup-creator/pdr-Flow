@@ -1343,7 +1343,7 @@ const [sentCoopInvites, setSentCoopInvites] = useState([]);
       const [mgrFTech, setMgrFTech] = useState("");
       const [mgrFPeriod, setMgrFPeriod] = useState("all");
       const [mgrQ, setMgrQ] = useState("");
-      const [mgrFProj, setMgrFProj] = useState("");
+      const [mgrFProjs, setMgrFProjs] = useState([]);
       const [mgrLocQ, setMgrLocQ] = useState("");
       const [mgrFrom, setMgrFrom] = useState("");
       const [mgrTo, setMgrTo] = useState("");
@@ -1400,7 +1400,7 @@ const [sentCoopInvites, setSentCoopInvites] = useState([]);
         const proj = projects.find(p => p.id === v.project_id);
         if (mgrFClient && (!proj || proj.client_id !== mgrFClient)) return false;
         if (mgrFTech && v.created_by !== mgrFTech && !coopRecords.some(c => String(c.vehicle_id) === String(v.id) && String(c.technician_id) === mgrFTech)) return false;
-        if (mgrFProj && v.project_id !== mgrFProj) return false;
+        if (mgrFProjs.length && !mgrFProjs.includes(v.project_id)) return false;
         const rng = mgrRange();
         if (rng) {
           const d = new Date(v.created_at);
@@ -1450,7 +1450,7 @@ const [sentCoopInvites, setSentCoopInvites] = useState([]);
         const cName = mgrFClient ? (clients.find(c => c.id === mgrFClient)?.name || "") : "all";
         const tName = mgrFTech ? mgrTechName(mgrFTech) : "all";
         const per = ({ all: "all time", today: "today", week: "this week", prevweek: "previous week", "30d": "last 30 days", month: "this month", prev: "previous month", quarter: "this quarter", year: "this year", custom: (mgrFrom || "...") + " - " + (mgrTo || "...") })[mgrFPeriod] || "all time";
-        const locName = mgrFProj ? (projects.find(p => p.id === mgrFProj)?.name || "") : "all";
+        const locName = mgrFProjs.length ? mgrFProjs.map(id => projects.find(p => p.id === id)?.name || "").join(", ") : "all";
         doc.text(asc("Manager: " + currentUser?.email + " | Generated: " + new Date().toLocaleDateString()), 14, 21);
         doc.text(asc("Client: " + cName + " | Location: " + locName), 14, 26);
         doc.text(asc("Technician: " + tName + " | Period: " + per), 14, 31);
@@ -4409,17 +4409,25 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
                         </>
                       )}
                       <input value={mgrLocQ} onChange={e => setMgrLocQ(e.target.value)} placeholder="Hľadať lokalitu / zákazku..." className="bg-gray-900 border border-gray-700 rounded p-1.5 text-xs text-white" />
-                      <select value={mgrFProj} onChange={e => setMgrFProj(e.target.value)} className="bg-gray-900 border border-gray-700 rounded p-1.5 text-xs text-white">
-                        <option value="">Všetky lokality</option>
+                      <div className="col-span-2 bg-gray-900 border border-gray-700 rounded p-1.5 max-h-40 overflow-y-auto space-y-1">
+                        <div className="flex justify-between items-center text-[10px] text-gray-400">
+                          <span>Lokality: {mgrFProjs.length ? mgrFProjs.length + " vybraných" : "všetky"}</span>
+                          {mgrFProjs.length > 0 && (<button type="button" onClick={() => setMgrFProjs([])} className="text-sky-400 font-bold">Zrušiť výber</button>)}
+                        </div>
                         {(() => {
                           const ids = clients.filter(c => c.created_by === currentUser.id).map(c => c.id);
                           const ws = normSearch(mgrLocQ).trim().split(/\s+/).filter(Boolean);
                           const nm = (p) => (clients.find(c => c.id === p.client_id)?.name || "?");
                           return projects
-                            .filter(p => ids.includes(p.client_id) && (!mgrFClient || p.client_id === mgrFClient) && (p.id === mgrFProj || ws.every(w => normSearch(nm(p) + " " + p.name + " " + (p.city || "")).includes(w))))
-                            .map(p => <option key={p.id} value={p.id}>{nm(p) + " • " + p.name}</option>);
+                            .filter(p => ids.includes(p.client_id) && (!mgrFClient || p.client_id === mgrFClient) && (mgrFProjs.includes(p.id) || ws.every(w => normSearch(nm(p) + " " + p.name + " " + (p.city || "")).includes(w))))
+                            .map(p => (
+                              <label key={p.id} className="flex items-center gap-2 text-xs text-white">
+                                <input type="checkbox" checked={mgrFProjs.includes(p.id)} onChange={() => setMgrFProjs(prev => prev.includes(p.id) ? prev.filter(x => x !== p.id) : [...prev, p.id])} />
+                                <span className="truncate">{nm(p) + " • " + p.name}</span>
+                              </label>
+                            ));
                         })()}
-                      </select>
+                      </div>
                     </div>
                     <div className="grid grid-cols-4 gap-1.5 text-center">
                       <div className="bg-gray-900 border border-gray-800 rounded-xl py-1.5"><div className="text-[9px] text-gray-400 uppercase">Autá</div><div className="text-sm font-black text-white">{mgrTotals.count}</div></div>
