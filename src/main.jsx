@@ -226,7 +226,7 @@ import { createClient } from "@supabase/supabase-js";
         ocrModalRetake: "Retake Photo",
         ocrModalConfirmNext: "Confirm & Next Step",
         ocrModalConfirmFinish: "Confirm & Finish Scan",
-        installAppTitle: "Add FlowBoard to Phone",
+        installAppTitle: "Add FlowDesk to Phone",
         installAppSubtitle: "Fast 1-tap access on workshop",
         installAppBtn: "Install App Icon",
         iosInstallHelp: "Tap Share icon and select 'Add to Home Screen'."
@@ -363,7 +363,7 @@ import { createClient } from "@supabase/supabase-js";
         ocrModalRetake: "Foto wiederholen",
         ocrModalConfirmNext: "Bestätigen & Weiter",
         ocrModalConfirmFinish: "Bestätigen & Fertigstellen",
-        installAppTitle: "FlowBoard zum Startbildschirm",
+        installAppTitle: "FlowDesk zum Startbildschirm",
         installAppSubtitle: "Schneller Zugriff in der Werkstatt",
         installAppBtn: "App-Symbol installieren",
         iosInstallHelp: "Auf Teilen tippen und 'Zum Home-Bildschirm' wählen."
@@ -500,7 +500,7 @@ import { createClient } from "@supabase/supabase-js";
         ocrModalRetake: "Znova odfotiť",
         ocrModalConfirmNext: "Potvrdiť a Ďalší krok",
         ocrModalConfirmFinish: "Potvrdiť a Dokončiť sken",
-        installAppTitle: "Pridať FlowBoard na plochu",
+        installAppTitle: "Pridať FlowDesk na plochu",
         installAppSubtitle: "Rýchly prístup 1 klikom priamo na dielni",
         installAppBtn: "Inštalovať ikonu aplikácie",
         iosInstallHelp: "Ťuknite na ikonu Zdieľať a zvoľte 'Pridať na plochu'."
@@ -1487,7 +1487,7 @@ const [sentCoopInvites, setSentCoopInvites] = useState([]);
         const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
         doc.setFontSize(14);
         doc.setFont("helvetica", "bold");
-        doc.text("PDR FlowBoard Pro - Manager Report", 14, 15);
+        doc.text("PDR FlowDesk - Manager Report", 14, 15);
         doc.setFontSize(9);
         doc.setFont("helvetica", "normal");
         const cName = mgrFClient ? (clients.find(c => c.id === mgrFClient)?.name || "") : "all";
@@ -2470,7 +2470,7 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
 
         doc.setFontSize(14);
         doc.setFont("helvetica", "bold");
-        doc.text("PDR FlowBoard Pro - Work Summary", 14, 15);
+        doc.text("PDR FlowDesk - Work Summary", 14, 15);
 
         doc.setFontSize(9);
         doc.setFont("helvetica", "normal");
@@ -3019,7 +3019,7 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
         return (
           <div className="flex flex-col items-center justify-center p-8 space-y-3">
             <i className="fa-solid fa-circle-notch fa-spin text-3xl text-amber-500"></i>
-            <span className="text-xs text-gray-400">Loading PDR FlowBoard...</span>
+            <span className="text-xs text-gray-400">Loading PDR FlowDesk...</span>
           </div>
         );
       }
