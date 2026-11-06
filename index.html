@@ -591,6 +591,15 @@
   return clean.slice(0, 17);
 };
 
+    // Upozornenie pri VIN: dĺžka, neznámy výrobca (prvé 3 znaky), písmená v sériovom čísle na konci
+    const vinWarning = (v) => {
+      if (!v) return "";
+      if (v.length < 17) return "VIN má " + v.length + " z 17 znakov - skontroluj podľa fotky";
+      if (!WMI_MAP[v.substring(0, 3)]) return "Neznámy výrobca (prvé 3 znaky) - skontroluj VIN podľa fotky";
+      if (/[A-Z]/.test(v.substring(12))) return "Posledné znaky VIN bývajú číslice - skontroluj podľa fotky";
+      return "";
+    };
+
     // ---- Súkromné fotky: v DB je len cesta k súboru, zobrazenie cez dočasný podpísaný odkaz ----
     const photoUrlCache = new Map();
     const toPhotoPath = (v) => {
@@ -1491,6 +1500,23 @@ const [sentCoopInvites, setSentCoopInvites] = useState([]);
         localStorage.setItem("pdr_last_project", p.id);
         rememberRecentProject(p.id);
       };
+
+      // vyhľadávanie klienta / lokality (bez diakritiky, viac slov naraz)
+      const [pickSearch, setPickSearch] = useState("");
+      const normSearch = (x) => String(x || "").toLowerCase().normalize("NFD").replace(/[^a-z0-9 ]/g, "");
+      const pickMatches = useMemo(() => {
+        const q = normSearch(pickSearch).trim();
+        if (!q) return [];
+        const words = q.split(/\s+/);
+        return projects
+          .filter((p) => p.is_active !== false)
+          .map((p) => {
+            const cl = clients.find((c) => c.id === p.client_id);
+            return { p, cl, hay: normSearch((cl ? cl.name : "") + " " + p.name + " " + (cl && cl.city ? cl.city : "")) };
+          })
+          .filter((x) => words.every((w) => x.hay.includes(w)))
+          .slice(0, 8);
+      }, [pickSearch, projects, clients]);
 
       const currentSelectedClient = useMemo(() => {
         return clients.find(c => c.id === selectedClientId);
@@ -2987,6 +3013,27 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
                       </button>
                     )}
                   </div>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={pickSearch}
+                      onChange={e => setPickSearch(e.target.value)}
+                      placeholder="Hľadať klienta alebo lokalitu..."
+                      className="w-full bg-gray-950 border border-gray-700 focus:border-amber-500 rounded p-1.5 text-xs text-white"
+                    />
+                    {pickSearch.trim() && (
+                      <div className="absolute z-30 left-0 right-0 mt-1 bg-gray-950 border border-amber-500/60 rounded-lg shadow-xl max-h-56 overflow-y-auto">
+                        {pickMatches.length === 0 ? (
+                          <div className="p-2 text-[11px] text-gray-500">Nič sa nenašlo</div>
+                        ) : pickMatches.map(x => (
+                          <button key={x.p.id} type="button" onClick={() => { pickRecentProject(x.p); setPickSearch(""); }}
+                            className="w-full text-left px-2.5 py-2 text-xs text-white border-b border-gray-800 hover:bg-gray-800">
+                            <span className="font-bold">{x.cl ? x.cl.name : ""}</span><span className="text-gray-400"> • {x.p.name}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                   {recentProjectIds.map(id => projects.find(p => p.id === id && p.is_active !== false)).filter(Boolean).length > 1 && (
                     <div className="flex flex-wrap gap-1.5 pb-1">
                       {recentProjectIds.map(id => projects.find(p => p.id === id && p.is_active !== false)).filter(Boolean).slice(0, 5).map(p => {
@@ -3456,6 +3503,9 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
                             className="w-full bg-gray-900 border border-amber-500/80 rounded p-2 text-sm text-amber-300 font-mono font-black tracking-widest text-center"
                             placeholder="VIN (17 znakov)"
                           />
+                          {vinWarning(tempOcrVin) && (
+                            <div className="text-[10px] text-amber-400 mt-1 font-bold"><i className="fa-solid fa-triangle-exclamation mr-1"></i>{vinWarning(tempOcrVin)}</div>
+                          )}
                         </div>
                         <div>
                           <label className="text-[10px] text-gray-400 font-bold uppercase">{t.brand}</label>
