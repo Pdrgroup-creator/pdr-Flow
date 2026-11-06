@@ -928,6 +928,26 @@ const fileToBase64 = (file) => {
       return result.responses?.[0]?.fullTextAnnotation?.text || "";
     };
 
+    // ---- Offline fronta uloženia auta (IndexedDB): záznam + fotky sa uložia v zariadení a dohrajú, keď je signál ----
+    const pdrIdbRun = (mode, fn) => new Promise((resolve, reject) => {
+      const req = indexedDB.open("pdr_offline", 1);
+      req.onupgradeneeded = () => { req.result.createObjectStore("pending", { keyPath: "id" }); };
+      req.onerror = () => reject(req.error);
+      req.onsuccess = () => {
+        const db = req.result;
+        const tx = db.transaction("pending", mode);
+        const r = fn(tx.objectStore("pending"));
+        tx.oncomplete = () => { db.close(); resolve(r && r.result); };
+        tx.onerror = () => { db.close(); reject(tx.error); };
+        tx.onabort = () => { db.close(); reject(tx.error || new Error("IndexedDB abort")); };
+      };
+    });
+    const pdrQueuePut = (item) => pdrIdbRun("readwrite", (st) => st.put(item));
+    const pdrQueueAll = () => pdrIdbRun("readonly", (st) => st.getAll()).then((x) => x || []);
+    const pdrQueueDelete = (id) => pdrIdbRun("readwrite", (st) => st.delete(id));
+    const isNetErr = (e) => navigator.onLine === false || /failed to fetch|networkerror|network request failed|load failed|network error/i.test(String((e && (e.message || e.name)) || e || ""));
+    const newUuid = () => (window.crypto && crypto.randomUUID ? crypto.randomUUID() : "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => { const r = (Math.random() * 16) | 0; return (c === "x" ? r : (r & 3) | 8).toString(16); }));
+
     function App() {
       const [lang, setLang] = useState(() => localStorage.getItem("pdr_lang") || "SK");
       const [currency, setCurrency] = useState(() => localStorage.getItem("pdr_curr") || "EUR");
@@ -1148,6 +1168,92 @@ const [sentCoopInvites, setSentCoopInvites] = useState([]);
       };
 
       const effRole = profileRole || (currentUser && currentUser.role) || "solo";
+
+      // ---- Offline fronta uloženia auta: záznam + fotky sa uložia v zariadení a dohrajú automaticky ----
+      const [pendingSaves, setPendingSaves] = useState([]);
+      const [pendingMsg, setPendingMsg] = useState("");
+      const flushingRef = useRef(false);
+      const flushRef = useRef(null);
+
+      const refreshPending = async () => {
+        try {
+          const all = (await pdrQueueAll()).filter((x) => currentUser && x.userId === currentUser.id);
+          setPendingSaves(all.map((x) => ({ id: x.id, no: x.vehicle.internal_record_no, ecv: x.vehicle.ecv, vin: x.vehicle.vin, status: x.status, lastError: x.lastError || "" })));
+          return all;
+        } catch (e) {
+          return [];
+        }
+      };
+
+      const discardPending = async (id) => {
+        if (!window.confirm("Zahodiť tento záznam aj s fotkami?")) return;
+        try { await pdrQueueDelete(id); } catch (e) {}
+        await refreshPending();
+      };
+
+      const flushPending = async (manual) => {
+        if (!currentUser || flushingRef.current) return;
+        flushingRef.current = true;
+        let sent = 0;
+        try {
+          const all = (await pdrQueueAll()).filter((x) => x.userId === currentUser.id);
+          for (const item of all) {
+            if (item.status === "failed" && !manual) continue;
+            if (navigator.onLine === false) break;
+            try {
+              if (item.status === "failed") { item.status = "pending"; item.lastError = ""; await pdrQueuePut(item); }
+              for (const ph of item.photos) {
+                if (ph.done) continue;
+                const up = await supabase.storage.from("vehicle-photos").upload(ph.path, ph.blob, { contentType: "image/jpeg", upsert: true });
+                if (up.error) throw up.error;
+                ph.done = true;
+                await pdrQueuePut(item);
+              }
+              // id auta vzniklo v zariadení, takže opakovanie nevytvorí duplicitu
+              const ins = await supabase.from("vehicles").insert([item.vehicle]).select();
+              if (ins.error) {
+                if (isNetErr(ins.error)) throw ins.error;
+                const ex = await supabase.from("vehicles").select("id").eq("id", item.vehicle.id).maybeSingle();
+                if (!ex.data) throw ins.error;
+              }
+              const have = await supabase.from("vehicle_coops").select("technician_id, technician_email").eq("vehicle_id", item.vehicle.id);
+              if (have.error) throw have.error;
+              const missing = item.coops.filter((c) => !(have.data || []).some((h) => (h.technician_id && c.technician_id && h.technician_id === c.technician_id) || (h.technician_email && c.technician_email && String(h.technician_email).toLowerCase() === String(c.technician_email).toLowerCase())));
+              if (missing.length) {
+                const ci = await supabase.from("vehicle_coops").insert(missing);
+                if (ci.error) throw ci.error;
+              }
+              await pdrQueueDelete(item.id);
+              sent++;
+            } catch (err) {
+              if (isNetErr(err)) break; // stále bez signálu, skúsime neskôr
+              item.status = "failed";
+              item.lastError = String((err && err.message) || err);
+              try { await pdrQueuePut(item); } catch (pe) {}
+            }
+          }
+        } catch (e) {
+          console.warn("Offline fronta:", e);
+        } finally {
+          flushingRef.current = false;
+        }
+        await refreshPending();
+        if (sent > 0) {
+          setPendingMsg(sent + (lang === "SK" ? " záznam(ov) odoslaných na server" : " record(s) sent to server"));
+          loadData();
+          setTimeout(() => setPendingMsg(""), 8000);
+        }
+      };
+      flushRef.current = flushPending;
+
+      useEffect(() => {
+        if (!currentUser) return;
+        refreshPending().then(() => { if (flushRef.current) flushRef.current(false); });
+        const onOnline = () => { if (flushRef.current) flushRef.current(false); };
+        window.addEventListener("online", onOnline);
+        const iv = setInterval(() => { if (flushRef.current) flushRef.current(false); }, 45000);
+        return () => { window.removeEventListener("online", onOnline); clearInterval(iv); };
+      }, [currentUser]);
 
       const [vehComm, setVehComm] = useState([]);
       const [mgrVehicles, setMgrVehicles] = useState([]);
@@ -1829,8 +1935,9 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
         }
       };
 
-      const uploadSingleFile = async (file, path) => {
-        const compressedBlob = await compressImage(file);
+      const uploadSingleFile = async (file, path) => uploadBlobRetry(await compressImage(file), path);
+
+      const uploadBlobRetry = async (compressedBlob, path) => {
         // pri slabom signáli skúsime nahrávanie opakovane (upsert, takže opakovanie je bezpečné)
         let lastErr = null;
         for (let attempt = 0; attempt < 4; attempt++) {
@@ -1844,12 +1951,32 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
           } catch (netErr) {
             lastErr = netErr;
           }
+          if (navigator.onLine === false) break;
           if (attempt < 3) {
             setUploadStatusText((lang === "SK" ? "Slabý signál, opakujem nahrávanie fotky… (" : "Weak signal, retrying upload… (") + (attempt + 1) + "/3)");
             await new Promise(r => setTimeout(r, 1500 * (attempt + 1)));
           }
         }
         throw lastErr || new Error("Upload failed");
+      };
+
+      const resetAfterSave = () => {
+        setVin("");
+        setEcv("");
+        setBrand("");
+        setModel("");
+        if (currentSelectedProject?.pricing_mode === "free") setPrice("");
+        setAwCount("");
+        setRiPrice("");
+        setIsPricePending(false);
+        setDamageNote("");
+        setVinFile(null);
+        setRearFile(null);
+        setSheetFile(null);
+        setDamageFiles([]);
+        setVinPreview(null);
+        setRearPreview(null);
+        setSheetPreview(null);
       };
 
       const handleSaveVehicle = async (e) => {
@@ -1885,32 +2012,29 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
     }
         setIsUploading(true);
         setUploadStatusText(t.savingVehicleStatus);
+        let queueOffline = null;
 
         try {
           const timestamp = Date.now();
           const uid = currentUser.id;
+          const vehicleId = newUuid();
 
-          let vinUrl = null, rearUrl = null, sheetUrl = null;
-          const damageUrls = [];
-
-          if (vinFile) vinUrl = await uploadSingleFile(vinFile, `${uid}/${timestamp}_vin.jpg`);
-          if (rearFile) rearUrl = await uploadSingleFile(rearFile, `${uid}/${timestamp}_rear.jpg`);
-          if (sheetFile) sheetUrl = await uploadSingleFile(sheetFile, `${uid}/${timestamp}_sheet.jpg`);
-
-          for (let i = 0; i < damageFiles.length; i++) {
-            const dUrl = await uploadSingleFile(damageFiles[i], `${uid}/${timestamp}_dmg_${i + 1}.jpg`);
-            damageUrls.push(dUrl);
-          }
+          const vinPath = vinFile ? `${uid}/${timestamp}_vin.jpg` : null;
+          const rearPath = rearFile ? `${uid}/${timestamp}_rear.jpg` : null;
+          const sheetPath = sheetFile ? `${uid}/${timestamp}_sheet.jpg` : null;
+          const damagePaths = damageFiles.map((_, i) => `${uid}/${timestamp}_dmg_${i + 1}.jpg`);
 
           const currentYear = new Date().getFullYear();
           const techPrefix = (currentUser.email.split("@")[0].substring(0, 4)).toUpperCase();
           const recPrefix = `${techPrefix}/${currentYear}/`;
-          const maxRecNo = vehicles.reduce((m, v) => {
-            const s = String(v.internal_record_no || "");
-            if (v.created_by !== currentUser.id || !s.startsWith(recPrefix)) return m;
-            const n = parseInt(s.slice(recPrefix.length), 10);
+          const maxOf = (m, no) => {
+            const str = String(no || "");
+            if (!str.startsWith(recPrefix)) return m;
+            const n = parseInt(str.slice(recPrefix.length), 10);
             return isNaN(n) ? m : Math.max(m, n);
-          }, 0);
+          };
+          // číslovanie berie do úvahy aj záznamy čakajúce v offline fronte
+          const maxRecNo = pendingSaves.reduce((m, p) => maxOf(m, p.no), vehicles.reduce((m, v) => (v.created_by !== currentUser.id ? m : maxOf(m, v.internal_record_no)), 0));
           const internalRecordNo = `${recPrefix}${String(maxRecNo + 1).padStart(3, "0")}`;
 
           const finalStatus = isPricePending ? "pending_price" : (isAwRateMissing ? "pending_rate" : "completed");
@@ -1918,6 +2042,7 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
           const colorName = selectedColorObj ? selectedColorObj.labels[lang] : selectedColorId;
 
           const newVehicleRecord = {
+            id: vehicleId,
             project_id: selectedProjectId,
             created_by: currentUser.id,
             internal_record_no: internalRecordNo,
@@ -1939,20 +2064,16 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
             tech_ri_percent: baseRiPercent,
             note: damageNote.trim() || null,
             note_created_at: damageNote.trim() ? new Date().toISOString() : null,
-            photo_vin_url: vinUrl,
-            photo_rear_url: rearUrl,
-            photo_sheet_url: sheetUrl,
-            damage_photos: damageUrls,
+            photo_vin_url: vinPath,
+            photo_rear_url: rearPath,
+            photo_sheet_url: sheetPath,
+            damage_photos: damagePaths,
             status: finalStatus
           };
 
-          const { data, error } = await supabase.from("vehicles").insert([newVehicleRecord]).select();
-          if (error) throw error;
-          const insertedVehicle = data[0];
-
           const coopInserts = [
             {
-              vehicle_id: insertedVehicle.id,
+              vehicle_id: vehicleId,
               technician_id: currentUser.id,
               technician_email: currentUser.email,
               split_fraction: coopSplitFraction,
@@ -1967,7 +2088,7 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
 
             if (partnerTechId || partnerTechEmail) {
               coopInserts.push({
-                vehicle_id: insertedVehicle.id,
+                vehicle_id: vehicleId,
                 technician_id: partnerTechId,
                 technician_email: partnerTechEmail,
                 split_fraction: coopSplitFraction,
@@ -1975,9 +2096,47 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
               });
             }
           });
-      
 
-        const { data: savedCoops, error: coopInsertErr } = await supabase
+          // fotky sa zmenšia hneď (funguje aj bez signálu), nahrávanie ide až potom
+          const photoJobs = [];
+          if (vinFile) photoJobs.push({ path: vinPath, file: vinFile });
+          if (rearFile) photoJobs.push({ path: rearPath, file: rearFile });
+          if (sheetFile) photoJobs.push({ path: sheetPath, file: sheetFile });
+          damageFiles.forEach((f, i) => photoJobs.push({ path: damagePaths[i], file: f }));
+          const blobs = [];
+          for (const j of photoJobs) blobs.push({ path: j.path, blob: await compressImage(j.file), done: false });
+
+          // bez signálu: záznam aj fotky ostanú uložené v zariadení a odošlú sa automaticky
+          queueOffline = async () => {
+            try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (pe) {}
+            await pdrQueuePut({ id: vehicleId, userId: uid, createdAt: Date.now(), status: "pending", lastError: "", vehicle: newVehicleRecord, coops: coopInserts, photos: blobs });
+            await refreshPending();
+            resetAfterSave();
+            rememberRecentProject(selectedProjectId);
+            setPendingMsg(lang === "SK" ? "Bez signálu: záznam je uložený v zariadení a odošle sa automaticky po pripojení." : "No signal: record saved on this device and will be sent automatically.");
+            setTimeout(() => setPendingMsg(""), 12000);
+          };
+
+          if (navigator.onLine === false) { await queueOffline(); return; }
+
+          for (const ph of blobs) {
+            try {
+              await uploadBlobRetry(ph.blob, ph.path);
+              ph.done = true;
+            } catch (upErr) {
+              if (isNetErr(upErr)) { await queueOffline(); return; }
+              throw upErr;
+            }
+          }
+
+          const { data, error } = await supabase.from("vehicles").insert([newVehicleRecord]).select();
+          if (error) {
+            if (isNetErr(error)) { await queueOffline(); return; }
+            throw error;
+          }
+          const insertedVehicle = data[0];
+
+          const { data: savedCoops, error: coopInsertErr } = await supabase
             .from("vehicle_coops")
             .insert(coopInserts)
             .select();
@@ -1986,6 +2145,11 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
 
           loadVehComm();
 
+          if (coopInsertErr && isNetErr(coopInsertErr) && queueOffline) {
+            // auto je uložené, CO-OP riadky sa dohrajú z fronty po pripojení
+            await queueOffline();
+            return;
+          }
           if (coopInsertErr) {
             // Kooperácia sa NEULOŽILA (typicky RLS politika v Supabase) -> nehlásiť falošný úspech
             console.error("Chyba zápisu kooperácie:", coopInsertErr);
@@ -1998,27 +2162,16 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
             alert(t.savedSuccessMsg);
           }
 
-          setVin("");
-          setEcv("");
-          setBrand("");
-          setModel("");
-          if (currentSelectedProject?.pricing_mode === "free") setPrice("");
-          setAwCount("");
-          setRiPrice("");
-          setIsPricePending(false);
-          setDamageNote("");
-          setVinFile(null);
-          setRearFile(null);
-          setSheetFile(null);
-          setDamageFiles([]);
-          setVinPreview(null);
-          setRearPreview(null);
-          setSheetPreview(null);
+          resetAfterSave();
           // setSelectedCoopPartners([]);
           loadPartnerships();
           rememberRecentProject(selectedProjectId);
         } catch (err) {
-          alert("Error: " + err.message);
+          if (queueOffline && isNetErr(err)) {
+            try { await queueOffline(); } catch (qe) { alert("Error: " + err.message); }
+          } else {
+            alert("Error: " + err.message);
+          }
         } finally {
           setIsUploading(false);
           setUploadStatusText("");
@@ -3186,6 +3339,30 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
                     </div>
                   )}
                 </div>
+
+                {(pendingSaves.length > 0 || pendingMsg) && (
+                  <div className="bg-amber-500/10 border border-amber-500/60 rounded-xl p-2.5 space-y-1.5">
+                    {pendingMsg && <div className="text-[11px] text-emerald-400 font-bold">{pendingMsg}</div>}
+                    {pendingSaves.length > 0 && (
+                      <>
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="text-[11px] text-amber-300 font-bold"><i className="fa-solid fa-cloud-arrow-up mr-1"></i>{lang === "SK" ? "Čaká na odoslanie: " : "Waiting to send: "}{pendingSaves.length}</div>
+                          <button type="button" onClick={() => flushPending(true)} className="px-2.5 py-1 rounded bg-amber-500 text-gray-950 text-[11px] font-black">{lang === "SK" ? "Odoslať teraz" : "Send now"}</button>
+                        </div>
+                        {pendingSaves.map(p => (
+                          <div key={p.id} className="flex items-center justify-between gap-2 text-[11px] text-gray-300">
+                            <span className="font-mono truncate">{p.no} • {p.ecv} • {p.vin}</span>
+                            {p.status === "failed" ? (
+                              <span className="text-red-400 text-right">{p.lastError} <button type="button" onClick={() => discardPending(p.id)} className="underline ml-1">{lang === "SK" ? "zahodiť" : "discard"}</button></span>
+                            ) : (
+                              <span className="text-amber-400">{lang === "SK" ? "čaká" : "waiting"}</span>
+                            )}
+                          </div>
+                        ))}
+                      </>
+                    )}
+                  </div>
+                )}
 
                 {/* Formulár údajov vozidla */}
                 <form onSubmit={handleSaveVehicle} className="space-y-2.5">
