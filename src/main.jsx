@@ -374,7 +374,7 @@ import { createClient } from "@supabase/supabase-js";
         tabVehicles1: "Evidencia",
         tabVehicles2: "Vozidlá",
         tabProjects1: "Klienti &",
-        tabProjects2: "Lokácie",
+        tabProjects2: "Projekty",
         tabReports1: "Register &",
         tabReports2: "Reports",
         scanBtn: "Scan Car (VIN / Auto / Hárok)",
@@ -382,7 +382,7 @@ import { createClient } from "@supabase/supabase-js";
         step2Label: "2. Auto zozadu",
         step3Label: "3. Hárok kalkulácie",
         clientLabel: "Klient (Firma)",
-        locationLabel: "Lokácia / Dielňa",
+        locationLabel: "Projekt / Lokalita / Dielňa",
         calcNumberLabel: "Číslo kalkulácie (Klient)",
         ecv: "ŠPZ / EČV",
         noEcvCheckbox: "Bez ŠPZ",
@@ -395,7 +395,7 @@ import { createClient } from "@supabase/supabase-js";
         riPriceLabel: "R&I Cena (Demontáž)",
         saveVehicle: "Uložiť vozidlo",
         addClientBtn: "Pridať klienta",
-        addLocationBtn: "Pridať lokáciu",
+        addLocationBtn: "Pridať projekt / lokalitu",
         noVehicles: "Zatiaľ nie sú zaevidované žiadne vozidlá.",
         loginTitle: "Prihlásenie",
         registerTitle: "Registrácia",
@@ -424,7 +424,7 @@ import { createClient } from "@supabase/supabase-js";
         updatePasswordBtn: "Zmeniť heslo",
         passwordUpdated: "Heslo úspešne zmenené!",
         searchPlaceholder: "Hľadať VIN, ŠPZ, model...",
-        searchLocationsPlaceholder: "Hľadať lokáciu...",
+        searchLocationsPlaceholder: "Hľadať projekt / lokalitu...",
         coopTitle: "Spolupráca & Partneri",
         invitePartnerBtn: "Pozvať technika",
         activePartnersLabel: "Aktívni partneri na dielni",
@@ -436,7 +436,7 @@ import { createClient } from "@supabase/supabase-js";
         coopParticipants: "Technici v kooperácii",
         noPartnersMsg: "Zatiaľ nemáte žiadnych partnerov. Pozvite kolegov cez ikonu podania rúk v hlavičke.",
         clientCardTitle: "Vizitka klienta",
-        locationDetailTitle: "Detail lokácie",
+        locationDetailTitle: "Detail projektu / lokality",
         callBtn: "Vytočiť",
         navigateBtn: "Navigovať v Google Maps ➔",
         closeBtn: "Zavrieť",
@@ -445,18 +445,18 @@ import { createClient } from "@supabase/supabase-js";
         saveChangesBtn: "Uložiť zmeny",
         archiveBtn: "Archivovať",
         restoreBtn: "Obnoviť",
-        archiveConfirm: "Archivovať túto lokáciu? Zmizne z ponuky evidencie, no autá zostanú.",
-        restoreConfirm: "Obnoviť túto lokáciu do aktívnej evidencie?",
+        archiveConfirm: "Archivovať tento projekt / lokalitu? Zmizne z ponuky evidencie a jeho autá sa presunú do archívu, no ostanú vo všetkých súčtoch.",
+        restoreConfirm: "Obnoviť tento projekt / lokalitu do aktívnej evidencie?",
         latePricePlaceholder: "Schválená suma v",
         savePriceBtn: "Uložiť cenu",
-        missingAwRateAlert: "Chýba sadzba za 1 AW v nastaveniach lokácie. Nastavte sadzbu alebo označte 'Cena neznáma'.",
+        missingAwRateAlert: "Chýba sadzba za 1 AW v nastaveniach projektu. Nastavte sadzbu alebo označte 'Cena neznáma'.",
         blockedSubmission: "Blokované (Doplňte sadzbu AW)",
         damagePhotosCount: "Detaily poškodenia",
         damageNoteLabel: "Poznámka k vozidlu",
         addDamagePhoto: "+ Fotografie k poznámkam",
         uploadedPhotos: "Nahraté",
         allClients: "Všetci klienti",
-        allLocations: "Všetky lokácie",
+        allLocations: "Všetky projekty / lokality",
         allDates: "Všetky dátumy",
         last7Days: "Posledných 7 dní",
         thisMonth: "Tento mesiac",
@@ -1233,7 +1233,7 @@ const [sentCoopInvites, setSentCoopInvites] = useState([]);
       const [histLoading, setHistLoading] = useState(false);
       const loadChgMeta = async () => {
         try {
-          const a = await supabase.from("vehicle_changes").select("vehicle_id, changed_by, changed_at").order("changed_at", { ascending: false }).limit(3000);
+          const a = await supabase.from("vehicle_changes").select("vehicle_id, changed_by, changed_at").not("kind", "in", "(archive,unarchive)").order("changed_at", { ascending: false }).limit(3000);
           const b = await supabase.from("vehicle_change_seen").select("vehicle_id, seen_at");
           if (a.data) setChgList(a.data);
           if (b.data) { const mm = {}; b.data.forEach(r => { mm[r.vehicle_id] = r.seen_at; }); setChgSeen(mm); }
@@ -1302,6 +1302,8 @@ const [sentCoopInvites, setSentCoopInvites] = useState([]);
         const cs = (x) => (x === null || x === undefined || x === "") ? "—" : x;
         const arrow = (o, n, u) => cs(o) + (u || "") + " → " + cs(n) + (u || "");
         const f = r.field || "";
+        if (r.kind === "archive") return "Auto archivované";
+        if (r.kind === "unarchive") return "Auto vrátené z archívu";
         if (r.kind === "storno") return "Auto stornované";
         if (r.kind === "restore") return "Auto obnovené zo storna";
         if (r.kind === "lock") return "Auto uzavreté";
@@ -1318,6 +1320,27 @@ const [sentCoopInvites, setSentCoopInvites] = useState([]);
         return f + ": " + arrow(r.old_value, r.new_value);
       };
 
+      const [showArchVeh, setShowArchVeh] = useState(false);
+      const archReason = (v) => {
+        if (v.is_archived) return "manual";
+        const pj = projects.find(p => p.id === v.project_id);
+        if (pj && pj.is_active === false) return "project";
+        if (v.is_locked && new Date(v.created_at).getFullYear() <= new Date().getFullYear() - 2) return "auto";
+        return null;
+      };
+      const isArchivedVeh = (v) => !!archReason(v);
+      const toggleArchiveVeh = async (v) => {
+        const next = !v.is_archived;
+        if (!confirm(next ? "Archivovať toto auto? Zmizne zo zoznamu, no zostane vo všetkých súčtoch a reportoch." : "Vrátiť auto z archívu?")) return;
+        try {
+          const { error } = await supabase.from("vehicles").update({ is_archived: next }).eq("id", v.id);
+          if (error) throw error;
+          patchVehLocal(v.id, { is_archived: next });
+          loadChgMeta();
+        } catch (err) {
+          alert("Chyba: " + err.message);
+        }
+      };
       const techShareValue = (v, fraction, techId) => {
         if (v.status === "cancelled") return 0;
         const cm = commOf(v.id, techId);
@@ -1414,6 +1437,9 @@ const [sentCoopInvites, setSentCoopInvites] = useState([]);
         }
         return true;
       });
+
+      const mgrListed = mgrFiltered.filter(v => showArchVeh || !isArchivedVeh(v));
+      const mgrArchHidden = mgrFiltered.length - mgrListed.length;
 
       const mgrTotals = mgrFiltered.reduce((a, v) => {
         const s = mgrVehStats(v);
@@ -2317,6 +2343,9 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
         });
       }, [vehicles, projects, repClientFilter, repProjectFilter, repDateRange, repSelectedMonth, repSelectedYear, repSearchQuery, repStatusFilter, currentUser, coopRecords]);
 
+      const listVehicles = filteredVehicles.filter(v => showArchVeh || !isArchivedVeh(v));
+      const archHidden = filteredVehicles.length - listVehicles.length;
+
       const kpiStats = useMemo(() => {
         let totalMyShare = 0;
         let lockedMyShare = 0;
@@ -3201,7 +3230,7 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
           {/* Navigácia záložiek */}
           {inMgr ? (
             <div className="grid grid-cols-3 border-b border-sky-900/60 text-center font-bold text-[11px]">
-              {[["mgr_techs", "Technici", "Tím"], ["projects", "Klienti", "Zákazky"], ["mgr_reports", "Report", "Prehľad"]].map(([k, l1, l2]) => (
+              {[["mgr_techs", "Technici", "Tím"], ["projects", "Klienti", "Projekty / Lokality"], ["mgr_reports", "Report", "Prehľad"]].map(([k, l1, l2]) => (
                 <button key={k} onClick={() => setActiveTab(k)}
                   className={`py-2 border-b-2 flex flex-col items-center justify-center ${activeTab === k ? "border-sky-500 text-sky-400 bg-sky-500/10" : "border-transparent text-gray-400 hover:text-gray-200"}`}>
                   <span>{l1}</span>
@@ -4265,7 +4294,7 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
                             <i className={"fa-solid text-[10px] w-3 " + (open ? "fa-chevron-down " : "fa-chevron-right ") + (inMgr ? "text-sky-400" : "text-amber-400")}></i>
                             <span className="min-w-0">
                               <span className={"block font-bold text-xs truncate " + (inMgr ? "text-sky-400" : "text-amber-400")}>{c.name}</span>
-                              <span className="block text-[10px] text-gray-500 truncate">{[c.city, (lang === "SK" ? "Lokality: " : "Locations: ") + clientProjects.length].filter(Boolean).join(" • ")}</span>
+                              <span className="block text-[10px] text-gray-500 truncate">{[c.city, (lang === "SK" ? "Projekty / Lokality: " : "Locations: ") + clientProjects.length].filter(Boolean).join(" • ")}</span>
                             </span>
                           </button>
                           <button type="button" onClick={() => setActiveBottomSheet({ type: "client", id: c.id, data: c })} className="text-gray-500 hover:text-gray-300 px-2 py-1" title="Detail klienta"><i className="fa-solid fa-circle-info text-xs"></i></button>
@@ -4358,13 +4387,13 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
                                 <div className="bg-gray-950 rounded-lg py-1.5"><div className="text-[9px] text-gray-400 uppercase">Zarobil mi</div><div className="font-black text-sky-400">{fmtEur(comm)}</div></div>
                               </div>
                               <div>
-                                <div className="text-[10px] text-gray-400 font-bold uppercase mb-1">Priradené zákazky</div>
+                                <div className="text-[10px] text-gray-400 font-bold uppercase mb-1">Priradené projekty</div>
                                 {assigned.length === 0 ? <div className="text-gray-500">Žiadne</div> : assigned.map(pp => (
                                   <div key={pp.id} className="text-gray-300">• {clients.find(c => c.id === pp.client_id)?.name || "?"} / {pp.name}</div>
                                 ))}
                               </div>
                               <div>
-                                <div className="text-[10px] text-gray-400 font-bold uppercase mb-1">Zárobok podľa zákazky</div>
+                                <div className="text-[10px] text-gray-400 font-bold uppercase mb-1">Zárobok podľa projektu</div>
                                 {Object.values(byJob).length === 0 ? <div className="text-gray-500">Zatiaľ žiadne autá</div> : Object.values(byJob).map((j, i) => (
                                   <div key={i} className="flex justify-between gap-2 text-gray-300"><span className="truncate">{j.name} ({j.n}×)</span><span className="text-sky-400 font-bold shrink-0">{fmtEur(j.comm)}</span></div>
                                 ))}
@@ -4401,17 +4430,17 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
                         <option value="year">Tento rok</option>
                         <option value="custom">Vlastný rozsah...</option>
                       </select>
-                      <input value={mgrQ} onChange={e => setMgrQ(e.target.value)} placeholder="VIN / ŠPZ / zákazka" className="bg-gray-900 border border-gray-700 rounded p-1.5 text-xs text-white" />
+                      <input value={mgrQ} onChange={e => setMgrQ(e.target.value)} placeholder="VIN / ŠPZ / projekt" className="bg-gray-900 border border-gray-700 rounded p-1.5 text-xs text-white" />
                       {mgrFPeriod === "custom" && (
                         <>
                           <label className="text-[10px] text-gray-400">Od<input type="date" value={mgrFrom} onChange={e => setMgrFrom(e.target.value)} className="w-full bg-gray-900 border border-gray-700 rounded p-1.5 text-xs text-white" /></label>
                           <label className="text-[10px] text-gray-400">Do<input type="date" value={mgrTo} onChange={e => setMgrTo(e.target.value)} className="w-full bg-gray-900 border border-gray-700 rounded p-1.5 text-xs text-white" /></label>
                         </>
                       )}
-                      <input value={mgrLocQ} onChange={e => setMgrLocQ(e.target.value)} placeholder="Hľadať lokalitu / zákazku..." className="bg-gray-900 border border-gray-700 rounded p-1.5 text-xs text-white" />
+                      <input value={mgrLocQ} onChange={e => setMgrLocQ(e.target.value)} placeholder="Hľadať projekt / lokalitu..." className="bg-gray-900 border border-gray-700 rounded p-1.5 text-xs text-white" />
                       <div className="col-span-2 bg-gray-900 border border-gray-700 rounded p-1.5 max-h-40 overflow-y-auto space-y-1">
                         <div className="flex justify-between items-center text-[10px] text-gray-400">
-                          <span>Lokality: {mgrFProjs.length ? mgrFProjs.length + " vybraných" : "všetky"}</span>
+                          <span>Projekty / Lokality: {mgrFProjs.length ? mgrFProjs.length + " vybraných" : "všetky"}</span>
                           {mgrFProjs.length > 0 && (<button type="button" onClick={() => setMgrFProjs([])} className="text-sky-400 font-bold">Zrušiť výber</button>)}
                         </div>
                         {(() => {
@@ -4440,14 +4469,19 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
                       <button onClick={mgrExportCsv} className="py-1.5 rounded-lg bg-gray-800 border border-gray-700 text-xs font-bold text-gray-200">CSV export</button>
                     </div>
                     {mgrFiltered.length === 0 && <div className="text-xs text-gray-500 text-center py-6">Žiadne autá podľa filtra.</div>}
-                    {mgrFiltered.map(v => {
+                    {(mgrArchHidden > 0 || showArchVeh) && (
+                      <button type="button" onClick={() => setShowArchVeh(!showArchVeh)} className="w-full py-1.5 rounded-lg text-[11px] font-bold border bg-gray-900 border-gray-700 text-gray-300">
+                        <i className="fa-solid fa-box-archive mr-1"></i> {showArchVeh ? "Skryť archív" : "Zobraziť archív (" + mgrArchHidden + ")"}
+                      </button>
+                    )}
+                    {mgrListed.map(v => {
                       const proj = projects.find(p => p.id === v.project_id);
                       const cl = clients.find(c => c.id === proj?.client_id);
                       const s = mgrVehStats(v);
                       return (
                         <div key={v.id} className="bg-gray-900 border border-gray-800 rounded-xl p-2.5 text-xs space-y-0.5">
                           <div className="flex justify-between gap-2">
-                            <span className="font-bold text-white truncate">{v.brand} {v.model}{hasUnseenChange(v.id) && (<i className="fa-solid fa-clock-rotate-left text-red-500 ml-1.5"></i>)}{v.status === "cancelled" && (<span className="ml-1.5 bg-gray-700/60 text-gray-300 border border-gray-500/50 text-[9px] px-1 rounded font-bold">STORNO</span>)}</span>
+                            <span className="font-bold text-white truncate">{v.brand} {v.model}{isArchivedVeh(v) && (<span className="ml-1.5 bg-gray-700/60 text-gray-300 border border-gray-500/50 text-[9px] px-1 rounded font-bold">ARCHÍV</span>)}{hasUnseenChange(v.id) && (<i className="fa-solid fa-clock-rotate-left text-red-500 ml-1.5"></i>)}{v.status === "cancelled" && (<span className="ml-1.5 bg-gray-700/60 text-gray-300 border border-gray-500/50 text-[9px] px-1 rounded font-bold">STORNO</span>)}</span>
                             <span className="text-sky-400 font-black shrink-0">{fmtEur(s.comm)}</span>
                           </div>
                           <div className="text-gray-400 truncate">{cl?.name || "?"} • {proj?.name || "?"}</div>
@@ -4457,6 +4491,7 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
                             <button type="button" onClick={() => openHistory(v)} className="text-[10px] font-bold px-2 py-1 rounded border border-gray-700 text-gray-300 flex items-center gap-1"><i className="fa-solid fa-clock-rotate-left"></i> História</button>
                             {v.status !== "cancelled" && (<button type="button" onClick={() => mgrSetPrice(v)} className="text-[10px] font-bold px-2 py-1 rounded border border-sky-700/60 text-sky-300 flex items-center gap-1"><i className="fa-solid fa-pen"></i> Zmeniť cenu</button>)}
                             <button type="button" onClick={() => doStorno(v, v.status === "cancelled")} className="text-[10px] font-bold px-2 py-1 rounded border border-red-800/60 text-red-300 flex items-center gap-1"><i className="fa-solid fa-ban"></i> {v.status === "cancelled" ? "Obnoviť" : "Stornovať"}</button>
+                            {(!archReason(v) || archReason(v) === "manual") && (<button type="button" onClick={() => toggleArchiveVeh(v)} className="text-[10px] font-bold px-2 py-1 rounded border border-gray-700 text-gray-300 flex items-center gap-1"><i className="fa-solid fa-box-archive"></i> {v.is_archived ? "Z archívu" : "Archivovať"}</button>)}
                           </div>
                         </div>
                       );
@@ -4586,11 +4621,16 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
                 </div>
 
                 {/* Zoznam zaevidovaných áut s CO-OP odznakom a dvojitou cenou */}
+                {(archHidden > 0 || showArchVeh) && (
+                  <button type="button" onClick={() => setShowArchVeh(!showArchVeh)} className="w-full py-1.5 rounded-lg text-[11px] font-bold border bg-gray-900 border-gray-700 text-gray-300">
+                    <i className="fa-solid fa-box-archive mr-1"></i> {showArchVeh ? "Skryť archív" : "Zobraziť archív (" + archHidden + ")"}
+                  </button>
+                )}
                 <div className="space-y-1.5">
-                  {filteredVehicles.length === 0 ? (
+                  {listVehicles.length === 0 ? (
                     <div className="text-center p-4 text-gray-500 text-xs">{t.noVehicles}</div>
                   ) : (
-                    filteredVehicles.map(v => {
+                    listVehicles.map(v => {
                       const myEmail = (currentUser?.email || "").toLowerCase();
                       const vehicleCoops = coopRecords.filter(c => String(c.vehicle_id) === String(v.id));
                       const isCoop = vehicleCoops.length > 1;
@@ -4624,6 +4664,7 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
 
                             <div className="font-bold text-gray-200 flex items-center gap-1.5">
                               <span className="truncate">{v.brand} {v.model}</span>
+                              {isArchivedVeh(v) && (<span className="bg-gray-700/60 text-gray-300 border border-gray-500/50 text-[9px] px-1 rounded font-bold">ARCHÍV</span>)}
                               {hasUnseenChange(v.id) && (<span className="text-red-500 text-[12px]" title="Zmena od iného používateľa"><i className="fa-solid fa-clock-rotate-left"></i></span>)}
                               {v.status === "cancelled" && (<span className="bg-gray-700/60 text-gray-300 border border-gray-500/50 text-[9px] px-1 rounded font-bold">STORNO</span>)}
                               {isCoop && (
@@ -4987,6 +5028,12 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
                 )}
 
                 {selectedVehicleDetail.status === "cancelled" && (<div className="bg-gray-800 border border-gray-600 text-gray-300 rounded-lg p-2 text-[11px] font-bold">Auto je stornované – nezapočítava sa do súčtov a reportov.</div>)}
+                {archReason(selectedVehicleDetail) && archReason(selectedVehicleDetail) !== "manual" && (<div className="bg-gray-900 border border-gray-700 text-gray-400 rounded-lg p-2 text-[11px]">{archReason(selectedVehicleDetail) === "project" ? "Auto je v archíve, lebo jeho projekt / lokalita je archivovaná." : "Auto je v archíve automaticky (uzavreté, staršie ako minulý rok)."}</div>)}
+                {(!archReason(selectedVehicleDetail) || archReason(selectedVehicleDetail) === "manual") && (
+                  <button type="button" onClick={() => toggleArchiveVeh(selectedVehicleDetail)} className="w-full bg-gray-900 border border-gray-700 text-gray-200 font-bold py-2 rounded-xl text-xs flex items-center justify-center gap-1.5">
+                    <i className="fa-solid fa-box-archive"></i> {selectedVehicleDetail.is_archived ? "Vrátiť z archívu" : "Archivovať auto"}
+                  </button>
+                )}
                 <div className="flex gap-2">
                   <button type="button" onClick={() => openHistory(selectedVehicleDetail)} className="flex-1 bg-gray-900 border border-gray-700 text-gray-200 font-bold py-2 rounded-xl text-xs flex items-center justify-center gap-1.5">
                     <i className={"fa-solid fa-clock-rotate-left" + (hasUnseenChange(selectedVehicleDetail.id) ? " text-red-500" : "")}></i> História zmien
@@ -5282,7 +5329,7 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
 
                     {activeBottomSheet.type === "project" && effRole === "manager" && activeBottomSheet.data.created_by === currentUser.id && (
                       <div className="pt-2 border-t border-gray-800 space-y-1.5">
-                        <div className="text-[10px] text-sky-400 font-bold uppercase tracking-wide">Technici na zákazke</div>
+                        <div className="text-[10px] text-sky-400 font-bold uppercase tracking-wide">Technici na projekte</div>
                         {teamRows.filter(r => r.manager_id === currentUser.id && r.status === "accepted" && r.member_id).length === 0 && (
                           <div className="text-gray-500">Najprv pozvite technikov do tímu (ikona Tím).</div>
                         )}
@@ -5371,7 +5418,7 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
                     {teamRows.filter(r => r.manager_id !== currentUser.id && r.status === "accepted").map(r => (
                       <div key={r.id} className="bg-gray-900 p-2 rounded-xl border border-gray-800 flex justify-between items-center gap-2">
                         <span className="font-mono text-xs text-gray-200 truncate">{r.manager_email || "Manažér"}</span>
-                        <button type="button" onClick={() => handleRemoveTeamRow(r.id, "Opustiť tento tím? Stratíte prístup k jeho zákazkám.")} className="text-gray-500 hover:text-red-400 px-2 py-1 text-[10px] font-bold">Opustiť</button>
+                        <button type="button" onClick={() => handleRemoveTeamRow(r.id, "Opustiť tento tím? Stratíte prístup k jeho projektom.")} className="text-gray-500 hover:text-red-400 px-2 py-1 text-[10px] font-bold">Opustiť</button>
                       </div>
                     ))}
                   </div>
@@ -5396,7 +5443,7 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
                           <div className="font-mono text-xs text-gray-200 truncate">{r.member_email}</div>
                           <div className={`text-[10px] font-bold ${r.status === "accepted" ? "text-emerald-400" : "text-amber-400"}`}>{r.status === "accepted" ? "V tíme" : "Čaká na prijatie"}</div>
                         </div>
-                        <button type="button" onClick={() => handleRemoveTeamRow(r.id, "Odstrániť technika z tímu? Zmizne mu aj priradenie k vašim zákazkám.")} className="text-gray-500 hover:text-red-400 px-2 py-1 text-[10px] font-bold">Odstrániť</button>
+                        <button type="button" onClick={() => handleRemoveTeamRow(r.id, "Odstrániť technika z tímu? Zmizne mu aj priradenie k vašim projektom.")} className="text-gray-500 hover:text-red-400 px-2 py-1 text-[10px] font-bold">Odstrániť</button>
                       </div>
                     ))}
                   </div>
