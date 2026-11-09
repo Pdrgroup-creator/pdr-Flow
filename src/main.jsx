@@ -1310,6 +1310,14 @@ const fileToBase64 = (file) => {
   "Currency",
   "Währung"
  ],
+ "Opravil": [
+  "Repaired",
+  "Repariert"
+ ],
+ "Zarobil mi": [
+  "My profit",
+  "Mein Verdienst"
+ ],
  "Potvrdiť zmeny": [
   "Confirm changes",
   "Änderungen bestätigen"
@@ -5248,9 +5256,9 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
                           {open && (
                             <div className="border-t border-gray-800 p-2.5 space-y-2 text-xs">
                               <div className="grid grid-cols-3 gap-1.5 text-center">
-                                <div className="bg-gray-950 rounded-lg py-1.5"><div className="text-[9px] text-gray-400 uppercase">Opravil</div><div className="font-black text-white">{mine.length}</div></div>
+                                <div className="bg-gray-950 rounded-lg py-1.5"><div className="text-[9px] text-gray-400 uppercase">{tx("Opravil")}</div><div className="font-black text-white">{mine.length}</div></div>
                                 <div className="bg-gray-950 rounded-lg py-1.5"><div className="text-[9px] text-gray-400 uppercase">{tx("Jeho výplata")}</div><div className="font-black text-emerald-400">{fmtEur(payout)}</div></div>
-                                <div className="bg-gray-950 rounded-lg py-1.5"><div className="text-[9px] text-gray-400 uppercase">Zarobil mi</div><div className="font-black text-sky-400">{fmtEur(comm)}</div></div>
+                                <div className="bg-gray-950 rounded-lg py-1.5"><div className="text-[9px] text-gray-400 uppercase">{tx("Zarobil mi")}</div><div className="font-black text-sky-400">{fmtEur(comm)}</div></div>
                               </div>
                               <div>
                                 <div className="text-[10px] text-gray-400 font-bold uppercase mb-1">{tx("Priradené projekty")}</div>
