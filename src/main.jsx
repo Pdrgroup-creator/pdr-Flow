@@ -1298,9 +1298,21 @@ const fileToBase64 = (file) => {
   "Custom range...",
   "Eigener Zeitraum..."
  ],
- "VIN / ŠPZ / projekt": [
-  "VIN / Plate / project",
-  "FIN / Kennzeichen / Projekt"
+ "VIN / ŠPZ / projekt / č. kalkulácie": [
+  "VIN / Plate / project / calc. no.",
+  "FIN / Kennzeichen / Projekt / Kalk.-Nr."
+ ],
+ "Sadzba v EUR za 1 AW": [
+  "Rate in EUR per 1 AW",
+  "Satz in EUR pro 1 AW"
+ ],
+ "Mena": [
+  "Currency",
+  "Währung"
+ ],
+ "Potvrdiť zmeny": [
+  "Confirm changes",
+  "Änderungen bestätigen"
  ],
  "Hľadať projekt / lokalitu...": [
   "Search project / location...",
@@ -2203,6 +2215,8 @@ const [sentCoopInvites, setSentCoopInvites] = useState([]);
       const [mgrFTech, setMgrFTech] = useState("");
       const [mgrFPeriod, setMgrFPeriod] = useState("all");
       const [mgrQ, setMgrQ] = useState("");
+      const [pendLang, setPendLang] = useState(null);
+      const [pendCurr, setPendCurr] = useState(null);
       const [mgrFProjs, setMgrFProjs] = useState([]);
       const [mgrLocOpen, setMgrLocOpen] = useState(false);
       const [mgrLocQ, setMgrLocQ] = useState("");
@@ -5050,7 +5064,7 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
                             type="number"
                             value={newProjectAwRate}
                             onChange={e => setNewProjectAwRate(e.target.value)}
-                            placeholder="Sadzba v EUR za 1 AW"
+                            placeholder={tx("Sadzba v EUR za 1 AW")}
                             className="w-full bg-gray-950 border border-gray-700 rounded p-1 text-xs text-white font-bold"
                           />
                         </div>
@@ -5282,7 +5296,7 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
                         <option value="year">Tento rok</option>
                         <option value="custom">{tx("Vlastný rozsah...")}</option>
                       </select>
-                      <input value={mgrQ} onChange={e => setMgrQ(e.target.value)} placeholder={tx("VIN / ŠPZ / projekt")} className="bg-gray-900 border border-gray-700 rounded p-1.5 text-xs text-white" />
+                      <input value={mgrQ} onChange={e => setMgrQ(e.target.value)} placeholder={tx("VIN / ŠPZ / projekt / č. kalkulácie")} className="bg-gray-900 border border-gray-700 rounded p-1.5 text-xs text-white" />
                       {mgrFPeriod === "custom" && (
                         <>
                           <label className="text-[10px] text-gray-400">Od<input type="date" value={mgrFrom} onChange={e => setMgrFrom(e.target.value)} className="w-full bg-gray-900 border border-gray-700 rounded p-1.5 text-xs text-white" /></label>
@@ -6109,7 +6123,7 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
                               type="number"
                               value={sheetEditData.aw_rate || ""}
                               onChange={e => setSheetEditData({ ...sheetEditData, aw_rate: e.target.value })}
-                              placeholder="Sadzba za 1 AW"
+                              placeholder={tx("Sadzba v EUR za 1 AW")}
                               className="w-full bg-gray-900 border border-gray-700 rounded p-1 text-xs text-white font-bold"
                             />
                           </div>
@@ -6505,11 +6519,8 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
                   <div>
                     <label className="text-[10px] text-gray-400 font-bold uppercase">{t.languageLabel}</label>
                     <select
-                      value={lang}
-                      onChange={e => {
-                        setLang(e.target.value);
-                        localStorage.setItem("pdr_lang", e.target.value);
-                      }}
+                      value={pendLang || lang}
+                      onChange={e => setPendLang(e.target.value)}
                       className="w-full bg-gray-900 border border-gray-700 rounded p-1 text-xs text-white font-bold"
                     >
                       <option value="SK">Slovenčina</option>
@@ -6518,19 +6529,29 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
                     </select>
                   </div>
                   <div>
-                    <label className="text-[10px] text-gray-400 font-bold uppercase">Mena</label>
+                    <label className="text-[10px] text-gray-400 font-bold uppercase">{tx("Mena")}</label>
                     <select
-                      value={currency}
-                      onChange={e => {
-                        setCurrency(e.target.value);
-                        localStorage.setItem("pdr_curr", e.target.value);
-                      }}
+                      value={pendCurr || currency}
+                      onChange={e => setPendCurr(e.target.value)}
                       className="w-full bg-gray-900 border border-gray-700 rounded p-1 text-xs text-white font-bold"
                     >
                       <option value="EUR">EUR (€)</option>
                       <option value="USD">USD ($)</option>
                     </select>
                   </div>
+                  {((pendLang && pendLang !== lang) || (pendCurr && pendCurr !== currency)) && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (pendLang && pendLang !== lang) { setLang(pendLang); try { localStorage.setItem("pdr_lang", pendLang); } catch (e) {} }
+                        if (pendCurr && pendCurr !== currency) { setCurrency(pendCurr); try { localStorage.setItem("pdr_curr", pendCurr); } catch (e) {} }
+                        setPendLang(null); setPendCurr(null);
+                      }}
+                      className="col-span-2 py-1.5 rounded bg-amber-500 hover:bg-amber-400 text-gray-950 text-xs font-bold"
+                    >
+                      {tx("Potvrdiť zmeny")}
+                    </button>
+                  )}
                 </div>
 
                 <form onSubmit={handlePasswordUpdate} className="space-y-2 pt-2 border-t border-gray-800">
