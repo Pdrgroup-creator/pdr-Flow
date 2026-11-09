@@ -2472,7 +2472,7 @@ const [sentCoopInvites, setSentCoopInvites] = useState([]);
 
       useEffect(() => {
         if (currentUser && currentUser.id) { loadProfileRole(); loadTeam(); loadNames(); }
-        else { setProfileRole(null); setTeamRows([]); setNameMap({}); setMyFirst(""); setMyLast(""); setNameLoaded(false); }
+        else { setProfileRole(null); setTeamRows([]); setNameMap({}); setMyName(""); setNameLoaded(false); }
       }, [currentUser && currentUser.id]);
 
       const loadPartnerships = async () => {
