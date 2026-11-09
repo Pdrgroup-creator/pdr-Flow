@@ -157,13 +157,12 @@ import { createClient } from "@supabase/supabase-js";
         pendingPartnersLabel: "Pending Invites",
         coopRowLabel: "Co-op on vehicle",
         coopBadge: "CO-OP",
-        coopTechShare: "My Share",
+        coopTechShare: "My Profit",
         coopTotalGross: "Total Gross",
         coopParticipants: "Participants",
         noPartnersMsg: "No partners added yet. Invite colleagues using the handshake icon in the header.",
         clientCardTitle: "Client Card",
         locationDetailTitle: "Location Detail",
-        callBtn: "Call",
         navigateBtn: "Navigate in Google Maps ➔",
         closeBtn: "Close",
         editBtn: "Edit",
@@ -192,7 +191,7 @@ import { createClient } from "@supabase/supabase-js";
         selectYear: "Year",
         kpiVehicles: "Vehicles",
         kpiGross: "Invoiced",
-        kpiMyShare: "My Share",
+        kpiMyShare: "My Profit",
         downloadPdfBtn: "Download PDF (A4)",
         downloadCsvBtn: "CSV",
         savingVehicleStatus: "Compressing images & storing records...",
@@ -213,7 +212,6 @@ import { createClient } from "@supabase/supabase-js";
         postalCodePlaceholder: "Postal Code (ZIP)",
         countryPlaceholder: "Search Country (Type 1-2 letters)...",
         contactPersonPlaceholder: "Contact person",
-        phonePlaceholder: "Phone (+49...)",
         icoPlaceholder: "Company ID / VAT ID",
         defaultPdrPercentLabel: "Default % PDR",
         defaultRiPercentLabel: "Default % R&I",
@@ -248,7 +246,7 @@ import { createClient } from "@supabase/supabase-js";
         locationLabel: "Standort / Werkstatt",
         calcNumberLabel: "Kalkulations-Nr. (Kunde)",
         ecv: "Kennzeichen",
-        noEcvCheckbox: "Ohne KZ",
+        noEcvCheckbox: "No Plate",
         vin: "FIN",
         brand: "Marke",
         model: "Modell",
@@ -300,7 +298,6 @@ import { createClient } from "@supabase/supabase-js";
         noPartnersMsg: "Keine Partner vorhanden. Laden Sie Kollegen über das Handschlag-Symbol in der Kopfzeile ein.",
         clientCardTitle: "Kundenkarte",
         locationDetailTitle: "Standort-Detail",
-        callBtn: "Anrufen",
         navigateBtn: "In Google Maps navigieren ➔",
         closeBtn: "Schließen",
         editBtn: "Bearbeiten",
@@ -329,7 +326,7 @@ import { createClient } from "@supabase/supabase-js";
         selectYear: "Jahr",
         kpiVehicles: "Fahrzeuge",
         kpiGross: "Fakturiert",
-        kpiMyShare: "Mein Anteil",
+        kpiMyShare: "Mein Verdienst",
         downloadPdfBtn: "PDF-Aufstellung (A4)",
         downloadCsvBtn: "CSV",
         savingVehicleStatus: "Bilder komprimieren & Datensätze anlegen...",
@@ -350,7 +347,6 @@ import { createClient } from "@supabase/supabase-js";
         postalCodePlaceholder: "Postleitzahl (PLZ)",
         countryPlaceholder: "Land suchen (1-2 Buchstaben tippen)...",
         contactPersonPlaceholder: "Ansprechpartner",
-        phonePlaceholder: "Telefon (+49...)",
         icoPlaceholder: "USt-IdNr. / Steuernummer",
         defaultPdrPercentLabel: "Standard % Dellenreparatur",
         defaultRiPercentLabel: "Standard % Demontage",
@@ -385,7 +381,7 @@ import { createClient } from "@supabase/supabase-js";
         locationLabel: "Projekt / Lokalita / Dielňa",
         calcNumberLabel: "Číslo kalkulácie (Klient)",
         ecv: "ŠPZ / EČV",
-        noEcvCheckbox: "Bez ŠPZ",
+        noEcvCheckbox: "No Plate",
         vin: "VIN kód",
         brand: "Značka",
         model: "Model",
@@ -437,7 +433,6 @@ import { createClient } from "@supabase/supabase-js";
         noPartnersMsg: "Zatiaľ nemáte žiadnych partnerov. Pozvite kolegov cez ikonu podania rúk v hlavičke.",
         clientCardTitle: "Vizitka klienta",
         locationDetailTitle: "Detail projektu / lokality",
-        callBtn: "Vytočiť",
         navigateBtn: "Navigovať v Google Maps ➔",
         closeBtn: "Zavrieť",
         editBtn: "Upraviť",
@@ -487,7 +482,6 @@ import { createClient } from "@supabase/supabase-js";
         postalCodePlaceholder: "PSČ",
         countryPlaceholder: "Hľadať štát (napíš 1-2 písmená)...",
         contactPersonPlaceholder: "Meno kontaktu",
-        phonePlaceholder: "Telefón (+421...)",
         icoPlaceholder: "IČO / UID",
         defaultPdrPercentLabel: "Predvolené % PDR",
         defaultRiPercentLabel: "Predvolené % R&I",
@@ -513,15 +507,6 @@ import { createClient } from "@supabase/supabase-js";
       SK: ["Január", "Február", "Marec", "Apríl", "Máj", "Jún", "Júl", "August", "September", "Október", "November", "December"]
     };
     // Filtre reťazcov bez medzier s presným orezaním dĺžky
-    const sanitizePhone = (val) => {
-      if (!val) return "";
-      let cleaned = val.replace(/[^\d+]/g, "");
-      if (cleaned.indexOf("+") > 0) {
-        cleaned = cleaned.charAt(0) === "+" ? "+" + cleaned.slice(1).replace(/\+/g, "") : cleaned.replace(/\+/g, "");
-      }
-      return cleaned.slice(0, 16);
-    };
-
     const sanitizePostalCode = (val) => {
       if (!val) return "";
       return val.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 8);
@@ -556,9 +541,9 @@ import { createClient } from "@supabase/supabase-js";
     // Upozornenie pri VIN: dĺžka, neznámy výrobca (prvé 3 znaky), písmená v sériovom čísle na konci
     const vinWarning = (v) => {
       if (!v) return "";
-      if (v.length < 17) return "VIN má " + v.length + " z 17 znakov - skontroluj podľa fotky";
-      if (!WMI_MAP[v.substring(0, 3)]) return "Neznámy výrobca (prvé 3 znaky) - skontroluj VIN podľa fotky";
-      if (/[A-Z]/.test(v.substring(12))) return "Posledné znaky VIN bývajú číslice - skontroluj podľa fotky";
+      if (v.length < 17) return tx("VIN má ") + v.length + tx(" z 17 znakov - skontroluj podľa fotky");
+      if (!WMI_MAP[v.substring(0, 3)]) return tx("Neznámy výrobca (prvé 3 znaky) - skontroluj VIN podľa fotky");
+      if (/[A-Z]/.test(v.substring(12))) return tx("Posledné znaky VIN bývajú číslice - skontroluj podľa fotky");
       return "";
     };
 
@@ -917,11 +902,851 @@ const fileToBase64 = (file) => {
     const isNetErr = (e) => navigator.onLine === false || /failed to fetch|networkerror|network request failed|load failed|network error/i.test(String((e && (e.message || e.name)) || e || ""));
     const newUuid = () => (window.crypto && crypto.randomUUID ? crypto.randomUUID() : "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => { const r = (Math.random() * 16) | 0; return (c === "x" ? r : (r & 3) | 8).toString(16); }));
 
+    // Preklady pevných textov: kľúč = slovenský text, hodnota = [EN, DE]
+    let CUR_LANG = "SK";
+    const TX = {
+ "Ochrana údajov: do aplikácie ukladáš len svoje pracovné údaje (autá, ceny, fotky). Za nahrané údaje zodpovedáš ty. VIN ani ŠPZ nie sú spojené s menom majiteľa a telefónne čísla zákazníkov neukladáme. Svoje záznamy môžeš kedykoľvek zmazať; zmazanie účtu a všetkých údajov vybavíme na požiadanie.": ["Privacy: the app stores only your work data (cars, prices, photos). You are responsible for the data you upload. VIN and plate numbers are not linked to the owner's name, and we do not store customer phone numbers. You can delete your records at any time; deleting your account and all data is done on request.", "Datenschutz: Die App speichert nur deine Arbeitsdaten (Autos, Preise, Fotos). Für hochgeladene Daten bist du selbst verantwortlich. FIN und Kennzeichen sind nicht mit dem Namen des Halters verknüpft, Telefonnummern von Kunden speichern wir nicht. Du kannst deine Einträge jederzeit löschen; die Löschung von Konto und allen Daten erfolgt auf Anfrage."],
+ "VIN má ": [
+  "VIN has ",
+  "FIN hat "
+ ],
+ " z 17 znakov - skontroluj podľa fotky": [
+  " of 17 characters - check against the photo",
+  " von 17 Zeichen - bitte mit dem Foto prüfen"
+ ],
+ "Neznámy výrobca (prvé 3 znaky) - skontroluj VIN podľa fotky": [
+  "Unknown manufacturer (first 3 characters) - check VIN against the photo",
+  "Unbekannter Hersteller (erste 3 Zeichen) - FIN mit dem Foto prüfen"
+ ],
+ "Posledné znaky VIN bývajú číslice - skontroluj podľa fotky": [
+  "The last VIN characters are usually digits - check against the photo",
+  "Die letzten FIN-Zeichen sind meist Ziffern - bitte mit dem Foto prüfen"
+ ],
+ "Zahodiť tento záznam aj s fotkami?": [
+  "Discard this record including photos?",
+  "Diesen Eintrag samt Fotos verwerfen?"
+ ],
+ "Dôvod zmeny je povinný.": [
+  "Reason for the change is required.",
+  "Änderungsgrund ist erforderlich."
+ ],
+ "Obnoviť auto ": [
+  "Restore car ",
+  "Auto wiederherstellen "
+ ],
+ "Stornovať auto ": [
+  "Cancel car ",
+  "Auto stornieren "
+ ],
+ "Nová cena PDR:": [
+  "New PDR price:",
+  "Neuer PDR-Preis:"
+ ],
+ "Nová cena R&I:": [
+  "New R&I price:",
+  "Neuer R&I-Preis:"
+ ],
+ "Neplatná suma.": [
+  "Invalid amount.",
+  "Ungültiger Betrag."
+ ],
+ "Zmena ceny – technici ju uvidia v histórii zmien.": [
+  "Price change – technicians will see it in the change history.",
+  "Preisänderung – Techniker sehen sie im Änderungsverlauf."
+ ],
+ "Auto archivované": [
+  "Car archived",
+  "Auto archiviert"
+ ],
+ "Auto vrátené z archívu": [
+  "Car restored from archive",
+  "Auto aus Archiv zurückgeholt"
+ ],
+ "Auto stornované": [
+  "Car cancelled",
+  "Auto storniert"
+ ],
+ "Auto obnovené zo storna": [
+  "Car restored from cancellation",
+  "Auto aus Storno wiederhergestellt"
+ ],
+ "Auto uzavreté": [
+  "Car closed",
+  "Auto abgeschlossen"
+ ],
+ "Auto odomknuté": [
+  "Car unlocked",
+  "Auto entsperrt"
+ ],
+ "Stav: ": [
+  "Status: ",
+  "Status: "
+ ],
+ "Pridaný CO-OP: ": [
+  "CO-OP added: ",
+  "CO-OP hinzugefügt: "
+ ],
+ "Odobraný CO-OP: ": [
+  "CO-OP removed: ",
+  "CO-OP entfernt: "
+ ],
+ "Cena PDR: ": [
+  "PDR price: ",
+  "PDR-Preis: "
+ ],
+ "Cena R&I: ": [
+  "R&I price: ",
+  "R&I-Preis: "
+ ],
+ "% technika PDR: ": [
+  "Technician % PDR: ",
+  "Techniker % PDR: "
+ ],
+ "% technika R&I: ": [
+  "Technician % R&I: ",
+  "Techniker % R&I: "
+ ],
+ "Provízia: ": [
+  "Commission: ",
+  "Provision: "
+ ],
+ "Provízia manažéra (PDR / R&I): ": [
+  "Manager commission (PDR / R&I): ",
+  "Manager-Provision (PDR / R&I): "
+ ],
+ "Podiel CO-OP (": [
+  "CO-OP share (",
+  "CO-OP-Anteil ("
+ ],
+ "Archivovať toto auto? Zmizne zo zoznamu, no zostane vo všetkých súčtoch a reportoch.": [
+  "Archive this car? It disappears from the list but stays in all totals and reports.",
+  "Dieses Auto archivieren? Es verschwindet aus der Liste, bleibt aber in allen Summen und Berichten."
+ ],
+ "Vrátiť auto z archívu?": [
+  "Restore car from archive?",
+  "Auto aus dem Archiv zurückholen?"
+ ],
+ "Datum": [
+  "Date",
+  "Datum"
+ ],
+ "Klient": [
+  "Client",
+  "Kunde"
+ ],
+ "Zakazka": [
+  "Job",
+  "Auftrag"
+ ],
+ "Obrat": [
+  "Revenue",
+  "Umsatz"
+ ],
+ "Vyplata technikov": [
+  "Technician payout",
+  "Auszahlung Techniker"
+ ],
+ "Moja provizia": [
+  "My commission",
+  "Meine Provision"
+ ],
+ "Nepodarilo sa uložiť: ": [
+  "Could not save: ",
+  "Speichern fehlgeschlagen: "
+ ],
+ "Tento technik už je pozvaný.": [
+  "This technician is already invited.",
+  "Dieser Techniker ist bereits eingeladen."
+ ],
+ "Pozvánka odoslaná.": [
+  "Invitation sent.",
+  "Einladung gesendet."
+ ],
+ "Pozvánka prijatá.": [
+  "Invitation accepted.",
+  "Einladung angenommen."
+ ],
+ "Provízia sa neuložila: ": [
+  "Commission was not saved: ",
+  "Provision wurde nicht gespeichert: "
+ ],
+ "Chyba pri obnove označených partnerov:": [
+  "Error restoring selected partners:",
+  "Fehler beim Wiederherstellen der Partner:"
+ ],
+ "Chyba načítania partnerstiev:": [
+  "Error loading partnerships:",
+  "Fehler beim Laden der Partnerschaften:"
+ ],
+ "Naozaj chcete zrušiť túto spoluprácu / pozvánku?": [
+  "Really cancel this collaboration / invitation?",
+  "Diese Zusammenarbeit / Einladung wirklich beenden?"
+ ],
+ "Chyba pri rušení spolupráce: ": [
+  "Error cancelling collaboration: ",
+  "Fehler beim Beenden der Zusammenarbeit: "
+ ],
+ "Vozidlo s týmto VIN už existuje v systéme!": [
+  "A vehicle with this VIN already exists in the system!",
+  "Ein Fahrzeug mit dieser FIN existiert bereits im System!"
+ ],
+ "Chyba zápisu kooperácie:": [
+  "Error saving collaboration:",
+  "Fehler beim Speichern der Zusammenarbeit:"
+ ],
+ "Auto bolo uložené, ALE spolupráca (CO-OP) sa nezapísala, preto ju kolega neuvidí.": [
+  "The car was saved, BUT the collaboration (CO-OP) was not saved, so your colleague will not see it.",
+  "Das Auto wurde gespeichert, ABER die Zusammenarbeit (CO-OP) nicht – der Kollege sieht es nicht."
+ ],
+ "Chyba pri zmene zámku: ": [
+  "Error changing lock: ",
+  "Fehler beim Ändern der Sperre: "
+ ],
+ "Zmena ceny na aute s viacerými používateľmi.": [
+  "Price change on a car with multiple users.",
+  "Preisänderung bei einem Auto mit mehreren Benutzern."
+ ],
+ "Chyba pri ukladaní zmien: ": [
+  "Error saving changes: ",
+  "Fehler beim Speichern der Änderungen: "
+ ],
+ "Tím": [
+  "Team",
+  "Team"
+ ],
+ "Technik": [
+  "Technician",
+  "Techniker"
+ ],
+ "Manažér": [
+  "Manager",
+  "Manager"
+ ],
+ "Klienti": [
+  "Clients",
+  "Kunden"
+ ],
+ "Projekty / Lokality": [
+  "Projects / Locations",
+  "Projekte / Standorte"
+ ],
+ "Report": [
+  "Report",
+  "Bericht"
+ ],
+ "Prehľad": [
+  "Overview",
+  "Übersicht"
+ ],
+ "Hľadať klienta alebo lokalitu...": [
+  "Search client or location...",
+  "Kunde oder Standort suchen..."
+ ],
+ "Nič sa nenašlo": [
+  "Nothing found",
+  "Nichts gefunden"
+ ],
+ "napr. 2026/001 alebo číslo zákazky": [
+  "e.g. 2026/001 or job number",
+  "z. B. 2026/001 oder Auftragsnummer"
+ ],
+ "(Kategória)": [
+  "(Category)",
+  "(Kategorie)"
+ ],
+ "AW (Počet)": [
+  "AW (Count)",
+  "AW (Anzahl)"
+ ],
+ "Spolupráca na zákazke:": [
+  "Collaboration on this job:",
+  "Zusammenarbeit am Auftrag:"
+ ],
+ "Iba ja (100%)": [
+  "Only me (100%)",
+  "Nur ich (100%)"
+ ],
+ "Rovným dielom (": [
+  "Split equally (",
+  "Zu gleichen Teilen ("
+ ],
+ "Môj podiel (": [
+  "My profit (",
+  "Mein Verdienst ("
+ ],
+ "Hľadať klienta, mesto, IČO alebo lokalitu...": [
+  "Search client, city, company ID or location...",
+  "Kunde, Stadt, USt-IdNr. oder Standort suchen..."
+ ],
+ "Provízia manažéra PDR (%)": [
+  "Manager commission PDR (%)",
+  "Manager-Provision PDR (%)"
+ ],
+ "Provízia manažéra R&I (%)": [
+  "Manager commission R&I (%)",
+  "Manager-Provision R&I (%)"
+ ],
+ "Názov dielne (napr. Opel Paríž)": [
+  "Shop name (e.g. Opel Paris)",
+  "Werkstattname (z. B. Opel Paris)"
+ ],
+ "Podľa klienta": [
+  "By client",
+  "Nach Kunde"
+ ],
+ "Voľná / AW": [
+  "Free / AW",
+  "Frei / AW"
+ ],
+ "Fixná": [
+  "Fixed",
+  "Fix"
+ ],
+ "Kategórie": [
+  "Categories",
+  "Kategorien"
+ ],
+ "Fixná cena za auto": [
+  "Fixed price per car",
+  "Festpreis pro Auto"
+ ],
+ "Cena ďalšej Cat v EUR": [
+  "Price of next Cat in EUR",
+  "Preis weitere Cat in EUR"
+ ],
+ "Manažér: ": [
+  "Manager: ",
+  "Manager: "
+ ],
+ "Zdieľané od kolegu": [
+  "Shared by colleague",
+  "Vom Kollegen geteilt"
+ ],
+ "Detail klienta": [
+  "Client detail",
+  "Kundendetails"
+ ],
+ "AW / Voľná": [
+  "AW / Free",
+  "AW / Frei"
+ ],
+ "Zatiaľ nemáš v tíme žiadneho technika. Pozvi ho cez ikonu Tím v hlavičke.": [
+  "You have no technician in your team yet. Invite one via the Team icon in the header.",
+  "Du hast noch keinen Techniker im Team. Lade einen über das Team-Symbol in der Kopfzeile ein."
+ ],
+ "áut": [
+  "cars",
+  "Autos"
+ ],
+ "Jeho výplata": [
+  "His payout",
+  "Seine Auszahlung"
+ ],
+ "Priradené projekty": [
+  "Assigned projects",
+  "Zugewiesene Projekte"
+ ],
+ "Žiadne": [
+  "None",
+  "Keine"
+ ],
+ "Zárobok podľa projektu": [
+  "Earnings by project",
+  "Verdienst je Projekt"
+ ],
+ "Zatiaľ žiadne autá": [
+  "No cars yet",
+  "Noch keine Autos"
+ ],
+ "Zobraziť jeho autá": [
+  "Show his cars",
+  "Seine Autos anzeigen"
+ ],
+ "Všetci klienti": [
+  "All clients",
+  "Alle Kunden"
+ ],
+ "Všetci technici": [
+  "All technicians",
+  "Alle Techniker"
+ ],
+ "Celé obdobie": [
+  "Whole period",
+  "Gesamter Zeitraum"
+ ],
+ "Tento týždeň": [
+  "This week",
+  "Diese Woche"
+ ],
+ "Minulý týždeň": [
+  "Last week",
+  "Letzte Woche"
+ ],
+ "Posledných 30 dní": [
+  "Last 30 days",
+  "Letzte 30 Tage"
+ ],
+ "Minulý mesiac": [
+  "Last month",
+  "Letzter Monat"
+ ],
+ "Tento štvrťrok": [
+  "This quarter",
+  "Dieses Quartal"
+ ],
+ "Vlastný rozsah...": [
+  "Custom range...",
+  "Eigener Zeitraum..."
+ ],
+ "VIN / ŠPZ / projekt": [
+  "VIN / Plate / project",
+  "FIN / Kennzeichen / Projekt"
+ ],
+ "Hľadať projekt / lokalitu...": [
+  "Search project / location...",
+  "Projekt / Standort suchen..."
+ ],
+ "Projekty / Lokality:": [
+  "Projects / Locations:",
+  "Projekte / Standorte:"
+ ],
+ " vybraných": [
+  " selected",
+  " ausgewählt"
+ ],
+ "všetky": [
+  "all",
+  "alle"
+ ],
+ "Zrušiť výber": [
+  "Clear selection",
+  "Auswahl aufheben"
+ ],
+ "Autá": [
+  "Cars",
+  "Autos"
+ ],
+ "Provízia": [
+  "Commission",
+  "Provision"
+ ],
+ "Žiadne autá podľa filtra.": [
+  "No cars match the filter.",
+  "Keine Autos für diesen Filter."
+ ],
+ "Skryť archív": [
+  "Hide archive",
+  "Archiv ausblenden"
+ ],
+ "Zobraziť archív (": [
+  "Show archive (",
+  "Archiv anzeigen ("
+ ],
+ "ARCHÍV": [
+  "ARCHIVE",
+  "ARCHIV"
+ ],
+ "• technik(ci):": [
+  "• technician(s):",
+  "• Techniker:"
+ ],
+ "História": [
+  "History",
+  "Verlauf"
+ ],
+ "Zmeniť cenu": [
+  "Change price",
+  "Preis ändern"
+ ],
+ "Obnoviť": [
+  "Restore",
+  "Wiederherstellen"
+ ],
+ "Stornovať": [
+  "Cancel",
+  "Stornieren"
+ ],
+ "Z archívu": [
+  "From archive",
+  "Aus Archiv"
+ ],
+ "Archivovať": [
+  "Archive",
+  "Archivieren"
+ ],
+ "Môj podiel": [
+  "My profit",
+  "Mein Verdienst"
+ ],
+ "Uzavreté": [
+  "Closed",
+  "Abgeschlossen"
+ ],
+ "Aktuálny týždeň": [
+  "Current week",
+  "Aktuelle Woche"
+ ],
+ "Všetky stavy": [
+  "All statuses",
+  "Alle Status"
+ ],
+ "Otvorené": [
+  "Open",
+  "Offen"
+ ],
+ "Lokácia": [
+  "Location",
+  "Standort"
+ ],
+ "Zmena od iného používateľa": [
+  "Change by another user",
+  "Änderung durch anderen Benutzer"
+ ],
+ "Cena ?": [
+  "Price ?",
+  "Preis ?"
+ ],
+ "Uzavreté (kliknutím odomknete)": [
+  "Closed (tap to unlock)",
+  "Abgeschlossen (antippen zum Entsperren)"
+ ],
+ "Otvorené (kliknutím uzamknete)": [
+  "Open (tap to lock)",
+  "Offen (antippen zum Sperren)"
+ ],
+ "Cena neznáma": [
+  "Price unknown",
+  "Preis unbekannt"
+ ],
+ "História zmien": [
+  "Change history",
+  "Änderungsverlauf"
+ ],
+ "Zatiaľ žiadne zmeny.": [
+  "No changes yet.",
+  "Noch keine Änderungen."
+ ],
+ "Dôvod:": [
+  "Reason:",
+  "Grund:"
+ ],
+ "Uzamknuté": [
+  "Locked",
+  "Gesperrt"
+ ],
+ "ŠPZ:": [
+  "Plate:",
+  "Kennzeichen:"
+ ],
+ "Dátum:": [
+  "Date:",
+  "Datum:"
+ ],
+ "Číslo kalkulácie:": [
+  "Calculation no.:",
+  "Kalkulationsnr.:"
+ ],
+ "PDR Cena (100%):": [
+  "PDR price (100%):",
+  "PDR-Preis (100%):"
+ ],
+ "R&I Cena (100%):": [
+  "R&I price (100%):",
+  "R&I-Preis (100%):"
+ ],
+ "Auto je stornované – nezapočítava sa do súčtov a reportov.": [
+  "Car is cancelled – not counted in totals and reports.",
+  "Auto ist storniert – wird in Summen und Berichten nicht berücksichtigt."
+ ],
+ "Auto je v archíve, lebo jeho projekt / lokalita je archivovaná.": [
+  "Car is archived because its project / location is archived.",
+  "Auto ist archiviert, da sein Projekt / Standort archiviert ist."
+ ],
+ "Auto je v archíve automaticky (uzavreté, staršie ako minulý rok).": [
+  "Car is archived automatically (closed, older than last year).",
+  "Auto ist automatisch archiviert (abgeschlossen, älter als letztes Jahr)."
+ ],
+ "Vrátiť z archívu": [
+  "Restore from archive",
+  "Aus Archiv zurückholen"
+ ],
+ "Archivovať auto": [
+  "Archive car",
+  "Auto archivieren"
+ ],
+ "Obnoviť auto": [
+  "Restore car",
+  "Auto wiederherstellen"
+ ],
+ "Stornovať auto": [
+  "Cancel car",
+  "Auto stornieren"
+ ],
+ "Názov": [
+  "Name",
+  "Name"
+ ],
+ "Fixná cena": [
+  "Fixed price",
+  "Festpreis"
+ ],
+ "Cena novej Cat v EUR": [
+  "Price of new Cat in EUR",
+  "Preis neue Cat in EUR"
+ ],
+ "IČO / UID:": [
+  "Company ID / VAT ID:",
+  "USt-IdNr.:"
+ ],
+ "Provízia manažéra: PDR": [
+  "Manager commission: PDR",
+  "Manager-Provision: PDR"
+ ],
+ "Technici na projekte": [
+  "Technicians on project",
+  "Techniker im Projekt"
+ ],
+ "Najprv pozvite technikov do tímu (ikona Tím).": [
+  "First invite technicians to your team (Team icon).",
+  "Lade zuerst Techniker ins Team ein (Team-Symbol)."
+ ],
+ "Provízia PDR % (prázdne =": [
+  "Commission PDR % (empty =",
+  "Provision PDR % (leer ="
+ ],
+ "Provízia R&I % (prázdne =": [
+  "Commission R&I % (empty =",
+  "Provision R&I % (leer ="
+ ],
+ "Pozvánky do tímu:": [
+  "Team invitations:",
+  "Team-Einladungen:"
+ ],
+ "Prijať": [
+  "Accept",
+  "Annehmen"
+ ],
+ "Odmietnuť": [
+  "Decline",
+  "Ablehnen"
+ ],
+ "Moji manažéri:": [
+  "My managers:",
+  "Meine Manager:"
+ ],
+ "Opustiť tento tím? Stratíte prístup k jeho projektom.": [
+  "Leave this team? You will lose access to its projects.",
+  "Dieses Team verlassen? Du verlierst den Zugriff auf seine Projekte."
+ ],
+ "Opustiť": [
+  "Leave",
+  "Verlassen"
+ ],
+ "Pozvať technika do tímu": [
+  "Invite technician to team",
+  "Techniker ins Team einladen"
+ ],
+ "Pozvať": [
+  "Invite",
+  "Einladen"
+ ],
+ "Môj tím:": [
+  "My team:",
+  "Mein Team:"
+ ],
+ "Zatiaľ žiadni technici.": [
+  "No technicians yet.",
+  "Noch keine Techniker."
+ ],
+ "V tíme": [
+  "In team",
+  "Im Team"
+ ],
+ "Čaká na prijatie": [
+  "Pending",
+  "Ausstehend"
+ ],
+ "Odstrániť technika z tímu? Zmizne mu aj priradenie k vašim projektom.": [
+  "Remove technician from team? His assignment to your projects disappears too.",
+  "Techniker aus dem Team entfernen? Auch seine Zuweisung zu deinen Projekten entfällt."
+ ],
+ "Odstrániť": [
+  "Remove",
+  "Entfernen"
+ ],
+ "Zatiaľ nie ste v žiadnom tíme. Pozvánku vám pošle manažér na váš e-mail.": [
+  "You are not in any team yet. A manager will send you an invitation by e-mail.",
+  "Du bist noch in keinem Team. Ein Manager schickt dir eine Einladung per E-Mail."
+ ],
+ "Prijaté pozvánky": [
+  "Received invitations",
+  "Erhaltene Einladungen"
+ ],
+ "Odoslané pozvánky:": [
+  "Sent invitations:",
+  "Gesendete Einladungen:"
+ ],
+ "Zrušiť": [
+  "Cancel",
+  "Abbrechen"
+ ],
+ "Ukončiť spoluprácu": [
+  "End collaboration",
+  "Zusammenarbeit beenden"
+ ],
+ "Odpojiť": [
+  "Disconnect",
+  "Trennen"
+ ],
+ "Používateľské meno uvidia len ľudia, s ktorými spolupracuješ (CO-OP partneri, manažér, tvoj tím), namiesto e-mailu. Nepíš sem celé meno, stačí prezývka.": [
+  "Only people you work with (CO-OP partners, manager, your team) see your user name instead of your e-mail. No need for your real name – a nickname is enough.",
+  "Nur Personen, mit denen du zusammenarbeitest (CO-OP-Partner, Manager, dein Team), sehen deinen Benutzernamen statt der E-Mail. Ein Spitzname genügt, kein echter Name nötig."
+ ],
+ "Ukladám...": [
+  "Saving...",
+  "Speichere..."
+ ],
+ "Uložiť": [
+  "Save",
+  "Speichern"
+ ],
+ "Prihlásený email:": [
+  "Signed in as:",
+  "Angemeldet als:"
+ ],
+ "— nezadané —": [
+  "— not set —",
+  "— nicht gesetzt —"
+ ],
+ "Zmeniť": [
+  "Change",
+  "Ändern"
+ ],
+ "Nové heslo": [
+  "New password",
+  "Neues Passwort"
+ ],
+ "Technici": [
+  "Technicians",
+  "Techniker"
+ ],
+ "Auto": [
+  "Car",
+  "Auto"
+ ],
+ " technici)": [
+  " technicians)",
+  " Techniker)"
+ ],
+ " záznam(ov) odoslaných na server": [
+  " record(s) sent to server",
+  " Datensätze an den Server gesendet"
+ ],
+ "Zadajte platný e-mail kolegu.": [
+  "Enter a valid email.",
+  "Gültige E-Mail des Kollegen eingeben."
+ ],
+ "Pozvánka odoslaná!": [
+  "Invitation sent!",
+  "Einladung gesendet!"
+ ],
+ "Tento e-mail je už zaregistrovaný.": [
+  "This email is already registered.",
+  "Diese E-Mail ist bereits registriert."
+ ],
+ "Slabý signál, opakujem nahrávanie fotky… (": [
+  "Weak signal, retrying upload… (",
+  "Schwaches Signal, Foto-Upload wird wiederholt… ("
+ ],
+ "Vyberte najprv platného Klienta a Lokáciu.": [
+  "Please select Client and Location.",
+  "Bitte zuerst Kunde und Standort wählen."
+ ],
+ "Bez signálu: záznam je uložený v zariadení a odošle sa automaticky po pripojení.": [
+  "No signal: record saved on this device and will be sent automatically.",
+  "Kein Signal: Eintrag auf dem Gerät gespeichert und wird automatisch gesendet."
+ ],
+ "Klient úspešne pridaný!": [
+  "Client added successfully!",
+  "Kunde erfolgreich hinzugefügt!"
+ ],
+ "Lokácia úspešne pridaná!": [
+  "Location added successfully!",
+  "Standort erfolgreich hinzugefügt!"
+ ],
+ "Zadajte platnú sumu.": [
+  "Enter a valid amount.",
+  "Gültigen Betrag eingeben."
+ ],
+ "Cena bola úspešne doplnená!": [
+  "Price updated!",
+  "Preis aktualisiert!"
+ ],
+ "Zadajte platnú cenu kategórie.": [
+  "Enter a valid category price.",
+  "Gültigen Kategoriepreis eingeben."
+ ],
+ "Čaká na odoslanie: ": [
+  "Waiting to send: ",
+  "Wartet auf Senden: "
+ ],
+ "Odoslať teraz": [
+  "Send now",
+  "Jetzt senden"
+ ],
+ "zahodiť": [
+  "discard",
+  "verwerfen"
+ ],
+ "čaká": [
+  "waiting",
+  "wartet"
+ ],
+ "Zobraziť archív": [
+  "Show archive",
+  "Archiv anzeigen"
+ ],
+ "Nový Klient (Firma)": [
+  "New client (company)",
+  "Neuer Kunde (Firma)"
+ ],
+ "Nová Lokácia / Dielňa": [
+  "New location / shop",
+  "Neuer Standort / Werkstatt"
+ ],
+ "Projekty / Lokality: ": [
+  "Locations: ",
+  "Standorte: "
+ ],
+ "Žiadne lokácie": [
+  "No locations",
+  "Keine Standorte"
+ ],
+ "Nahrať z galérie": [
+  "Scan from gallery",
+  "Aus Galerie scannen"
+ ],
+ "Registrácia prebehla. Potvrďte ju odkazom, ktorý sme poslali na váš e-mail, a potom sa prihláste.": [
+  "Registration successful. Confirm it via the link we sent to your email, then sign in.",
+  "Registrierung erfolgreich. Bitte bestätigen Sie sie über den Link in Ihrer E-Mail und melden Sie sich dann an."
+ ],
+ "Zadajte platný VIN kód (17 znakov, bez písmen I, O, Q).": [
+  "Enter a valid VIN (17 characters, no I, O, Q).",
+  "Bitte eine gültige FIN eingeben (17 Zeichen, ohne I, O, Q)."
+ ]
+};
+    function tx(sk) {
+      const r = TX[sk];
+      if (!r) return sk;
+      return CUR_LANG === "EN" ? r[0] : (CUR_LANG === "DE" ? r[1] : sk);
+    }
+
     function App() {
       const [lang, setLang] = useState(() => localStorage.getItem("pdr_lang") || "SK");
       const [currency, setCurrency] = useState(() => localStorage.getItem("pdr_curr") || "EUR");
       const currSymbol = currency === "EUR" ? "€" : "$";
       const t = TRANSLATIONS[lang] || TRANSLATIONS.SK;
+      CUR_LANG = lang;
 
       const [currentUser, setCurrentUser] = useState(null);
       const [loadingUser, setLoadingUser] = useState(true);
@@ -946,12 +1771,10 @@ const fileToBase64 = (file) => {
       const [showTeamModal, setShowTeamModal] = useState(false);
       const [profileRole, setProfileRole] = useState(null);
       const [nameMap, setNameMap] = useState({});
-      const [myFirst, setMyFirst] = useState("");
-      const [myLast, setMyLast] = useState("");
+      const [myName, setMyName] = useState("");
       const [nameLoaded, setNameLoaded] = useState(false);
       const [showNameModal, setShowNameModal] = useState(false);
-      const [nameFirstIn, setNameFirstIn] = useState("");
-      const [nameLastIn, setNameLastIn] = useState("");
+      const [nameIn, setNameIn] = useState("");
       const [nameSaving, setNameSaving] = useState(false);
       const [nameErr, setNameErr] = useState("");
       const [teamRows, setTeamRows] = useState([]);
@@ -1000,7 +1823,6 @@ const [sentCoopInvites, setSentCoopInvites] = useState([]);
       const [newClientCity, setNewClientCity] = useState("");
       const [newClientPostalCode, setNewClientPostalCode] = useState("");
       const [newClientContactPerson, setNewClientContactPerson] = useState("");
-      const [newClientPhone, setNewClientPhone] = useState("+49");
       const [newClientIco, setNewClientIco] = useState("");
       const [newClientDefaultPdr, setNewClientDefaultPdr] = useState("");
       const [newClientDefaultRi, setNewClientDefaultRi] = useState("");
@@ -1016,7 +1838,6 @@ const [sentCoopInvites, setSentCoopInvites] = useState([]);
       const [newProjectCity, setNewProjectCity] = useState("");
       const [newProjectPostalCode, setNewProjectPostalCode] = useState("");
       const [newProjectContactPerson, setNewProjectContactPerson] = useState("");
-      const [newProjectPhone, setNewProjectPhone] = useState("+49");
       const [newProjectPricingMode, setNewProjectPricingMode] = useState("free");
       const [newProjectFixedPrice, setNewProjectFixedPrice] = useState("");
       const [projectCategoriesList, setProjectCategoriesList] = useState([]);
@@ -1164,7 +1985,7 @@ const [sentCoopInvites, setSentCoopInvites] = useState([]);
       };
 
       const discardPending = async (id) => {
-        if (!window.confirm("Zahodiť tento záznam aj s fotkami?")) return;
+        if (!window.confirm(tx("Zahodiť tento záznam aj s fotkami?"))) return;
         try { await pdrQueueDelete(id); } catch (e) {}
         await refreshPending();
       };
@@ -1217,7 +2038,7 @@ const [sentCoopInvites, setSentCoopInvites] = useState([]);
         }
         await refreshPending();
         if (sent > 0) {
-          setPendingMsg(sent + (lang === "SK" ? " záznam(ov) odoslaných na server" : " record(s) sent to server"));
+          setPendingMsg(sent + (tx(" záznam(ov) odoslaných na server")));
           loadData();
           setTimeout(() => setPendingMsg(""), 8000);
         }
@@ -1272,7 +2093,7 @@ const [sentCoopInvites, setSentCoopInvites] = useState([]);
         const r = window.prompt(what + "\n\nDôvod zmeny (povinný):", "");
         if (r === null) return null;
         const s = r.trim();
-        if (!s) { alert("Dôvod zmeny je povinný."); return null; }
+        if (!s) { alert(tx("Dôvod zmeny je povinný.")); return null; }
         return s;
       };
       const patchVehLocal = (id, patch) => {
@@ -1281,7 +2102,7 @@ const [sentCoopInvites, setSentCoopInvites] = useState([]);
         setSelectedVehicleDetail(prev => (prev && prev.id === id) ? { ...prev, ...patch } : prev);
       };
       const doStorno = async (v, restore) => {
-        const label = (restore ? "Obnoviť auto " : "Stornovať auto ") + (v.brand || "") + " " + (v.model || "") + " " + (v.ecv || "");
+        const label = (restore ? tx("Obnoviť auto ") : tx("Stornovať auto ")) + (v.brand || "") + " " + (v.model || "") + " " + (v.ecv || "");
         const reason = askReason(label);
         if (!reason) return;
         const next = restore ? (v.is_price_pending ? "pending_price" : "completed") : "cancelled";
@@ -1295,14 +2116,14 @@ const [sentCoopInvites, setSentCoopInvites] = useState([]);
         }
       };
       const mgrSetPrice = async (v) => {
-        const np = window.prompt("Nová cena PDR:", String(v.price || 0));
+        const np = window.prompt(tx("Nová cena PDR:"), String(v.price || 0));
         if (np === null) return;
-        const nr = window.prompt("Nová cena R&I:", String(v.ri_price || 0));
+        const nr = window.prompt(tx("Nová cena R&I:"), String(v.ri_price || 0));
         if (nr === null) return;
         const p = parseFloat(String(np).replace(",", ".")), r = parseFloat(String(nr).replace(",", "."));
-        if (isNaN(p) || isNaN(r) || p < 0 || r < 0) { alert("Neplatná suma."); return; }
+        if (isNaN(p) || isNaN(r) || p < 0 || r < 0) { alert(tx("Neplatná suma.")); return; }
         if (p === (parseFloat(v.price) || 0) && r === (parseFloat(v.ri_price) || 0)) return;
-        const reason = askReason("Zmena ceny – technici ju uvidia v histórii zmien.");
+        const reason = askReason(tx("Zmena ceny – technici ju uvidia v histórii zmien."));
         if (!reason) return;
         const patch = { price: p, ri_price: r, price_changed_by_manager: true, original_price: v.original_price != null ? v.original_price : v.price };
         try {
@@ -1318,21 +2139,21 @@ const [sentCoopInvites, setSentCoopInvites] = useState([]);
         const cs = (x) => (x === null || x === undefined || x === "") ? "—" : x;
         const arrow = (o, n, u) => cs(o) + (u || "") + " → " + cs(n) + (u || "");
         const f = r.field || "";
-        if (r.kind === "archive") return "Auto archivované";
-        if (r.kind === "unarchive") return "Auto vrátené z archívu";
-        if (r.kind === "storno") return "Auto stornované";
-        if (r.kind === "restore") return "Auto obnovené zo storna";
-        if (r.kind === "lock") return "Auto uzavreté";
-        if (r.kind === "unlock") return "Auto odomknuté";
-        if (r.kind === "status") return "Stav: " + arrow(r.old_value, r.new_value);
-        if (r.kind === "coop") return (f === "coop_added" ? "Pridaný CO-OP: " + cs(r.new_value) : "Odobraný CO-OP: " + cs(r.old_value));
-        if (f === "price") return "Cena PDR: " + arrow(r.old_value, r.new_value, " " + currSymbol);
-        if (f === "ri_price") return "Cena R&I: " + arrow(r.old_value, r.new_value, " " + currSymbol);
-        if (f === "tech_pdr_percent") return "% technika PDR: " + arrow(r.old_value, r.new_value, " %");
-        if (f === "tech_ri_percent") return "% technika R&I: " + arrow(r.old_value, r.new_value, " %");
-        if (f === "tech_commission_percent") return "Provízia: " + arrow(r.old_value, r.new_value, " %");
-        if (f === "commission") return "Provízia manažéra (PDR / R&I): " + arrow(r.old_value, r.new_value);
-        if (f.indexOf("coop_split") === 0) return "Podiel CO-OP (" + f.replace("coop_split ", "") + "): " + arrow(r.old_value, r.new_value);
+        if (r.kind === "archive") return tx("Auto archivované");
+        if (r.kind === "unarchive") return tx("Auto vrátené z archívu");
+        if (r.kind === "storno") return tx("Auto stornované");
+        if (r.kind === "restore") return tx("Auto obnovené zo storna");
+        if (r.kind === "lock") return tx("Auto uzavreté");
+        if (r.kind === "unlock") return tx("Auto odomknuté");
+        if (r.kind === "status") return tx("Stav: ") + arrow(r.old_value, r.new_value);
+        if (r.kind === "coop") return (f === "coop_added" ? tx("Pridaný CO-OP: ") + cs(r.new_value) : tx("Odobraný CO-OP: ") + cs(r.old_value));
+        if (f === "price") return tx("Cena PDR: ") + arrow(r.old_value, r.new_value, " " + currSymbol);
+        if (f === "ri_price") return tx("Cena R&I: ") + arrow(r.old_value, r.new_value, " " + currSymbol);
+        if (f === "tech_pdr_percent") return tx("% technika PDR: ") + arrow(r.old_value, r.new_value, " %");
+        if (f === "tech_ri_percent") return tx("% technika R&I: ") + arrow(r.old_value, r.new_value, " %");
+        if (f === "tech_commission_percent") return tx("Provízia: ") + arrow(r.old_value, r.new_value, " %");
+        if (f === "commission") return tx("Provízia manažéra (PDR / R&I): ") + arrow(r.old_value, r.new_value);
+        if (f.indexOf("coop_split") === 0) return tx("Podiel CO-OP (") + f.replace("coop_split ", "") + "): " + arrow(r.old_value, r.new_value);
         return f + ": " + arrow(r.old_value, r.new_value);
       };
 
@@ -1347,7 +2168,7 @@ const [sentCoopInvites, setSentCoopInvites] = useState([]);
       const isArchivedVeh = (v) => !!archReason(v);
       const toggleArchiveVeh = async (v) => {
         const next = !v.is_archived;
-        if (!confirm(next ? "Archivovať toto auto? Zmizne zo zoznamu, no zostane vo všetkých súčtoch a reportoch." : "Vrátiť auto z archívu?")) return;
+        if (!confirm(next ? tx("Archivovať toto auto? Zmizne zo zoznamu, no zostane vo všetkých súčtoch a reportoch.") : tx("Vrátiť auto z archívu?"))) return;
         try {
           const { error } = await supabase.from("vehicles").update({ is_archived: next }).eq("id", v.id);
           if (error) throw error;
@@ -1465,7 +2286,7 @@ const [sentCoopInvites, setSentCoopInvites] = useState([]);
       }, { count: 0, gross: 0, payout: 0, comm: 0 });
 
       const mgrExportCsv = () => {
-        const head = ["Datum", "Klient", "Zakazka", "Auto", "VIN", "SPZ", "Technici", "Obrat", "Vyplata technikov", "Moja provizia"];
+        const head = [tx("Datum"), tx("Klient"), tx("Zakazka"), tx("Auto"), "VIN", "SPZ", tx("Technici"), tx("Obrat"), tx("Vyplata technikov"), tx("Moja provizia")];
         const rows = mgrFiltered.map(v => {
           const proj = projects.find(p => p.id === v.project_id);
           const cl = clients.find(c => c.id === proj?.client_id);
@@ -1526,10 +2347,9 @@ const [sentCoopInvites, setSentCoopInvites] = useState([]);
       const loadProfileRole = async () => {
         if (!currentUser) return;
         try {
-          const { data } = await supabase.from("profiles").select("role, first_name, last_name").eq("id", currentUser.id).maybeSingle();
+          const { data } = await supabase.from("profiles").select("role, user_name").eq("id", currentUser.id).maybeSingle();
           setProfileRole(data && data.role ? data.role : null);
-          setMyFirst((data && data.first_name) || "");
-          setMyLast((data && data.last_name) || "");
+          setMyName((data && data.user_name) || "");
           if (data) setNameLoaded(true);
         } catch (e) { console.warn(e); }
       };
@@ -1552,19 +2372,19 @@ const [sentCoopInvites, setSentCoopInvites] = useState([]);
         if (n) return n;
         return short ? e.split("@")[0] : e;
       };
-      const myFullName = () => ((myFirst || "").trim() && (myLast || "").trim()) ? (myFirst.trim() + " " + myLast.trim()) : "";
+      const myFullName = () => (myName || "").trim();
       const needName = !!currentUser && nameLoaded && !myFullName();
-      const openNameEdit = () => { setNameFirstIn(myFirst); setNameLastIn(myLast); setNameErr(""); setShowNameModal(true); };
+      const openNameEdit = () => { setNameIn(myName); setNameErr(""); setShowNameModal(true); };
       const saveName = async () => {
-        const f = nameFirstIn.trim().replace(/\s+/g, " "), l = nameLastIn.trim().replace(/\s+/g, " ");
-        if (f.length < 2 || l.length < 2) { setNameErr("Zadaj meno aj priezvisko (aspoň 2 znaky)."); return; }
-        if (f.length > 40 || l.length > 40) { setNameErr("Meno a priezvisko môžu mať najviac 40 znakov."); return; }
-        if (/[@0-9]/.test(f + l)) { setNameErr("Meno a priezvisko nesmú obsahovať číslice ani e-mail."); return; }
+        const f = nameIn.trim().replace(/\s+/g, " ");
+        if (f.length < 2) { setNameErr("Enter a User name (at least 2 characters)."); return; }
+        if (f.length > 30) { setNameErr("User name can have at most 30 characters."); return; }
+        if (/@/.test(f)) { setNameErr("User name must not contain an e-mail."); return; }
         setNameSaving(true); setNameErr("");
-        const { error } = await supabase.from("profiles").update({ first_name: f, last_name: l }).eq("id", currentUser.id);
+        const { error } = await supabase.from("profiles").update({ user_name: f }).eq("id", currentUser.id);
         setNameSaving(false);
-        if (error) { setNameErr("Nepodarilo sa uložiť: " + error.message); return; }
-        setMyFirst(f); setMyLast(l); setShowNameModal(false); loadNames();
+        if (error) { setNameErr(tx(tx("Nepodarilo sa uložiť: ")) + error.message); return; }
+        setMyName(f); setShowNameModal(false); loadNames();
       };
 
       const loadTeam = async () => {
@@ -1582,9 +2402,9 @@ const [sentCoopInvites, setSentCoopInvites] = useState([]);
         if (!em) return;
         const { error } = await supabase.from("manager_team_members").insert([{ manager_id: currentUser.id, member_email: em }]);
         if (error) {
-          setTeamMsg(error.code === "23505" ? "Tento technik už je pozvaný." : "Chyba: " + error.message);
+          setTeamMsg(error.code === "23505" ? tx("Tento technik už je pozvaný.") : "Chyba: " + error.message);
         } else {
-          setTeamMsg("Pozvánka odoslaná.");
+          setTeamMsg(tx("Pozvánka odoslaná."));
           setTeamInviteEmail("");
           loadTeam();
         }
@@ -1593,7 +2413,7 @@ const [sentCoopInvites, setSentCoopInvites] = useState([]);
 
       const handleAcceptTeamInvite = async (id) => {
         const { error } = await supabase.from("manager_team_members").update({ status: "accepted" }).eq("id", id);
-        setTeamMsg(error ? "Chyba: " + error.message : "Pozvánka prijatá.");
+        setTeamMsg(error ? "Chyba: " + error.message : tx("Pozvánka prijatá."));
         setTimeout(() => setTeamMsg(""), 3500);
         loadTeam();
       };
@@ -1624,7 +2444,7 @@ const [sentCoopInvites, setSentCoopInvites] = useState([]);
       const saveClientCommission = async (clientId, pdr, ri) => {
         const p = clampPct(pdr), r = clampPct(ri);
         const { error } = await supabase.from("client_commissions").upsert({ client_id: clientId, default_commission_pdr: p, default_commission_ri: r }, { onConflict: "client_id" });
-        if (error) alert("Provízia sa neuložila: " + error.message);
+        if (error) alert(tx("Provízia sa neuložila: ") + error.message);
         else setClientComm(prev => ({ ...prev, [clientId]: { pdr: p, ri: r } }));
       };
 
@@ -1700,7 +2520,7 @@ const [sentCoopInvites, setSentCoopInvites] = useState([]);
           setSelectedCoopPartners(preselected);
         }
       } catch (err) {
-        console.error("Chyba pri obnove označených partnerov:", err);
+        console.error(tx("Chyba pri obnove označených partnerov:"), err);
       }
       }
 
@@ -1713,7 +2533,7 @@ const [sentCoopInvites, setSentCoopInvites] = useState([]);
         setCoopRecords(coops);
       }
     } catch (err) {
-      console.warn("Chyba načítania partnerstiev:", err);
+      console.warn(tx("Chyba načítania partnerstiev:"), err);
     }
   };
       useEffect(() => {
@@ -1932,8 +2752,8 @@ const [sentCoopInvites, setSentCoopInvites] = useState([]);
 
         if (client && client.auto_numbering && client.fixed_seq_prefix) {
           let prefix = client.fixed_seq_prefix;
-          if (prefix.includes("{ROK}")) {
-            prefix = prefix.replace("{ROK}", String(currentYear));
+          if (/\{(ROK|YEAR|JAHR)\}/i.test(prefix)) {
+            prefix = prefix.replace(/\{(ROK|YEAR|JAHR)\}/gi, String(currentYear));
           } else if (!prefix.includes(String(currentYear))) {
             prefix = `${prefix}${currentYear}/`;
           }
@@ -1974,7 +2794,7 @@ const [sentCoopInvites, setSentCoopInvites] = useState([]);
         setCoopMsg("");
         const email = newPartnerEmail.trim().toLowerCase();
         if (!email || email === currentUser.email.toLowerCase()) {
-          return setCoopMsg(lang === "SK" ? "Zadajte platný e-mail kolegu." : "Enter a valid email.");
+          return setCoopMsg(tx("Zadajte platný e-mail kolegu."));
         }
 
         const { error } = await supabase.from("technician_partners").insert([{
@@ -1987,7 +2807,7 @@ const [sentCoopInvites, setSentCoopInvites] = useState([]);
         if (error) {
           setCoopMsg(error.message);
         } else {
-          setCoopMsg(lang === "SK" ? "Pozvánka odoslaná!" : "Invitation sent!");
+          setCoopMsg(tx("Pozvánka odoslaná!"));
           setNewPartnerEmail("");
           loadPartnerships();
         }
@@ -2003,7 +2823,7 @@ const [sentCoopInvites, setSentCoopInvites] = useState([]);
         else alert(error.message);
       };
 const handleRemoveOrRejectPartner = async (partnershipId) => {
-        if (!confirm("Naozaj chcete zrušiť túto spoluprácu / pozvánku?")) return;
+        if (!confirm(tx("Naozaj chcete zrušiť túto spoluprácu / pozvánku?"))) return;
         try {
           const { error } = await supabase
             .from("technician_partners")
@@ -2014,7 +2834,7 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
 
           await loadPartnerships();
         } catch (err) {
-          alert("Chyba pri rušení spolupráce: " + err.message);
+          alert(tx("Chyba pri rušení spolupráce: ") + err.message);
         }
       };
       const handleAuthSubmit = async (e) => {
@@ -2051,9 +2871,9 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
           if (error) {
             setAuthError(error.message);
           } else if (signUpData && signUpData.user && Array.isArray(signUpData.user.identities) && signUpData.user.identities.length === 0) {
-            setAuthError(lang === "SK" ? "Tento e-mail je už zaregistrovaný." : "This email is already registered.");
+            setAuthError(tx("Tento e-mail je už zaregistrovaný."));
           } else if (signUpData && !signUpData.session) {
-            setResetSuccessMsg(lang === "SK" ? "Registrácia prebehla. Potvrďte ju odkazom, ktorý sme poslali na váš e-mail, a potom sa prihláste." : (lang === "DE" ? "Registrierung erfolgreich. Bitte bestätigen Sie sie über den Link in Ihrer E-Mail und melden Sie sich dann an." : "Registration successful. Confirm it via the link we sent to your email, then sign in."));
+            setResetSuccessMsg(tx("Registrácia prebehla. Potvrďte ju odkazom, ktorý sme poslali na váš e-mail, a potom sa prihláste."));
             setIsRegistering(false);
             setAuthPassword("");
             setAuthConfirmPassword("");
@@ -2113,7 +2933,7 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
           }
           if (navigator.onLine === false) break;
           if (attempt < 3) {
-            setUploadStatusText((lang === "SK" ? "Slabý signál, opakujem nahrávanie fotky… (" : "Weak signal, retrying upload… (") + (attempt + 1) + "/3)");
+            setUploadStatusText((tx("Slabý signál, opakujem nahrávanie fotky… (")) + (attempt + 1) + "/3)");
             await new Promise(r => setTimeout(r, 1500 * (attempt + 1)));
           }
         }
@@ -2141,13 +2961,13 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
 
       const handleSaveVehicle = async (e) => {
         e.preventDefault();
-        if (!selectedProjectId) return alert(lang === "SK" ? "Vyberte najprv platného Klienta a Lokáciu." : "Please select Client and Location.");
+        if (!selectedProjectId) return alert(tx("Vyberte najprv platného Klienta a Lokáciu."));
 
         if (!canCloseRecord) {
           return alert(t.missingAwRateAlert);
         }
         if (!/^[A-HJ-NPR-Z0-9]{17}$/.test((vin || "").trim().toUpperCase())) {
-          return alert(lang === "SK" ? "Zadajte platný VIN kód (17 znakov, bez písmen I, O, Q)." : (lang === "DE" ? "Bitte eine gültige FIN eingeben (17 Zeichen, ohne I, O, Q)." : "Enter a valid VIN (17 characters, no I, O, Q)."));
+          return alert(tx("Zadajte platný VIN kód (17 znakov, bez písmen I, O, Q)."));
         }
 // Kontrola duplicity VIN pred spustením nahrávania
     const cleanVin = (vin || "").trim().toUpperCase();
@@ -2210,7 +3030,7 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
             price_category: selectedCategoryLabel || null,
             ri_price: Number(riPrice) || 0.00,
             vin: vin || "N/A",
-            ecv: hasNoEcv ? (lang === "SK" ? "Bez ŠPZ" : (lang === "DE" ? "Ohne KZ" : "No Plate")) : (ecv || "N/A"),
+            ecv: hasNoEcv ? "No Plate" : (ecv || "N/A"),
             has_no_ecv: hasNoEcv,
             brand: brand || "N/A",
             model: model || "N/A",
@@ -2273,7 +3093,7 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
             await refreshPending();
             resetAfterSave();
             rememberRecentProject(selectedProjectId);
-            setPendingMsg(lang === "SK" ? "Bez signálu: záznam je uložený v zariadení a odošle sa automaticky po pripojení." : "No signal: record saved on this device and will be sent automatically.");
+            setPendingMsg(tx("Bez signálu: záznam je uložený v zariadení a odošle sa automaticky po pripojení."));
             setTimeout(() => setPendingMsg(""), 12000);
           };
 
@@ -2312,7 +3132,7 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
           }
           if (coopInsertErr) {
             // Kooperácia sa NEULOŽILA (typicky RLS politika v Supabase) -> nehlásiť falošný úspech
-            console.error("Chyba zápisu kooperácie:", coopInsertErr);
+            console.error(tx("Chyba zápisu kooperácie:"), coopInsertErr);
             alert(
               "Auto bolo uložené, ALE spolupráca (CO-OP) sa nezapísala, preto ju kolega neuvidí.\n\nDôvod: " +
               coopInsertErr.message
@@ -2429,7 +3249,7 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
       }, [filteredVehicles, coopRecords, currentUser]);
 
       const exportCsv = () => {
-        const headers = ["Internal No", "Client Calc No", "Date", "VIN", "Plate", "Make", "Model", "Color", "PDR Price", "R&I Price", "My Share", "Currency", "Status"];
+        const headers = ["Internal No", "Client Calc No", "Date", "VIN", "Plate", "Make", "Model", "Color", "PDR Price", "R&I Price", "My Profit", "Currency", "Status"];
         const rows = filteredVehicles.filter(v => v.status !== "cancelled").map(v => {
           const coop = coopRecords.find(c => String(c.vehicle_id) === String(v.id) && isMyCoopRow(c));
           const fraction = coop ? coop.split_fraction : 1;
@@ -2475,7 +3295,7 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
         doc.setFontSize(9);
         doc.setFont("helvetica", "normal");
         doc.text(`Technician: ${myFullName() || currentUser?.email} | ${t.pdfGenerated}: ${new Date().toLocaleDateString()}`, 14, 21);
-        doc.text(`Vehicles: ${kpiStats.count} | Total Gross: ${currSymbol}${kpiStats.gross} | My Share: ${currSymbol}${kpiStats.myShare}`, 14, 26);
+        doc.text(`Vehicles: ${kpiStats.count} | Total Gross: ${currSymbol}${kpiStats.gross} | My Profit: ${currSymbol}${kpiStats.myShare}`, 14, 26);
 
         const tableRows = filteredVehicles.filter(v => v.status !== "cancelled").map(v => {
           const coop = coopRecords.find(c => String(c.vehicle_id) === String(v.id) && isMyCoopRow(c));
@@ -2496,7 +3316,7 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
 
         doc.autoTable({
           startY: 30,
-          head: [["ID", "Date", "Vehicle / VIN / Plate", "PDR", "R&I", "My Share"]],
+          head: [["ID", "Date", "Vehicle / VIN / Plate", "PDR", "R&I", "My Profit"]],
           body: tableRows,
           theme: "grid",
           styles: { fontSize: 8, cellPadding: 2, textColor: [30, 41, 59] },
@@ -2787,7 +3607,6 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
             postal_code: newClientPostalCode,
             country_code: newClientCountry,
             contact_person: newClientContactPerson,
-            phone: newClientPhone,
             ico: newClientIco,
             default_pdr_percent: newClientDefaultPdr ? parseFloat(newClientDefaultPdr) : 100,
             default_ri_percent: newClientDefaultRi ? parseFloat(newClientDefaultRi) : 100,
@@ -2807,7 +3626,7 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
           setNewClientPostalCode("");
           setNewClientContactPerson("");
           setNewClientIco("");
-          alert(lang === "SK" ? "Klient úspešne pridaný!" : "Client added successfully!");
+          alert(tx("Klient úspešne pridaný!"));
         } catch (err) {
           alert("Error: " + err.message);
         }
@@ -2824,7 +3643,6 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
             postal_code: newProjectPostalCode,
             country_code: newProjectCountry,
             contact_person: newProjectContactPerson,
-            phone: newProjectPhone,
             pricing_mode: newProjectPricingMode,
             fixed_price: newProjectPricingMode === "fixed" && newProjectFixedPrice ? parseFloat(newProjectFixedPrice) : null,
             aw_rate: newProjectPricingMode === "free" && newProjectAwRate ? parseFloat(newProjectAwRate) : null,
@@ -2846,7 +3664,7 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
           setNewProjectFixedPrice("");
           setNewProjectAwRate("");
           setProjectCategoriesList([]);
-          alert(lang === "SK" ? "Lokácia úspešne pridaná!" : "Location added successfully!");
+          alert(tx("Lokácia úspešne pridaná!"));
         } catch (err) {
           alert("Error: " + err.message);
         }
@@ -2863,10 +3681,12 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
               postal_code: sheetEditData.postal_code,
               country_code: sheetEditData.country_code,
               contact_person: sheetEditData.contact_person,
-              phone: sheetEditData.phone,
               ico: sheetEditData.ico,
               default_pdr_percent: sheetEditData.default_pdr_percent ? parseFloat(sheetEditData.default_pdr_percent) : 100,
-              default_ri_percent: sheetEditData.default_ri_percent ? parseFloat(sheetEditData.default_ri_percent) : 100
+              default_ri_percent: sheetEditData.default_ri_percent ? parseFloat(sheetEditData.default_ri_percent) : 100,
+              auto_numbering: !!sheetEditData.auto_numbering && !!(sheetEditData.fixed_seq_prefix || "").trim(),
+              fixed_seq_prefix: sheetEditData.auto_numbering && (sheetEditData.fixed_seq_prefix || "").trim() ? sheetEditData.fixed_seq_prefix.trim() : null,
+              initial_seq_number: sheetEditData.auto_numbering ? (parseInt(sheetEditData.initial_seq_number, 10) || 1) : 1
             }).eq("id", activeBottomSheet.data.id);
             if (error) throw error;
             if (effRole === "manager") await saveClientCommission(activeBottomSheet.data.id, sheetEditData.comm_pdr, sheetEditData.comm_ri);
@@ -2879,7 +3699,6 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
               postal_code: sheetEditData.postal_code,
               country_code: sheetEditData.country_code,
               contact_person: sheetEditData.contact_person,
-              phone: sheetEditData.phone,
               pricing_mode: sheetEditData.pricing_mode,
               fixed_price: sheetEditData.fixed_price ? parseFloat(sheetEditData.fixed_price) : null,
               aw_rate: sheetEditData.aw_rate ? parseFloat(sheetEditData.aw_rate) : null,
@@ -2915,7 +3734,7 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
 
       const handleSaveLatePrice = async (vehicleId) => {
         const p = parseFloat(latePriceInput);
-        if (isNaN(p) || p <= 0) return alert(lang === "SK" ? "Zadajte platnú sumu." : "Enter valid price.");
+        if (isNaN(p) || p <= 0) return alert(tx("Zadajte platnú sumu."));
 
         try {
           const { error } = await supabase.from("vehicles").update({
@@ -2928,7 +3747,7 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
           setVehicles(vehicles.map(v => v.id === vehicleId ? { ...v, price: p, is_price_pending: false, status: "completed" } : v));
           setSelectedVehicleDetail(prev => ({ ...prev, price: p, is_price_pending: false, status: "completed" }));
           setLatePriceInput("");
-          alert(lang === "SK" ? "Cena bola úspešne doplnená!" : "Price updated!");
+          alert(tx("Cena bola úspešne doplnená!"));
         } catch (err) {
           alert("Error: " + err.message);
         }
@@ -2948,7 +3767,7 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
             setSelectedVehicleDetail(prev => ({ ...prev, is_locked: nextStatus }));
           }
         } catch (err) {
-          alert("Chyba pri zmene zámku: " + err.message);
+          alert(tx("Chyba pri zmene zámku: ") + err.message);
         }
       };
       const handleUpdateVehicleData = async (e) => {
@@ -2960,7 +3779,7 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
             brand: editVehicleData.brand || "N/A",
             model: editVehicleData.model || "N/A",
             vin: sanitizeVin(editVehicleData.vin || ""),
-            ecv: editVehicleData.has_no_ecv ? (lang === "SK" ? "Bez ŠPZ" : (lang === "DE" ? "Ohne KZ" : "No Plate")) : (editVehicleData.ecv || "N/A"),
+            ecv: editVehicleData.has_no_ecv ? "No Plate" : (editVehicleData.ecv || "N/A"),
             has_no_ecv: Boolean(editVehicleData.has_no_ecv),
             color: editVehicleData.color || selectedVehicleDetail.color,
             client_calc_no: editVehicleData.client_calc_no || null,
@@ -2972,7 +3791,7 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
           let _reason = null;
           if (isMultiVeh(selectedVehicleDetail) && selectedVehicleDetail.status !== "pending_price" && !selectedVehicleDetail.is_price_pending && (parseFloat(selectedVehicleDetail.price) || 0) > 0 &&
               (updatedPayload.price !== (parseFloat(selectedVehicleDetail.price) || 0) || updatedPayload.ri_price !== (parseFloat(selectedVehicleDetail.ri_price) || 0))) {
-            _reason = askReason("Zmena ceny na aute s viacerými používateľmi.");
+            _reason = askReason(tx("Zmena ceny na aute s viacerými používateľmi."));
             if (!_reason) return;
           }
           const { error } = await supabase
@@ -2987,13 +3806,13 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
           setIsEditingVehicle(false);
           alert(t.saveChangesBtn);
         } catch (err) {
-          alert("Chyba pri ukladaní zmien: " + err.message);
+          alert(tx("Chyba pri ukladaní zmien: ") + err.message);
         }
       };
 // Správa kategórií pri tvorbe novej lokácie
       const handleAddCategoryItem = () => {
         const p = parseFloat(tempCategoryPrice);
-        if (isNaN(p) || p <= 0) return alert(lang === "SK" ? "Zadajte platnú cenu kategórie." : "Enter valid price.");
+        if (isNaN(p) || p <= 0) return alert(tx("Zadajte platnú cenu kategórie."));
         const nextIndex = projectCategoriesList.length + 1;
         setProjectCategoriesList([...projectCategoriesList, { label: `Cat ${nextIndex}`, price: p }]);
         setTempCategoryPrice("");
@@ -3006,7 +3825,7 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
       // Správa kategórií pri editácii existujúcej lokácie v Bottom Sheete
       const handleAddSheetEditCategory = () => {
         const p = parseFloat(sheetEditTempCatPrice);
-        if (isNaN(p) || p <= 0) return alert(lang === "SK" ? "Zadajte platnú cenu kategórie." : "Enter valid price.");
+        if (isNaN(p) || p <= 0) return alert(tx("Zadajte platnú cenu kategórie."));
         const nextIndex = sheetEditCategories.length + 1;
         setSheetEditCategories([...sheetEditCategories, { label: `Cat ${nextIndex}`, price: p }]);
         setSheetEditTempCatPrice("");
@@ -3238,7 +4057,7 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
                 type="button"
                 onClick={() => { setShowTeamModal(true); loadTeam(); }}
                 className="relative text-sky-400 hover:text-sky-300 p-1"
-                title="Tím"
+                title={tx("Tím")}
               >
                 <i className="fa-solid fa-people-group text-base"></i>
                 {teamRows.some(r => r.status === "pending" && r.manager_id !== currentUser.id) && (
@@ -3270,11 +4089,11 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
               <div className="grid grid-cols-2 bg-gray-900 border border-gray-700 rounded-xl p-1 gap-1">
                 <button type="button" onClick={() => switchMgrMode(false)}
                   className={`py-2 rounded-lg text-xs font-black flex items-center justify-center gap-1.5 transition-all ${!inMgr ? "bg-amber-500 text-gray-950 shadow" : "text-gray-400"}`}>
-                  <i className="fa-solid fa-wrench"></i> Technik
+                  <i className="fa-solid fa-wrench"></i> {tx("Technik")}
                 </button>
                 <button type="button" onClick={() => switchMgrMode(true)}
                   className={`py-2 rounded-lg text-xs font-black flex items-center justify-center gap-1.5 transition-all ${inMgr ? "bg-sky-500 text-gray-950 shadow" : "text-gray-400"}`}>
-                  <i className="fa-solid fa-user-tie"></i> Manažér
+                  <i className="fa-solid fa-user-tie"></i> {tx("Manažér")}
                 </button>
               </div>
             </div>
@@ -3283,7 +4102,7 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
           {/* Navigácia záložiek */}
           {inMgr ? (
             <div className="grid grid-cols-3 border-b border-sky-900/60 text-center font-bold text-[11px]">
-              {[["mgr_techs", "Technici", "Tím"], ["projects", "Klienti", "Projekty / Lokality"], ["mgr_reports", "Report", "Prehľad"]].map(([k, l1, l2]) => (
+              {[["mgr_techs", tx("Technici"), tx("Tím")], ["projects", tx("Klienti"), tx("Projekty / Lokality")], ["mgr_reports", tx("Report"), tx("Prehľad")]].map(([k, l1, l2]) => (
                 <button key={k} onClick={() => setActiveTab(k)}
                   className={`py-2 border-b-2 flex flex-col items-center justify-center ${activeTab === k ? "border-sky-500 text-sky-400 bg-sky-500/10" : "border-transparent text-gray-400 hover:text-gray-200"}`}>
                   <span>{l1}</span>
@@ -3340,13 +4159,13 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
                       type="text"
                       value={pickSearch}
                       onChange={e => setPickSearch(e.target.value)}
-                      placeholder="Hľadať klienta alebo lokalitu..."
+                      placeholder={tx("Hľadať klienta alebo lokalitu...")}
                       className="w-full bg-gray-950 border border-gray-700 focus:border-amber-500 rounded p-1.5 text-xs text-white"
                     />
                     {pickSearch.trim() && (
                       <div className="absolute z-30 left-0 right-0 mt-1 bg-gray-950 border border-amber-500/60 rounded-lg shadow-xl max-h-56 overflow-y-auto">
                         {pickMatches.length === 0 ? (
-                          <div className="p-2 text-[11px] text-gray-500">Nič sa nenašlo</div>
+                          <div className="p-2 text-[11px] text-gray-500">{tx("Nič sa nenašlo")}</div>
                         ) : pickMatches.map(x => (
                           <button key={x.p.id} type="button" onClick={() => { pickRecentProject(x.p); setPickSearch(""); }}
                             className="w-full text-left px-2.5 py-2 text-xs text-white border-b border-gray-800 hover:bg-gray-800">
@@ -3409,7 +4228,7 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
                       type="text"
                       value={clientCalcNo}
                       onChange={e => setClientCalcNo(e.target.value)}
-                      placeholder="napr. 2026/001 alebo číslo zákazky"
+                      placeholder={tx("napr. 2026/001 alebo číslo zákazky")}
                       className="w-full bg-gray-950 border border-gray-700 focus:border-amber-500 rounded p-1.5 text-xs text-amber-300 font-mono font-bold"
                     />
                   </div>
@@ -3448,7 +4267,7 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
                     className="w-full bg-gray-800 hover:bg-gray-700 active:scale-95 text-gray-300 font-bold py-1.5 rounded-lg text-xs border border-gray-700 flex items-center justify-center gap-2 transition-all"
                   >
                     <i className="fa-solid fa-image text-sm"></i>
-                    <span>{lang === "SK" ? "Nahrať z galérie" : (lang === "DE" ? "Aus Galerie scannen" : "Scan from gallery")}</span>
+                    <span>{tx("Nahrať z galérie")}</span>
                   </button>
 
                   <div className="grid grid-cols-3 gap-1.5 text-center text-[10px] text-gray-400">
@@ -3515,16 +4334,16 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
                     {pendingSaves.length > 0 && (
                       <>
                         <div className="flex items-center justify-between gap-2">
-                          <div className="text-[11px] text-amber-300 font-bold"><i className="fa-solid fa-cloud-arrow-up mr-1"></i>{lang === "SK" ? "Čaká na odoslanie: " : "Waiting to send: "}{pendingSaves.length}</div>
-                          <button type="button" onClick={() => flushPending(true)} className="px-2.5 py-1 rounded bg-amber-500 text-gray-950 text-[11px] font-black">{lang === "SK" ? "Odoslať teraz" : "Send now"}</button>
+                          <div className="text-[11px] text-amber-300 font-bold"><i className="fa-solid fa-cloud-arrow-up mr-1"></i>{tx("Čaká na odoslanie: ")}{pendingSaves.length}</div>
+                          <button type="button" onClick={() => flushPending(true)} className="px-2.5 py-1 rounded bg-amber-500 text-gray-950 text-[11px] font-black">{tx("Odoslať teraz")}</button>
                         </div>
                         {pendingSaves.map(p => (
                           <div key={p.id} className="flex items-center justify-between gap-2 text-[11px] text-gray-300">
                             <span className="font-mono truncate">{p.no} • {p.ecv} • {p.vin}</span>
                             {p.status === "failed" ? (
-                              <span className="text-red-400 text-right">{p.lastError} <button type="button" onClick={() => discardPending(p.id)} className="underline ml-1">{lang === "SK" ? "zahodiť" : "discard"}</button></span>
+                              <span className="text-red-400 text-right">{p.lastError} <button type="button" onClick={() => discardPending(p.id)} className="underline ml-1">{tx("zahodiť")}</button></span>
                             ) : (
-                              <span className="text-amber-400">{lang === "SK" ? "čaká" : "waiting"}</span>
+                              <span className="text-amber-400">{tx("čaká")}</span>
                             )}
                           </div>
                         ))}
@@ -3564,7 +4383,7 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
                       <input
                         type="text"
                         disabled={hasNoEcv}
-                        value={hasNoEcv ? (lang === "SK" ? "Bez ŠPZ" : (lang === "DE" ? "Ohne KZ" : "No Plate")) : ecv}
+                        value={hasNoEcv ? "No Plate" : ecv}
                         onChange={e => setEcv(e.target.value.toUpperCase())}
                         className={`w-full border rounded p-1.5 text-xs font-bold ${hasNoEcv ? "bg-gray-800 text-gray-500 border-gray-800" : "bg-gray-900 text-white border-gray-700"}`}
                       />
@@ -3622,7 +4441,7 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
                   <div className="bg-gray-900/60 border border-gray-800 rounded-xl p-2.5 space-y-2">
                     {currentSelectedProject?.pricing_mode === "categories" ? (
                       <div className="space-y-1">
-                        <label className="text-[10px] text-gray-400 font-bold uppercase">{t.priceLabel} (Kategória)</label>
+                        <label className="text-[10px] text-gray-400 font-bold uppercase">{t.priceLabel} {tx("(Kategória)")}</label>
                         <div className="grid grid-cols-4 gap-1">
                           {(currentSelectedProject.pricing_categories || []).map(cat => (
                             <button
@@ -3677,7 +4496,7 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
 
                         {currentSelectedProject?.pricing_mode === "free" && (
                           <div>
-                            <label className="text-[10px] text-gray-400 font-bold uppercase">AW (Počet)</label>
+                            <label className="text-[10px] text-gray-400 font-bold uppercase">{tx("AW (Počet)")}</label>
                             <input
                               type="number"
                               inputMode="decimal"
@@ -3713,10 +4532,10 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
                   <div className="flex justify-between items-center text-[10px] text-gray-400 font-bold uppercase tracking-wide">
                     <span className="flex items-center gap-1.5">
                       <i className="fa-solid fa-users text-amber-400"></i>
-                      Spolupráca na zákazke:
+                      {tx("Spolupráca na zákazke:")}
                     </span>
                     <span className="text-[9px] text-gray-500 font-normal">
-                      {activeCoopPartners.length === 0 ? "Iba ja (100%)" : `Rovným dielom (${activeCoopPartners.length + 1} technici)`}
+                      {activeCoopPartners.length === 0 ? tx("Iba ja (100%)") : tx("Rovným dielom (") + (activeCoopPartners.length + 1) + tx(" technici)")}
                     </span>
                   </div>
                   <div className="flex flex-wrap gap-1.5 pt-0.5">
@@ -3746,7 +4565,7 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
               )}
                     {/* Výpočet čistého podielu */}
                     <div className="bg-gray-950 border border-gray-800 rounded p-2 flex justify-between items-center text-xs">
-                      <span className="text-gray-400 font-medium">Môj podiel ({effectivePdrPercent.toFixed(0)}% PDR):</span>
+                      <span className="text-gray-400 font-medium">{tx("Môj podiel (")}{effectivePdrPercent.toFixed(0)}% PDR):</span>
                       <span className="text-amber-400 font-black text-sm">{currSymbol}{techEarned}</span>
                     </div>
                   </div>
@@ -3885,7 +4704,7 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
                           <input
                             type="text"
                             disabled={tempOcrHasNoEcv}
-                            value={tempOcrHasNoEcv ? (lang === "SK" ? "Bez ŠPZ" : (lang === "DE" ? "Ohne KZ" : "No Plate")) : tempOcrEcv}
+                            value={tempOcrHasNoEcv ? "No Plate" : tempOcrEcv}
                             onChange={e => setTempOcrEcv(e.target.value.toUpperCase())}
                             className={`w-full border rounded p-2 text-sm font-black tracking-widest text-center ${tempOcrHasNoEcv ? "bg-gray-800 text-gray-500 border-gray-800" : "bg-gray-900 text-white border-amber-500/80"}`}
                           />
@@ -3978,19 +4797,19 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
                     onClick={() => setShowArchivedProjects(!showArchivedProjects)}
                     className={`px-3 py-1.5 rounded-lg text-xs font-bold border ${showArchivedProjects ? "bg-amber-500/20 border-amber-500 text-amber-300" : "bg-gray-900 border-gray-700 text-gray-400"}`}
                   >
-                    {showArchivedProjects ? (lang === "SK" ? "Skryť archív" : "Hide Archive") : (lang === "SK" ? "Zobraziť archív" : "Show Archive")}
+                    {showArchivedProjects ? (tx("Skryť archív")) : (tx("Zobraziť archív"))}
                   </button>
                 </div>
 
                 <div className="relative">
-                  <input type="text" value={clientQ} onChange={e => setClientQ(e.target.value)} placeholder="Hľadať klienta, mesto, IČO alebo lokalitu..." className={"w-full bg-gray-950 border rounded p-1.5 pr-7 text-xs text-white " + (inMgr ? "border-sky-700 focus:border-sky-500" : "border-gray-700 focus:border-amber-500")} />
+                  <input type="text" value={clientQ} onChange={e => setClientQ(e.target.value)} placeholder={tx("Hľadať klienta, mesto, IČO alebo lokalitu...")} className={"w-full bg-gray-950 border rounded p-1.5 pr-7 text-xs text-white " + (inMgr ? "border-sky-700 focus:border-sky-500" : "border-gray-700 focus:border-amber-500")} />
                   {clientQ && <button type="button" onClick={() => setClientQ("")} className="absolute right-2 top-1.5 text-gray-400 text-xs"><i className="fa-solid fa-xmark"></i></button>}
                 </div>
 
                 {/* Formulár nového klienta */}
                 {showNewClientForm && (
                   <form onSubmit={handleAddClient} className="bg-gray-900 border border-amber-500/60 rounded-xl p-3 space-y-2">
-                    <div className="font-bold text-amber-400 text-xs">{lang === "SK" ? "Nový Klient (Firma)" : "New Client (Company)"}</div>
+                    <div className="font-bold text-amber-400 text-xs">{tx("Nový Klient (Firma)")}</div>
                     <input
                       type="text"
                       required
@@ -4024,26 +4843,16 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
                     </div>
                     <CountryPicker
                       selectedCode={newClientCountry}
-                      onSelect={c => {
-                        setNewClientCountry(c.code);
-                        setNewClientPhone(c.dial);
-                      }}
+                      onSelect={c => setNewClientCountry(c.code)}
                       lang={lang}
                       placeholder={t.countryPlaceholder}
                     />
-                    <div className="grid grid-cols-2 gap-2">
+                    <div>
                       <input
                         type="text"
                         value={newClientContactPerson}
                         onChange={e => setNewClientContactPerson(e.target.value)}
                         placeholder={t.contactPersonPlaceholder}
-                        className="w-full bg-gray-950 border border-gray-700 rounded p-1.5 text-xs text-white"
-                      />
-                      <input
-                        type="text"
-                        value={newClientPhone}
-                        onChange={e => setNewClientPhone(sanitizePhone(e.target.value))}
-                        placeholder={t.phonePlaceholder}
                         className="w-full bg-gray-950 border border-gray-700 rounded p-1.5 text-xs text-white"
                       />
                     </div>
@@ -4079,11 +4888,11 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
                     {effRole === "manager" && (
                       <div className="grid grid-cols-2 gap-2">
                         <div>
-                          <label className="text-[9px] text-sky-400">Provízia manažéra PDR (%)</label>
+                          <label className="text-[9px] text-sky-400">{tx("Provízia manažéra PDR (%)")}</label>
                           <input type="number" min="0" max="100" value={newClientCommPdr} onChange={e => setNewClientCommPdr(e.target.value)} placeholder="0" className="w-full bg-gray-950 border border-sky-700 rounded p-1 text-xs text-white font-bold" />
                         </div>
                         <div>
-                          <label className="text-[9px] text-sky-400">Provízia manažéra R&I (%)</label>
+                          <label className="text-[9px] text-sky-400">{tx("Provízia manažéra R&I (%)")}</label>
                           <input type="number" min="0" max="100" value={newClientCommRi} onChange={e => setNewClientCommRi(e.target.value)} placeholder="0" className="w-full bg-gray-950 border border-sky-700 rounded p-1 text-xs text-white font-bold" />
                         </div>
                       </div>
@@ -4103,7 +4912,7 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
                             type="text"
                             value={newClientSeqPrefix}
                             onChange={e => setNewClientSeqPrefix(e.target.value)}
-                            placeholder="{ROK}/"
+                            placeholder={lang === "DE" ? "ID/{JAHR}/" : (lang === "SK" ? "ID/{ROK}/" : "ID/{YEAR}/")}
                             className="w-full bg-gray-950 border border-gray-700 rounded p-1 text-xs text-white"
                           />
                           <input
@@ -4137,13 +4946,13 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
                 {/* Formulár novej lokácie */}
                 {addingProjectClientId && (
                   <form onSubmit={handleAddProject} className="bg-gray-900 border border-amber-500/60 rounded-xl p-3 space-y-2">
-                    <div className="font-bold text-amber-400 text-xs">{lang === "SK" ? "Nová Lokácia / Dielňa" : "New Location / Shop"}</div>
+                    <div className="font-bold text-amber-400 text-xs">{tx("Nová Lokácia / Dielňa")}</div>
                     <input
                       type="text"
                       required
                       value={newProjectName}
                       onChange={e => setNewProjectName(e.target.value)}
-                      placeholder="Názov dielne (napr. Opel Paríž)"
+                      placeholder={tx("Názov dielne (napr. Opel Paríž)")}
                       className="w-full bg-gray-950 border border-gray-700 rounded p-1.5 text-xs text-white"
                     />
                     <input
@@ -4171,26 +4980,16 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
                     </div>
                     <CountryPicker
                       selectedCode={newProjectCountry}
-                      onSelect={c => {
-                        setNewProjectCountry(c.code);
-                        setNewProjectPhone(c.dial);
-                      }}
+                      onSelect={c => setNewProjectCountry(c.code)}
                       lang={lang}
                       placeholder={t.countryPlaceholder}
                     />
-                    <div className="grid grid-cols-2 gap-2">
+                    <div>
                       <input
                         type="text"
                         value={newProjectContactPerson}
                         onChange={e => setNewProjectContactPerson(e.target.value)}
                         placeholder={t.contactPersonPlaceholder}
-                        className="w-full bg-gray-950 border border-gray-700 rounded p-1.5 text-xs text-white"
-                      />
-                      <input
-                        type="text"
-                        value={newProjectPhone}
-                        onChange={e => setNewProjectPhone(sanitizePhone(e.target.value))}
-                        placeholder={t.phonePlaceholder}
                         className="w-full bg-gray-950 border border-gray-700 rounded p-1.5 text-xs text-white"
                       />
                     </div>
@@ -4201,7 +5000,7 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
                           type="number"
                           value={newProjectTechPdrPercent}
                           onChange={e => setNewProjectTechPdrPercent(e.target.value)}
-                          placeholder="Podľa klienta"
+                          placeholder={tx("Podľa klienta")}
                           className="w-full bg-gray-950 border border-gray-700 rounded p-1 text-xs text-white font-bold"
                         />
                       </div>
@@ -4211,7 +5010,7 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
                           type="number"
                           value={newProjectTechRiPercent}
                           onChange={e => setNewProjectTechRiPercent(e.target.value)}
-                          placeholder="Podľa klienta"
+                          placeholder={tx("Podľa klienta")}
                           className="w-full bg-gray-950 border border-gray-700 rounded p-1 text-xs text-white font-bold"
                         />
                       </div>
@@ -4226,21 +5025,21 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
                           onClick={() => setNewProjectPricingMode("free")}
                           className={`p-1.5 rounded text-xs font-bold border ${newProjectPricingMode === "free" ? "bg-amber-500/20 border-amber-500 text-amber-300" : "bg-gray-950 border-gray-800 text-gray-400"}`}
                         >
-                          Voľná / AW
+                          {tx("Voľná / AW")}
                         </button>
                         <button
                           type="button"
                           onClick={() => setNewProjectPricingMode("fixed")}
                           className={`p-1.5 rounded text-xs font-bold border ${newProjectPricingMode === "fixed" ? "bg-amber-500/20 border-amber-500 text-amber-300" : "bg-gray-950 border-gray-800 text-gray-400"}`}
                         >
-                          Fixná
+                          {tx("Fixná")}
                         </button>
                         <button
                           type="button"
                           onClick={() => setNewProjectPricingMode("categories")}
                           className={`p-1.5 rounded text-xs font-bold border ${newProjectPricingMode === "categories" ? "bg-amber-500/20 border-amber-500 text-amber-300" : "bg-gray-950 border-gray-800 text-gray-400"}`}
                         >
-                          Kategórie
+                          {tx("Kategórie")}
                         </button>
                       </div>
 
@@ -4264,7 +5063,7 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
                             type="number"
                             value={newProjectFixedPrice}
                             onChange={e => setNewProjectFixedPrice(e.target.value)}
-                            placeholder="Fixná cena za auto"
+                            placeholder={tx("Fixná cena za auto")}
                             className="w-full bg-gray-950 border border-gray-700 rounded p-1 text-xs text-white font-bold"
                           />
                         </div>
@@ -4277,7 +5076,7 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
                               type="number"
                               value={tempCategoryPrice}
                               onChange={e => setTempCategoryPrice(e.target.value)}
-                              placeholder="Cena ďalšej Cat v EUR"
+                              placeholder={tx("Cena ďalšej Cat v EUR")}
                               className="w-full bg-gray-950 border border-gray-700 rounded p-1 text-xs text-white font-bold"
                             />
                             <button
@@ -4335,7 +5134,7 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
                         {isForeign && (
                           <div className="text-[10px] font-bold uppercase tracking-wide text-sky-400 flex items-center gap-1.5">
                             <i className="fa-solid fa-people-group"></i>
-                            <span>{mgrRow ? "Manažér: " + (mgrRow.manager_email || "") : "Zdieľané od kolegu"}</span>
+                            <span>{mgrRow ? tx("Manažér: ") + (mgrRow.manager_email || "") : tx("Zdieľané od kolegu")}</span>
                           </div>
                         )}
                         <div className="flex justify-between items-center">
@@ -4347,10 +5146,10 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
                             <i className={"fa-solid text-[10px] w-3 " + (open ? "fa-chevron-down " : "fa-chevron-right ") + (inMgr ? "text-sky-400" : "text-amber-400")}></i>
                             <span className="min-w-0">
                               <span className={"block font-bold text-xs truncate " + (inMgr ? "text-sky-400" : "text-amber-400")}>{c.name}</span>
-                              <span className="block text-[10px] text-gray-500 truncate">{[c.city, (lang === "SK" ? "Projekty / Lokality: " : "Locations: ") + clientProjects.length].filter(Boolean).join(" • ")}</span>
+                              <span className="block text-[10px] text-gray-500 truncate">{[c.city, (tx("Projekty / Lokality: ")) + clientProjects.length].filter(Boolean).join(" • ")}</span>
                             </span>
                           </button>
-                          <button type="button" onClick={() => setActiveBottomSheet({ type: "client", id: c.id, data: c })} className="text-gray-500 hover:text-gray-300 px-2 py-1" title="Detail klienta"><i className="fa-solid fa-circle-info text-xs"></i></button>
+                          <button type="button" onClick={() => setActiveBottomSheet({ type: "client", id: c.id, data: c })} className="text-gray-500 hover:text-gray-300 px-2 py-1" title={tx("Detail klienta")}><i className="fa-solid fa-circle-info text-xs"></i></button>
                           {!isForeign && (
                           <button
                             type="button"
@@ -4365,7 +5164,7 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
                         {open && (
                         <div className="space-y-1">
                           {shownProjects.length === 0 ? (
-                            <div className="text-[10px] text-gray-500 italic p-1">{lang === "SK" ? "Žiadne lokácie" : "No locations"}</div>
+                            <div className="text-[10px] text-gray-500 italic p-1">{tx("Žiadne lokácie")}</div>
                           ) : (
                             shownProjects.map(p => (
                               <div
@@ -4382,7 +5181,7 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
                                 </div>
                                 <div className="text-right">
                                   <span className="bg-gray-900 text-amber-400 border border-gray-800 px-1.5 py-0.5 rounded text-[10px] font-mono">
-                                    {p.pricing_mode === "fixed" ? `${currSymbol}${p.fixed_price}` : (p.pricing_mode === "categories" ? "Kategórie" : "AW / Voľná")}
+                                    {p.pricing_mode === "fixed" ? `${currSymbol}${p.fixed_price}` : (p.pricing_mode === "categories" ? tx("Kategórie") : tx("AW / Voľná"))}
                                   </span>
                                 </div>
                               </div>
@@ -4403,7 +5202,7 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
                 {activeTab === "mgr_techs" && (
                   <div className="space-y-2">
                     {mgrTeam.length === 0 && (
-                      <div className="text-xs text-gray-500 text-center py-6">Zatiaľ nemáš v tíme žiadneho technika. Pozvi ho cez ikonu Tím v hlavičke.</div>
+                      <div className="text-xs text-gray-500 text-center py-6">{tx("Zatiaľ nemáš v tíme žiadneho technika. Pozvi ho cez ikonu Tím v hlavičke.")}</div>
                     )}
                     {mgrTeam.map(m => {
                       const mine = mgrVehicles.filter(v => mgrVehStats(v).per.some(p => p.id === m.member_id));
@@ -4428,7 +5227,7 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
                               <div className="text-[10px] text-gray-500 truncate">{m.member_email}</div>
                             </div>
                             <div className="text-right shrink-0">
-                              <div className="text-[10px] text-gray-400">{mine.length} áut</div>
+                              <div className="text-[10px] text-gray-400">{mine.length} {tx("áut")}</div>
                               <div className="text-xs font-black text-sky-400">{fmtEur(comm)}</div>
                             </div>
                           </button>
@@ -4436,22 +5235,22 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
                             <div className="border-t border-gray-800 p-2.5 space-y-2 text-xs">
                               <div className="grid grid-cols-3 gap-1.5 text-center">
                                 <div className="bg-gray-950 rounded-lg py-1.5"><div className="text-[9px] text-gray-400 uppercase">Opravil</div><div className="font-black text-white">{mine.length}</div></div>
-                                <div className="bg-gray-950 rounded-lg py-1.5"><div className="text-[9px] text-gray-400 uppercase">Jeho výplata</div><div className="font-black text-emerald-400">{fmtEur(payout)}</div></div>
+                                <div className="bg-gray-950 rounded-lg py-1.5"><div className="text-[9px] text-gray-400 uppercase">{tx("Jeho výplata")}</div><div className="font-black text-emerald-400">{fmtEur(payout)}</div></div>
                                 <div className="bg-gray-950 rounded-lg py-1.5"><div className="text-[9px] text-gray-400 uppercase">Zarobil mi</div><div className="font-black text-sky-400">{fmtEur(comm)}</div></div>
                               </div>
                               <div>
-                                <div className="text-[10px] text-gray-400 font-bold uppercase mb-1">Priradené projekty</div>
-                                {assigned.length === 0 ? <div className="text-gray-500">Žiadne</div> : assigned.map(pp => (
+                                <div className="text-[10px] text-gray-400 font-bold uppercase mb-1">{tx("Priradené projekty")}</div>
+                                {assigned.length === 0 ? <div className="text-gray-500">{tx("Žiadne")}</div> : assigned.map(pp => (
                                   <div key={pp.id} className="text-gray-300">• {clients.find(c => c.id === pp.client_id)?.name || "?"} / {pp.name}</div>
                                 ))}
                               </div>
                               <div>
-                                <div className="text-[10px] text-gray-400 font-bold uppercase mb-1">Zárobok podľa projektu</div>
-                                {Object.values(byJob).length === 0 ? <div className="text-gray-500">Zatiaľ žiadne autá</div> : Object.values(byJob).map((j, i) => (
+                                <div className="text-[10px] text-gray-400 font-bold uppercase mb-1">{tx("Zárobok podľa projektu")}</div>
+                                {Object.values(byJob).length === 0 ? <div className="text-gray-500">{tx("Zatiaľ žiadne autá")}</div> : Object.values(byJob).map((j, i) => (
                                   <div key={i} className="flex justify-between gap-2 text-gray-300"><span className="truncate">{j.name} ({j.n}×)</span><span className="text-sky-400 font-bold shrink-0">{fmtEur(j.comm)}</span></div>
                                 ))}
                               </div>
-                              <button onClick={() => { setMgrFTech(m.member_id); setActiveTab("mgr_reports"); }} className="w-full py-1.5 rounded-lg bg-sky-600/20 border border-sky-500 text-sky-300 font-bold">Zobraziť jeho autá</button>
+                              <button onClick={() => { setMgrFTech(m.member_id); setActiveTab("mgr_reports"); }} className="w-full py-1.5 rounded-lg bg-sky-600/20 border border-sky-500 text-sky-300 font-bold">{tx("Zobraziť jeho autá")}</button>
                             </div>
                           )}
                         </div>
@@ -4464,40 +5263,40 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
                   <div className="space-y-2">
                     <div className="grid grid-cols-2 gap-1.5">
                       <select value={mgrFClient} onChange={e => setMgrFClient(e.target.value)} className="bg-gray-900 border border-gray-700 rounded p-1.5 text-xs text-white">
-                        <option value="">Všetci klienti</option>
+                        <option value="">{tx("Všetci klienti")}</option>
                         {clients.filter(c => c.created_by === currentUser.id).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                       </select>
                       <select value={mgrFTech} onChange={e => setMgrFTech(e.target.value)} className="bg-gray-900 border border-gray-700 rounded p-1.5 text-xs text-white">
-                        <option value="">Všetci technici</option>
+                        <option value="">{tx("Všetci technici")}</option>
                         {mgrTeam.map(m => <option key={m.id} value={m.member_id}>{dispName(m.member_email, true)}</option>)}
                       </select>
                       <select value={mgrFPeriod} onChange={e => setMgrFPeriod(e.target.value)} className="bg-gray-900 border border-gray-700 rounded p-1.5 text-xs text-white">
-                        <option value="all">Celé obdobie</option>
+                        <option value="all">{tx("Celé obdobie")}</option>
                         <option value="today">Dnes</option>
-                        <option value="week">Tento týždeň</option>
-                        <option value="prevweek">Minulý týždeň</option>
-                        <option value="30d">Posledných 30 dní</option>
+                        <option value="week">{tx("Tento týždeň")}</option>
+                        <option value="prevweek">{tx("Minulý týždeň")}</option>
+                        <option value="30d">{tx("Posledných 30 dní")}</option>
                         <option value="month">Tento mesiac</option>
-                        <option value="prev">Minulý mesiac</option>
-                        <option value="quarter">Tento štvrťrok</option>
+                        <option value="prev">{tx("Minulý mesiac")}</option>
+                        <option value="quarter">{tx("Tento štvrťrok")}</option>
                         <option value="year">Tento rok</option>
-                        <option value="custom">Vlastný rozsah...</option>
+                        <option value="custom">{tx("Vlastný rozsah...")}</option>
                       </select>
-                      <input value={mgrQ} onChange={e => setMgrQ(e.target.value)} placeholder="VIN / ŠPZ / projekt" className="bg-gray-900 border border-gray-700 rounded p-1.5 text-xs text-white" />
+                      <input value={mgrQ} onChange={e => setMgrQ(e.target.value)} placeholder={tx("VIN / ŠPZ / projekt")} className="bg-gray-900 border border-gray-700 rounded p-1.5 text-xs text-white" />
                       {mgrFPeriod === "custom" && (
                         <>
                           <label className="text-[10px] text-gray-400">Od<input type="date" value={mgrFrom} onChange={e => setMgrFrom(e.target.value)} className="w-full bg-gray-900 border border-gray-700 rounded p-1.5 text-xs text-white" /></label>
                           <label className="text-[10px] text-gray-400">Do<input type="date" value={mgrTo} onChange={e => setMgrTo(e.target.value)} className="w-full bg-gray-900 border border-gray-700 rounded p-1.5 text-xs text-white" /></label>
                         </>
                       )}
-                      <input value={mgrLocQ} onChange={e => { setMgrLocQ(e.target.value); if (e.target.value) setMgrLocOpen(true); }} placeholder="Hľadať projekt / lokalitu..." className="bg-gray-900 border border-gray-700 rounded p-1.5 text-xs text-white" />
+                      <input value={mgrLocQ} onChange={e => { setMgrLocQ(e.target.value); if (e.target.value) setMgrLocOpen(true); }} placeholder={tx("Hľadať projekt / lokalitu...")} className="bg-gray-900 border border-gray-700 rounded p-1.5 text-xs text-white" />
                       <div className="col-span-2 bg-gray-900 border border-gray-700 rounded p-1.5 space-y-1">
                         <div className="flex justify-between items-center gap-2 text-[10px] text-gray-400">
                           <button type="button" onClick={() => setMgrLocOpen(o => !o)} className="flex items-center gap-1.5 text-left flex-1 min-w-0">
                             <i className={`fa-solid fa-chevron-${mgrLocOpen ? "up" : "down"} text-[9px]`}></i>
-                            <span className={mgrFProjs.length ? "text-sky-300 font-bold" : ""}>Projekty / Lokality: {mgrFProjs.length ? mgrFProjs.length + " vybraných" : "všetky"}</span>
+                            <span className={mgrFProjs.length ? "text-sky-300 font-bold" : ""}>{tx("Projekty / Lokality:")} {mgrFProjs.length ? mgrFProjs.length + tx(" vybraných") : tx("všetky")}</span>
                           </button>
-                          {mgrFProjs.length > 0 && (<button type="button" onClick={() => setMgrFProjs([])} className="text-sky-400 font-bold shrink-0">Zrušiť výber</button>)}
+                          {mgrFProjs.length > 0 && (<button type="button" onClick={() => setMgrFProjs([])} className="text-sky-400 font-bold shrink-0">{tx("Zrušiť výber")}</button>)}
                         </div>
                         {mgrLocOpen && (<div className="max-h-40 overflow-y-auto space-y-1">{(() => {
                           const ids = clients.filter(c => c.created_by === currentUser.id).map(c => c.id);
@@ -4515,19 +5314,19 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
                       </div>
                     </div>
                     <div className="grid grid-cols-4 gap-1.5 text-center">
-                      <div className="bg-gray-900 border border-gray-800 rounded-xl py-1.5"><div className="text-[9px] text-gray-400 uppercase">Autá</div><div className="text-sm font-black text-white">{mgrTotals.count}</div></div>
-                      <div className="bg-gray-900 border border-gray-800 rounded-xl py-1.5"><div className="text-[9px] text-gray-400 uppercase">Obrat</div><div className="text-sm font-black text-white">{fmtEur(mgrTotals.gross)}</div></div>
-                      <div className="bg-gray-900 border border-gray-800 rounded-xl py-1.5"><div className="text-[9px] text-gray-400 uppercase">Technici</div><div className="text-sm font-black text-emerald-400">{fmtEur(mgrTotals.payout)}</div></div>
-                      <div className="bg-gray-900 border border-gray-800 rounded-xl py-1.5"><div className="text-[9px] text-gray-400 uppercase">Provízia</div><div className="text-sm font-black text-sky-400">{fmtEur(mgrTotals.comm)}</div></div>
+                      <div className="bg-gray-900 border border-gray-800 rounded-xl py-1.5"><div className="text-[9px] text-gray-400 uppercase">{tx("Autá")}</div><div className="text-sm font-black text-white">{mgrTotals.count}</div></div>
+                      <div className="bg-gray-900 border border-gray-800 rounded-xl py-1.5"><div className="text-[9px] text-gray-400 uppercase">{tx("Obrat")}</div><div className="text-sm font-black text-white">{fmtEur(mgrTotals.gross)}</div></div>
+                      <div className="bg-gray-900 border border-gray-800 rounded-xl py-1.5"><div className="text-[9px] text-gray-400 uppercase">{tx("Technici")}</div><div className="text-sm font-black text-emerald-400">{fmtEur(mgrTotals.payout)}</div></div>
+                      <div className="bg-gray-900 border border-gray-800 rounded-xl py-1.5"><div className="text-[9px] text-gray-400 uppercase">{tx("Provízia")}</div><div className="text-sm font-black text-sky-400">{fmtEur(mgrTotals.comm)}</div></div>
                     </div>
                     <div className="grid grid-cols-2 gap-1.5">
                       <button onClick={mgrExportPdf} className="py-1.5 rounded-lg bg-sky-600/20 border border-sky-500 text-xs font-bold text-sky-300">PDF export</button>
                       <button onClick={mgrExportCsv} className="py-1.5 rounded-lg bg-gray-800 border border-gray-700 text-xs font-bold text-gray-200">CSV export</button>
                     </div>
-                    {mgrFiltered.length === 0 && <div className="text-xs text-gray-500 text-center py-6">Žiadne autá podľa filtra.</div>}
+                    {mgrFiltered.length === 0 && <div className="text-xs text-gray-500 text-center py-6">{tx("Žiadne autá podľa filtra.")}</div>}
                     {(mgrArchHidden > 0 || showArchVeh) && (
                       <button type="button" onClick={() => setShowArchVeh(!showArchVeh)} className="w-full py-1.5 rounded-lg text-[11px] font-bold border bg-gray-900 border-gray-700 text-gray-300">
-                        <i className="fa-solid fa-box-archive mr-1"></i> {showArchVeh ? "Skryť archív" : "Zobraziť archív (" + mgrArchHidden + ")"}
+                        <i className="fa-solid fa-box-archive mr-1"></i> {showArchVeh ? tx("Skryť archív") : tx("Zobraziť archív (") + mgrArchHidden + ")"}
                       </button>
                     )}
                     {mgrListed.map(v => {
@@ -4537,17 +5336,17 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
                       return (
                         <div key={v.id} className="bg-gray-900 border border-gray-800 rounded-xl p-2.5 text-xs space-y-0.5">
                           <div className="flex justify-between gap-2">
-                            <span className="font-bold text-white truncate">{v.brand} {v.model}{isArchivedVeh(v) && (<span className="ml-1.5 bg-gray-700/60 text-gray-300 border border-gray-500/50 text-[9px] px-1 rounded font-bold">ARCHÍV</span>)}{hasUnseenChange(v.id) && (<i className="fa-solid fa-clock-rotate-left text-red-500 ml-1.5"></i>)}{v.status === "cancelled" && (<span className="ml-1.5 bg-gray-700/60 text-gray-300 border border-gray-500/50 text-[9px] px-1 rounded font-bold">STORNO</span>)}</span>
+                            <span className="font-bold text-white truncate">{v.brand} {v.model}{isArchivedVeh(v) && (<span className="ml-1.5 bg-gray-700/60 text-gray-300 border border-gray-500/50 text-[9px] px-1 rounded font-bold">{tx("ARCHÍV")}</span>)}{hasUnseenChange(v.id) && (<i className="fa-solid fa-clock-rotate-left text-red-500 ml-1.5"></i>)}{v.status === "cancelled" && (<span className="ml-1.5 bg-gray-700/60 text-gray-300 border border-gray-500/50 text-[9px] px-1 rounded font-bold">STORNO</span>)}</span>
                             <span className="text-sky-400 font-black shrink-0">{fmtEur(s.comm)}</span>
                           </div>
                           <div className="text-gray-400 truncate">{cl?.name || "?"} • {proj?.name || "?"}</div>
                           <div className="text-gray-500 truncate">{v.ecv} | {v.vin} | {new Date(v.created_at).toLocaleDateString("sk-SK")}</div>
-                          <div className="text-gray-400">Obrat {fmtEur(s.gross)} • technik(ci): {s.per.map(p => `${p.email ? dispName(p.email, true) : mgrTechName(p.id)} ${fmtEur(p.payout)}`).join(", ")}</div>
+                          <div className="text-gray-400">{tx("Obrat")} {fmtEur(s.gross)} {tx("• technik(ci):")} {s.per.map(p => `${p.email ? dispName(p.email, true) : mgrTechName(p.id)} ${fmtEur(p.payout)}`).join(", ")}</div>
                           <div className="flex flex-wrap gap-1.5 pt-1.5">
-                            <button type="button" onClick={() => openHistory(v)} className="text-[10px] font-bold px-2 py-1 rounded border border-gray-700 text-gray-300 flex items-center gap-1"><i className="fa-solid fa-clock-rotate-left"></i> História</button>
-                            {v.status !== "cancelled" && (<button type="button" onClick={() => mgrSetPrice(v)} className="text-[10px] font-bold px-2 py-1 rounded border border-sky-700/60 text-sky-300 flex items-center gap-1"><i className="fa-solid fa-pen"></i> Zmeniť cenu</button>)}
-                            <button type="button" onClick={() => doStorno(v, v.status === "cancelled")} className="text-[10px] font-bold px-2 py-1 rounded border border-red-800/60 text-red-300 flex items-center gap-1"><i className="fa-solid fa-ban"></i> {v.status === "cancelled" ? "Obnoviť" : "Stornovať"}</button>
-                            {(!archReason(v) || archReason(v) === "manual") && (<button type="button" onClick={() => toggleArchiveVeh(v)} className="text-[10px] font-bold px-2 py-1 rounded border border-gray-700 text-gray-300 flex items-center gap-1"><i className="fa-solid fa-box-archive"></i> {v.is_archived ? "Z archívu" : "Archivovať"}</button>)}
+                            <button type="button" onClick={() => openHistory(v)} className="text-[10px] font-bold px-2 py-1 rounded border border-gray-700 text-gray-300 flex items-center gap-1"><i className="fa-solid fa-clock-rotate-left"></i> {tx("História")}</button>
+                            {v.status !== "cancelled" && (<button type="button" onClick={() => mgrSetPrice(v)} className="text-[10px] font-bold px-2 py-1 rounded border border-sky-700/60 text-sky-300 flex items-center gap-1"><i className="fa-solid fa-pen"></i> {tx("Zmeniť cenu")}</button>)}
+                            <button type="button" onClick={() => doStorno(v, v.status === "cancelled")} className="text-[10px] font-bold px-2 py-1 rounded border border-red-800/60 text-red-300 flex items-center gap-1"><i className="fa-solid fa-ban"></i> {v.status === "cancelled" ? tx("Obnoviť") : tx("Stornovať")}</button>
+                            {(!archReason(v) || archReason(v) === "manual") && (<button type="button" onClick={() => toggleArchiveVeh(v)} className="text-[10px] font-bold px-2 py-1 rounded border border-gray-700 text-gray-300 flex items-center gap-1"><i className="fa-solid fa-box-archive"></i> {v.is_archived ? tx("Z archívu") : tx("Archivovať")}</button>)}
                           </div>
                         </div>
                       );
@@ -4567,11 +5366,11 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
                     <div className="text-sm font-black text-white">{kpiStats.count}</div>
                   </div>
                   <div className="bg-gray-900 border border-gray-800 py-1.5 px-2 rounded-xl text-center">
-                    <div className="text-[9px] text-amber-400 font-bold uppercase truncate">Môj podiel</div>
+                    <div className="text-[9px] text-amber-400 font-bold uppercase truncate">{tx("Môj podiel")}</div>
                     <div className="text-sm font-black text-amber-400">{currSymbol}{kpiStats.myShare}</div>
                   </div>
                   <div className="bg-gray-900 border border-emerald-900/40 bg-emerald-950/10 py-1.5 px-2 rounded-xl text-center">
-                    <div className="text-[9px] text-emerald-400 font-bold uppercase truncate">Uzavreté</div>
+                    <div className="text-[9px] text-emerald-400 font-bold uppercase truncate">{tx("Uzavreté")}</div>
                     <div className="text-sm font-black text-emerald-400">{currSymbol}{kpiStats.lockedShare}</div>
                   </div>
                 </div>
@@ -4610,7 +5409,7 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
                     className="w-full bg-gray-950 border border-gray-700 rounded p-1 text-xs text-white"
                   >
                     <option value="all">{t.allDates}</option>
-                    <option value="thisWeek">Aktuálny týždeň</option>
+                    <option value="thisWeek">{tx("Aktuálny týždeň")}</option>
                     <option value="thisMonth">{t.thisMonth}</option>
                     <option value="lastMonth">{t.lastMonth}</option>
                     <option value="customMonth">{t.customMonthYear}</option>
@@ -4621,9 +5420,9 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
                     onChange={e => setRepStatusFilter(e.target.value)}
                     className="w-full bg-gray-950 border border-gray-700 rounded p-1 text-xs text-white"
                   >
-                    <option value="all">Všetky stavy</option>
-                    <option value="open">Otvorené</option>
-                    <option value="closed">Uzavreté</option>
+                    <option value="all">{tx("Všetky stavy")}</option>
+                    <option value="open">{tx("Otvorené")}</option>
+                    <option value="closed">{tx("Uzavreté")}</option>
                   </select>
                 </div>
                   
@@ -4679,7 +5478,7 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
                 {/* Zoznam zaevidovaných áut s CO-OP odznakom a dvojitou cenou */}
                 {(archHidden > 0 || showArchVeh) && (
                   <button type="button" onClick={() => setShowArchVeh(!showArchVeh)} className="w-full py-1.5 rounded-lg text-[11px] font-bold border bg-gray-900 border-gray-700 text-gray-300">
-                    <i className="fa-solid fa-box-archive mr-1"></i> {showArchVeh ? "Skryť archív" : "Zobraziť archív (" + archHidden + ")"}
+                    <i className="fa-solid fa-box-archive mr-1"></i> {showArchVeh ? tx("Skryť archív") : tx("Zobraziť archív (") + archHidden + ")"}
                   </button>
                 )}
                 <div className="space-y-1.5">
@@ -4701,8 +5500,8 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
                       // Zistenie názvu projektu a klienta pre mikro-hlavičku
                       const proj = projects.find(p => p.id === v.project_id);
                       const client = clients.find(c => c.id === proj?.client_id);
-                      const clientName = client?.name || "Klient";
-                      const locationName = proj?.name || "Lokácia";
+                      const clientName = client?.name || tx("Klient");
+                      const locationName = proj?.name || tx("Lokácia");
 
                       return (
                         <div
@@ -4720,8 +5519,8 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
 
                             <div className="font-bold text-gray-200 flex items-center gap-1.5">
                               <span className="truncate">{v.brand} {v.model}</span>
-                              {isArchivedVeh(v) && (<span className="bg-gray-700/60 text-gray-300 border border-gray-500/50 text-[9px] px-1 rounded font-bold">ARCHÍV</span>)}
-                              {hasUnseenChange(v.id) && (<span className="text-red-500 text-[12px]" title="Zmena od iného používateľa"><i className="fa-solid fa-clock-rotate-left"></i></span>)}
+                              {isArchivedVeh(v) && (<span className="bg-gray-700/60 text-gray-300 border border-gray-500/50 text-[9px] px-1 rounded font-bold">{tx("ARCHÍV")}</span>)}
+                              {hasUnseenChange(v.id) && (<span className="text-red-500 text-[12px]" title={tx("Zmena od iného používateľa")}><i className="fa-solid fa-clock-rotate-left"></i></span>)}
                               {v.status === "cancelled" && (<span className="bg-gray-700/60 text-gray-300 border border-gray-500/50 text-[9px] px-1 rounded font-bold">STORNO</span>)}
                               {isCoop && (
                                 <span className="bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[9px] px-1.5 py-0.5 rounded font-black flex items-center gap-1">
@@ -4729,7 +5528,7 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
                                 </span>
                               )}
                               {v.status === "pending_price" && (
-                                <span className="bg-red-500/20 text-red-400 border border-red-500/40 text-[9px] px-1 rounded font-bold">Cena ?</span>
+                                <span className="bg-red-500/20 text-red-400 border border-red-500/40 text-[9px] px-1 rounded font-bold">{tx("Cena ?")}</span>
                               )}
                             </div>
                             <div className="text-[10px] font-mono text-gray-400">{v.ecv} | {v.vin.substring(0, 10)}...</div>
@@ -4749,14 +5548,14 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
                                   ? "bg-emerald-950/60 border-emerald-500/50 text-emerald-400"
                                   : "bg-gray-800/80 border-gray-700 text-gray-400 hover:text-amber-400 hover:border-amber-500/40"
                               }`}
-                              title={v.is_locked ? "Uzavreté (kliknutím odomknete)" : "Otvorené (kliknutím uzamknete)"}
+                              title={v.is_locked ? tx("Uzavreté (kliknutím odomknete)") : tx("Otvorené (kliknutím uzamknete)")}
                             >
                               <i className={`fa-solid ${v.is_locked ? "fa-lock text-emerald-400" : "fa-lock-open text-gray-400"}`}></i>
-                              <span>{v.is_locked ? "Uzavreté" : "Otvorené"}</span>
+                              <span>{v.is_locked ? tx("Uzavreté") : tx("Otvorené")}</span>
                             </button>
 
                             {v.status === "pending_price" ? (
-                              <div className="font-black text-red-400 text-xs">Cena neznáma</div>
+                              <div className="font-black text-red-400 text-xs">{tx("Cena neznáma")}</div>
                             ) : (
                               <div className="space-y-0.5">
                                 <div className="font-black text-emerald-400 text-sm">
@@ -4784,14 +5583,14 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
             <div className="fixed inset-0 z-[60] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setHistVeh(null)}>
               <div className="w-full max-w-sm bg-gray-950 border border-red-500/60 rounded-2xl p-4 space-y-3 max-h-[85vh] overflow-y-auto text-xs" onClick={e => e.stopPropagation()}>
                 <div className="flex justify-between items-center border-b border-gray-800 pb-2">
-                  <div className="font-bold text-red-300 text-sm"><i className="fa-solid fa-clock-rotate-left mr-1.5"></i>História zmien</div>
+                  <div className="font-bold text-red-300 text-sm"><i className="fa-solid fa-clock-rotate-left mr-1.5"></i>{tx("História zmien")}</div>
                   <button type="button" onClick={() => setHistVeh(null)} className="text-gray-500 hover:text-white"><i className="fa-solid fa-xmark text-base"></i></button>
                 </div>
                 <div className="text-gray-400">{histVeh.brand} {histVeh.model} • {histVeh.ecv}</div>
                 {histLoading ? (
                   <div className="text-center text-gray-500 py-3"><i className="fa-solid fa-circle-notch fa-spin"></i></div>
                 ) : histRows.length === 0 ? (
-                  <div className="text-gray-500 text-center py-3">Zatiaľ žiadne zmeny.</div>
+                  <div className="text-gray-500 text-center py-3">{tx("Zatiaľ žiadne zmeny.")}</div>
                 ) : (
                   <div className="space-y-1.5">
                     {histRows.map(r => (
@@ -4801,7 +5600,7 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
                           <span className="shrink-0">{new Date(r.changed_at).toLocaleString("sk-SK")}</span>
                         </div>
                         <div className="text-gray-100 font-semibold">{chgText(r)}</div>
-                        {r.reason && (<div className="text-amber-300 text-[11px]">Dôvod: {r.reason}</div>)}
+                        {r.reason && (<div className="text-amber-300 text-[11px]">{tx("Dôvod:")} {r.reason}</div>)}
                       </div>
                     ))}
                   </div>
@@ -4819,7 +5618,7 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
                     <span>{selectedVehicleDetail.brand} {selectedVehicleDetail.model}</span>
                     {selectedVehicleDetail.is_locked && (
                       <span className="text-[10px] text-emerald-400 bg-emerald-950/60 border border-emerald-500/40 px-1.5 py-0.5 rounded flex items-center gap-1">
-                        <i className="fa-solid fa-lock"></i> Uzavreté
+                        <i className="fa-solid fa-lock"></i> {tx("Uzavreté")}
                       </span>
                     )}
                   </div>
@@ -4827,7 +5626,7 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
                   <div className="flex items-center gap-2.5">
                     {/* Tlačidlo Upraviť / Zrušiť s poistkou proti zamknutým autám */}
                     {selectedVehicleDetail.is_locked ? (
-                      <span className="text-[10px] text-gray-500 italic">Uzamknuté</span>
+                      <span className="text-[10px] text-gray-500 italic">{tx("Uzamknuté")}</span>
                     ) : (
                       <button
                         type="button"
@@ -4914,7 +5713,7 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
                         <input
                           type="text"
                           disabled={editVehicleData.has_no_ecv}
-                          value={editVehicleData.has_no_ecv ? (lang === "SK" ? "Bez ŠPZ" : (lang === "DE" ? "Ohne KZ" : "No Plate")) : (editVehicleData.ecv || "")}
+                          value={editVehicleData.has_no_ecv ? "No Plate" : (editVehicleData.ecv || "")}
                           onChange={e => setEditVehicleData({ ...editVehicleData, ecv: e.target.value.toUpperCase() })}
                           className={`w-full border rounded p-1.5 text-xs font-bold ${editVehicleData.has_no_ecv ? "bg-gray-800 text-gray-500 border-gray-800" : "bg-gray-900 text-white border-gray-700"}`}
                         />
@@ -4991,12 +5790,12 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
                 ) : (
                   <div className="space-y-1.5 font-mono">
                     <div><span className="text-gray-500">VIN:</span> <span className="text-white font-bold">{selectedVehicleDetail.vin}</span></div>
-                    <div><span className="text-gray-500">ŠPZ:</span> <span className="text-white font-bold">{selectedVehicleDetail.ecv}</span></div>
+                    <div><span className="text-gray-500">{tx("ŠPZ:")}</span> <span className="text-white font-bold">{selectedVehicleDetail.ecv}</span></div>
                     <div><span className="text-gray-500">Farba:</span> <span className="text-white">{selectedVehicleDetail.color}</span></div>
-                    <div><span className="text-gray-500">Dátum:</span> <span className="text-gray-300">{new Date(selectedVehicleDetail.created_at).toLocaleString()}</span></div>
-                    <div><span className="text-gray-500">Číslo kalkulácie:</span> <span className="text-amber-300 font-bold">{selectedVehicleDetail.client_calc_no || "N/A"}</span></div>
-                    <div><span className="text-gray-500">PDR Cena (100%):</span> <span className="text-amber-400 font-bold">{currSymbol}{selectedVehicleDetail.price}</span></div>
-                    <div><span className="text-gray-500">R&I Cena (100%):</span> <span className="text-gray-300">{currSymbol}{selectedVehicleDetail.ri_price}</span></div>
+                    <div><span className="text-gray-500">{tx("Dátum:")}</span> <span className="text-gray-300">{new Date(selectedVehicleDetail.created_at).toLocaleString()}</span></div>
+                    <div><span className="text-gray-500">{tx("Číslo kalkulácie:")}</span> <span className="text-amber-300 font-bold">{selectedVehicleDetail.client_calc_no || "N/A"}</span></div>
+                    <div><span className="text-gray-500">{tx("PDR Cena (100%):")}</span> <span className="text-amber-400 font-bold">{currSymbol}{selectedVehicleDetail.price}</span></div>
+                    <div><span className="text-gray-500">{tx("R&I Cena (100%):")}</span> <span className="text-gray-300">{currSymbol}{selectedVehicleDetail.ri_price}</span></div>
                   </div>
                 )}
 
@@ -5083,19 +5882,19 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
                   </div>
                 )}
 
-                {selectedVehicleDetail.status === "cancelled" && (<div className="bg-gray-800 border border-gray-600 text-gray-300 rounded-lg p-2 text-[11px] font-bold">Auto je stornované – nezapočítava sa do súčtov a reportov.</div>)}
-                {archReason(selectedVehicleDetail) && archReason(selectedVehicleDetail) !== "manual" && (<div className="bg-gray-900 border border-gray-700 text-gray-400 rounded-lg p-2 text-[11px]">{archReason(selectedVehicleDetail) === "project" ? "Auto je v archíve, lebo jeho projekt / lokalita je archivovaná." : "Auto je v archíve automaticky (uzavreté, staršie ako minulý rok)."}</div>)}
+                {selectedVehicleDetail.status === "cancelled" && (<div className="bg-gray-800 border border-gray-600 text-gray-300 rounded-lg p-2 text-[11px] font-bold">{tx("Auto je stornované – nezapočítava sa do súčtov a reportov.")}</div>)}
+                {archReason(selectedVehicleDetail) && archReason(selectedVehicleDetail) !== "manual" && (<div className="bg-gray-900 border border-gray-700 text-gray-400 rounded-lg p-2 text-[11px]">{archReason(selectedVehicleDetail) === "project" ? tx("Auto je v archíve, lebo jeho projekt / lokalita je archivovaná.") : tx("Auto je v archíve automaticky (uzavreté, staršie ako minulý rok).")}</div>)}
                 {(!archReason(selectedVehicleDetail) || archReason(selectedVehicleDetail) === "manual") && (
                   <button type="button" onClick={() => toggleArchiveVeh(selectedVehicleDetail)} className="w-full bg-gray-900 border border-gray-700 text-gray-200 font-bold py-2 rounded-xl text-xs flex items-center justify-center gap-1.5">
-                    <i className="fa-solid fa-box-archive"></i> {selectedVehicleDetail.is_archived ? "Vrátiť z archívu" : "Archivovať auto"}
+                    <i className="fa-solid fa-box-archive"></i> {selectedVehicleDetail.is_archived ? tx("Vrátiť z archívu") : tx("Archivovať auto")}
                   </button>
                 )}
                 <div className="flex gap-2">
                   <button type="button" onClick={() => openHistory(selectedVehicleDetail)} className="flex-1 bg-gray-900 border border-gray-700 text-gray-200 font-bold py-2 rounded-xl text-xs flex items-center justify-center gap-1.5">
-                    <i className={"fa-solid fa-clock-rotate-left" + (hasUnseenChange(selectedVehicleDetail.id) ? " text-red-500" : "")}></i> História zmien
+                    <i className={"fa-solid fa-clock-rotate-left" + (hasUnseenChange(selectedVehicleDetail.id) ? " text-red-500" : "")}></i> {tx("História zmien")}
                   </button>
                   <button type="button" onClick={() => doStorno(selectedVehicleDetail, selectedVehicleDetail.status === "cancelled")} className="flex-1 bg-gray-900 border border-red-800/60 text-red-300 font-bold py-2 rounded-xl text-xs flex items-center justify-center gap-1.5">
-                    <i className="fa-solid fa-ban"></i> {selectedVehicleDetail.status === "cancelled" ? "Obnoviť auto" : "Stornovať auto"}
+                    <i className="fa-solid fa-ban"></i> {selectedVehicleDetail.status === "cancelled" ? tx("Obnoviť auto") : tx("Stornovať auto")}
                   </button>
                 </div>
                 <button
@@ -5151,7 +5950,7 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
                       required
                       value={sheetEditData.name || ""}
                       onChange={e => setSheetEditData({ ...sheetEditData, name: e.target.value })}
-                      placeholder="Názov"
+                      placeholder={tx("Názov")}
                       className="w-full bg-gray-900 border border-gray-700 rounded p-1.5 text-xs text-white"
                     />
                     <input
@@ -5183,19 +5982,12 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
                       lang={lang}
                       placeholder={t.countryPlaceholder}
                     />
-                    <div className="grid grid-cols-2 gap-2">
+                    <div>
                       <input
                         type="text"
                         value={sheetEditData.contact_person || ""}
                         onChange={e => setSheetEditData({ ...sheetEditData, contact_person: e.target.value })}
                         placeholder={t.contactPersonPlaceholder}
-                        className="w-full bg-gray-900 border border-gray-700 rounded p-1.5 text-xs text-white"
-                      />
-                      <input
-                        type="text"
-                        value={sheetEditData.phone || ""}
-                        onChange={e => setSheetEditData({ ...sheetEditData, phone: sanitizePhone(e.target.value) })}
-                        placeholder={t.phonePlaceholder}
                         className="w-full bg-gray-900 border border-gray-700 rounded p-1.5 text-xs text-white"
                       />
                     </div>
@@ -5239,14 +6031,45 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
                       </div>
                     </div>
 
+                    {activeBottomSheet.type === "client" && (
+                      <div className="pt-1 border-t border-gray-800 space-y-1.5">
+                        <label className="flex items-center gap-1.5 text-xs text-gray-300">
+                          <input
+                            type="checkbox"
+                            checked={!!sheetEditData.auto_numbering}
+                            onChange={e => setSheetEditData({ ...sheetEditData, auto_numbering: e.target.checked })}
+                          />
+                          <span>{t.predefinedSeqCheckbox}</span>
+                        </label>
+                        {sheetEditData.auto_numbering && (
+                          <div className="grid grid-cols-2 gap-2">
+                            <input
+                              type="text"
+                              value={sheetEditData.fixed_seq_prefix || ""}
+                              onChange={e => setSheetEditData({ ...sheetEditData, fixed_seq_prefix: e.target.value })}
+                              placeholder={lang === "DE" ? "ID/{JAHR}/" : (lang === "SK" ? "ID/{ROK}/" : "ID/{YEAR}/")}
+                              className="w-full bg-gray-900 border border-gray-700 rounded p-1 text-xs text-white"
+                            />
+                            <input
+                              type="number"
+                              value={sheetEditData.initial_seq_number ?? 1}
+                              onChange={e => setSheetEditData({ ...sheetEditData, initial_seq_number: e.target.value })}
+                              placeholder="1"
+                              className="w-full bg-gray-900 border border-gray-700 rounded p-1 text-xs text-white"
+                            />
+                          </div>
+                        )}
+                      </div>
+                    )}
+
                     {activeBottomSheet.type === "client" && effRole === "manager" && (
                       <div className="grid grid-cols-2 gap-2">
                         <div>
-                          <label className="text-[9px] text-sky-400">Provízia manažéra PDR (%)</label>
+                          <label className="text-[9px] text-sky-400">{tx("Provízia manažéra PDR (%)")}</label>
                           <input type="number" min="0" max="100" value={sheetEditData.comm_pdr ?? ""} onChange={e => setSheetEditData({ ...sheetEditData, comm_pdr: e.target.value })} className="w-full bg-gray-900 border border-sky-700 rounded p-1 text-xs text-white font-bold" />
                         </div>
                         <div>
-                          <label className="text-[9px] text-sky-400">Provízia manažéra R&I (%)</label>
+                          <label className="text-[9px] text-sky-400">{tx("Provízia manažéra R&I (%)")}</label>
                           <input type="number" min="0" max="100" value={sheetEditData.comm_ri ?? ""} onChange={e => setSheetEditData({ ...sheetEditData, comm_ri: e.target.value })} className="w-full bg-gray-900 border border-sky-700 rounded p-1 text-xs text-white font-bold" />
                         </div>
                       </div>
@@ -5261,21 +6084,21 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
                             onClick={() => setSheetEditData({ ...sheetEditData, pricing_mode: "free" })}
                             className={`p-1.5 rounded text-xs font-bold border ${sheetEditData.pricing_mode === "free" ? "bg-amber-500/20 border-amber-500 text-amber-300" : "bg-gray-900 border-gray-800 text-gray-400"}`}
                           >
-                            Voľná / AW
+                            {tx("Voľná / AW")}
                           </button>
                           <button
                             type="button"
                             onClick={() => setSheetEditData({ ...sheetEditData, pricing_mode: "fixed" })}
                             className={`p-1.5 rounded text-xs font-bold border ${sheetEditData.pricing_mode === "fixed" ? "bg-amber-500/20 border-amber-500 text-amber-300" : "bg-gray-900 border-gray-800 text-gray-400"}`}
                           >
-                            Fixná
+                            {tx("Fixná")}
                           </button>
                           <button
                             type="button"
                             onClick={() => setSheetEditData({ ...sheetEditData, pricing_mode: "categories" })}
                             className={`p-1.5 rounded text-xs font-bold border ${sheetEditData.pricing_mode === "categories" ? "bg-amber-500/20 border-amber-500 text-amber-300" : "bg-gray-900 border-gray-800 text-gray-400"}`}
                           >
-                            Kategórie
+                            {tx("Kategórie")}
                           </button>
                         </div>
 
@@ -5299,7 +6122,7 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
                               type="number"
                               value={sheetEditData.fixed_price || ""}
                               onChange={e => setSheetEditData({ ...sheetEditData, fixed_price: e.target.value })}
-                              placeholder="Fixná cena"
+                              placeholder={tx("Fixná cena")}
                               className="w-full bg-gray-900 border border-gray-700 rounded p-1 text-xs text-white font-bold"
                             />
                           </div>
@@ -5312,7 +6135,7 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
                                 type="number"
                                 value={sheetEditTempCatPrice}
                                 onChange={e => setSheetEditTempCatPrice(e.target.value)}
-                                placeholder="Cena novej Cat v EUR"
+                                placeholder={tx("Cena novej Cat v EUR")}
                                 className="w-full bg-gray-900 border border-gray-700 rounded p-1 text-xs text-white font-bold"
                               />
                               <button
@@ -5353,21 +6176,12 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
                     {activeBottomSheet.data.contact_person && (
                       <div><span className="text-gray-500">Kontakt:</span> <span className="text-gray-200 font-bold">{activeBottomSheet.data.contact_person}</span></div>
                     )}
-                    {activeBottomSheet.data.phone && (
-                      <div><span className="text-gray-500">Telefón:</span> <span className="text-gray-200 font-mono">{activeBottomSheet.data.phone}</span></div>
-                    )}
                     {activeBottomSheet.data.ico && (
-                      <div><span className="text-gray-500">IČO / UID:</span> <span className="text-gray-200 font-mono">{activeBottomSheet.data.ico}</span></div>
+                      <div><span className="text-gray-500">{tx("IČO / UID:")}</span> <span className="text-gray-200 font-mono">{activeBottomSheet.data.ico}</span></div>
                     )}
 
-                    {activeBottomSheet.data.phone && (
+                    {(activeBottomSheet.data.address || activeBottomSheet.data.city) && (
                       <div className="flex gap-2 pt-1">
-                        <a
-                          href={`tel:${activeBottomSheet.data.phone}`}
-                          className="flex-1 bg-emerald-600 text-white font-bold py-2 rounded-xl text-center flex items-center justify-center gap-1.5 shadow"
-                        >
-                          <i className="fa-solid fa-phone"></i> {t.callBtn}
-                        </a>
                         <a
                           href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${activeBottomSheet.data.name} ${activeBottomSheet.data.address || ''} ${activeBottomSheet.data.city || ''}`)}`}
                           target="_blank"
@@ -5380,14 +6194,14 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
                     )}
 
                     {activeBottomSheet.type === "client" && effRole === "manager" && activeBottomSheet.data.created_by === currentUser.id && (
-                      <div className="text-sky-300 font-bold">Provízia manažéra: PDR {(clientComm[activeBottomSheet.data.id] || {}).pdr ?? 0} % | R&I {(clientComm[activeBottomSheet.data.id] || {}).ri ?? 0} %</div>
+                      <div className="text-sky-300 font-bold">{tx("Provízia manažéra: PDR")} {(clientComm[activeBottomSheet.data.id] || {}).pdr ?? 0} % | R&I {(clientComm[activeBottomSheet.data.id] || {}).ri ?? 0} %</div>
                     )}
 
                     {activeBottomSheet.type === "project" && effRole === "manager" && activeBottomSheet.data.created_by === currentUser.id && (
                       <div className="pt-2 border-t border-gray-800 space-y-1.5">
-                        <div className="text-[10px] text-sky-400 font-bold uppercase tracking-wide">Technici na projekte</div>
+                        <div className="text-[10px] text-sky-400 font-bold uppercase tracking-wide">{tx("Technici na projekte")}</div>
                         {teamRows.filter(r => r.manager_id === currentUser.id && r.status === "accepted" && r.member_id).length === 0 && (
-                          <div className="text-gray-500">Najprv pozvite technikov do tímu (ikona Tím).</div>
+                          <div className="text-gray-500">{tx("Najprv pozvite technikov do tímu (ikona Tím).")}</div>
                         )}
                         {teamRows.filter(r => r.manager_id === currentUser.id && r.status === "accepted" && r.member_id).map(m => {
                           const row = assignRows.find(a => a.project_id === activeBottomSheet.data.id && a.technician_id === m.member_id);
@@ -5401,11 +6215,11 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
                               {row && (
                                 <div className="grid grid-cols-2 gap-2">
                                   <div>
-                                    <label className="text-[9px] text-gray-400">Provízia PDR % (prázdne = {cc.pdr})</label>
+                                    <label className="text-[9px] text-gray-400">{tx("Provízia PDR % (prázdne =")} {cc.pdr})</label>
                                     <input key={"p" + row.id + String(row.commission_pdr)} type="number" min="0" max="100" defaultValue={row.commission_pdr ?? ""} onBlur={e => saveAssignOverride(row.id, "commission_pdr", e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded p-1 text-xs text-white font-bold" />
                                   </div>
                                   <div>
-                                    <label className="text-[9px] text-gray-400">Provízia R&I % (prázdne = {cc.ri})</label>
+                                    <label className="text-[9px] text-gray-400">{tx("Provízia R&I % (prázdne =")} {cc.ri})</label>
                                     <input key={"r" + row.id + String(row.commission_ri)} type="number" min="0" max="100" defaultValue={row.commission_ri ?? ""} onBlur={e => saveAssignOverride(row.id, "commission_ri", e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded p-1 text-xs text-white font-bold" />
                                   </div>
                                 </div>
@@ -5442,7 +6256,7 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
                 <div className="flex justify-between items-center border-b border-gray-800 pb-2">
                   <div className="font-bold text-sky-400 flex items-center gap-2">
                     <i className="fa-solid fa-people-group"></i>
-                    <span>Tím</span>
+                    <span>{tx("Tím")}</span>
                   </div>
                   <button type="button" onClick={() => setShowTeamModal(false)} className="text-gray-500 hover:text-white">
                     <i className="fa-solid fa-xmark text-base"></i>
@@ -5455,13 +6269,13 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
 
                 {teamRows.filter(r => r.manager_id !== currentUser.id && r.status === "pending").length > 0 && (
                   <div className="space-y-1.5">
-                    <label className="text-[10px] text-amber-400 font-bold uppercase tracking-wide">Pozvánky do tímu:</label>
+                    <label className="text-[10px] text-amber-400 font-bold uppercase tracking-wide">{tx("Pozvánky do tímu:")}</label>
                     {teamRows.filter(r => r.manager_id !== currentUser.id && r.status === "pending").map(r => (
                       <div key={r.id} className="bg-gray-900 p-2 rounded-xl border border-amber-500/40 flex justify-between items-center gap-2">
-                        <span className="font-mono text-xs text-gray-200 truncate">{r.manager_email || "Manažér"}</span>
+                        <span className="font-mono text-xs text-gray-200 truncate">{r.manager_email || tx("Manažér")}</span>
                         <div className="flex items-center gap-1.5 shrink-0">
-                          <button type="button" onClick={() => handleAcceptTeamInvite(r.id)} className="bg-emerald-600 hover:bg-emerald-500 text-white px-2.5 py-1 rounded-lg text-[10px] font-bold">Prijať</button>
-                          <button type="button" onClick={() => handleRemoveTeamRow(r.id)} className="bg-gray-800 hover:bg-red-950 text-gray-400 hover:text-red-400 px-2 py-1 rounded-lg text-[10px] font-bold border border-gray-700">Odmietnuť</button>
+                          <button type="button" onClick={() => handleAcceptTeamInvite(r.id)} className="bg-emerald-600 hover:bg-emerald-500 text-white px-2.5 py-1 rounded-lg text-[10px] font-bold">{tx("Prijať")}</button>
+                          <button type="button" onClick={() => handleRemoveTeamRow(r.id)} className="bg-gray-800 hover:bg-red-950 text-gray-400 hover:text-red-400 px-2 py-1 rounded-lg text-[10px] font-bold border border-gray-700">{tx("Odmietnuť")}</button>
                         </div>
                       </div>
                     ))}
@@ -5470,11 +6284,11 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
 
                 {teamRows.filter(r => r.manager_id !== currentUser.id && r.status === "accepted").length > 0 && (
                   <div className="space-y-1.5 pt-2 border-t border-gray-800">
-                    <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wide">Moji manažéri:</label>
+                    <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wide">{tx("Moji manažéri:")}</label>
                     {teamRows.filter(r => r.manager_id !== currentUser.id && r.status === "accepted").map(r => (
                       <div key={r.id} className="bg-gray-900 p-2 rounded-xl border border-gray-800 flex justify-between items-center gap-2">
-                        <span className="font-mono text-xs text-gray-200 truncate">{r.manager_email || "Manažér"}</span>
-                        <button type="button" onClick={() => handleRemoveTeamRow(r.id, "Opustiť tento tím? Stratíte prístup k jeho projektom.")} className="text-gray-500 hover:text-red-400 px-2 py-1 text-[10px] font-bold">Opustiť</button>
+                        <span className="font-mono text-xs text-gray-200 truncate">{r.manager_email || tx("Manažér")}</span>
+                        <button type="button" onClick={() => handleRemoveTeamRow(r.id, tx("Opustiť tento tím? Stratíte prístup k jeho projektom."))} className="text-gray-500 hover:text-red-400 px-2 py-1 text-[10px] font-bold">{tx("Opustiť")}</button>
                       </div>
                     ))}
                   </div>
@@ -5483,30 +6297,30 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
                 {effRole === "manager" && (
                   <div className="space-y-2 pt-2 border-t border-gray-800">
                     <form onSubmit={handleInviteTeamMember} className="space-y-1.5">
-                      <label className="text-[10px] text-gray-400 font-bold uppercase">Pozvať technika do tímu</label>
+                      <label className="text-[10px] text-gray-400 font-bold uppercase">{tx("Pozvať technika do tímu")}</label>
                       <div className="flex gap-1.5">
                         <input type="email" required value={teamInviteEmail} onChange={e => setTeamInviteEmail(e.target.value)} placeholder="technik@email.com" className="w-full bg-gray-900 border border-gray-700 rounded p-1.5 text-xs text-white" />
-                        <button type="submit" className="bg-sky-500 text-gray-950 px-3 py-1.5 rounded font-bold whitespace-nowrap">Pozvať</button>
+                        <button type="submit" className="bg-sky-500 text-gray-950 px-3 py-1.5 rounded font-bold whitespace-nowrap">{tx("Pozvať")}</button>
                       </div>
                     </form>
-                    <label className="text-[10px] text-sky-400 font-bold uppercase tracking-wide">Môj tím:</label>
+                    <label className="text-[10px] text-sky-400 font-bold uppercase tracking-wide">{tx("Môj tím:")}</label>
                     {teamRows.filter(r => r.manager_id === currentUser.id).length === 0 && (
-                      <div className="text-gray-500 text-center py-2">Zatiaľ žiadni technici.</div>
+                      <div className="text-gray-500 text-center py-2">{tx("Zatiaľ žiadni technici.")}</div>
                     )}
                     {teamRows.filter(r => r.manager_id === currentUser.id).map(r => (
                       <div key={r.id} className="bg-gray-900 p-2 rounded-xl border border-gray-800 flex justify-between items-center gap-2">
                         <div className="min-w-0">
                           <div className="font-mono text-xs text-gray-200 truncate">{r.member_email}</div>
-                          <div className={`text-[10px] font-bold ${r.status === "accepted" ? "text-emerald-400" : "text-amber-400"}`}>{r.status === "accepted" ? "V tíme" : "Čaká na prijatie"}</div>
+                          <div className={`text-[10px] font-bold ${r.status === "accepted" ? "text-emerald-400" : "text-amber-400"}`}>{r.status === "accepted" ? tx("V tíme") : tx("Čaká na prijatie")}</div>
                         </div>
-                        <button type="button" onClick={() => handleRemoveTeamRow(r.id, "Odstrániť technika z tímu? Zmizne mu aj priradenie k vašim projektom.")} className="text-gray-500 hover:text-red-400 px-2 py-1 text-[10px] font-bold">Odstrániť</button>
+                        <button type="button" onClick={() => handleRemoveTeamRow(r.id, tx("Odstrániť technika z tímu? Zmizne mu aj priradenie k vašim projektom."))} className="text-gray-500 hover:text-red-400 px-2 py-1 text-[10px] font-bold">{tx("Odstrániť")}</button>
                       </div>
                     ))}
                   </div>
                 )}
 
                 {effRole !== "manager" && teamRows.length === 0 && (
-                  <div className="text-gray-500 text-center py-3">Zatiaľ nie ste v žiadnom tíme. Pozvánku vám pošle manažér na váš e-mail.</div>
+                  <div className="text-gray-500 text-center py-3">{tx("Zatiaľ nie ste v žiadnom tíme. Pozvánku vám pošle manažér na váš e-mail.")}</div>
                 )}
               </div>
             </div>
@@ -5543,7 +6357,7 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
                       className="w-full bg-gray-900 border border-gray-700 rounded p-1.5 text-xs text-white"
                     />
                     <button type="submit" className="bg-amber-500 text-gray-950 px-3 py-1.5 rounded font-bold whitespace-nowrap">
-                      Pozvať
+                      {tx("Pozvať")}
                     </button>
                   </div>
                 </form>
@@ -5552,7 +6366,7 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
                 {pendingCoopInvites && pendingCoopInvites.length > 0 && (
                   <div className="space-y-1.5 pt-2 border-t border-gray-800">
                     <label className="text-[10px] text-amber-400 font-bold uppercase tracking-wide">
-                      {t.pendingPartnersLabel || "Prijaté pozvánky"}:
+                      {t.pendingPartnersLabel || tx("Prijaté pozvánky")}:
                     </label>
                     {pendingCoopInvites.map(inv => (
                       <div key={inv.id} className="bg-gray-900 p-2 rounded-xl border border-amber-500/40 flex justify-between items-center">
@@ -5563,14 +6377,14 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
                             onClick={() => handleAcceptCoopInvite(inv.id)}
                             className="bg-emerald-600 hover:bg-emerald-500 text-white px-2.5 py-1 rounded-lg text-[10px] font-bold"
                           >
-                            Prijať
+                            {tx("Prijať")}
                           </button>
                           <button
                             type="button"
                             onClick={() => handleRemoveOrRejectPartner(inv.id)}
                             className="bg-gray-800 hover:bg-red-950 text-gray-400 hover:text-red-400 px-2 py-1 rounded-lg text-[10px] font-bold border border-gray-700"
                           >
-                            Odmietnuť
+                            {tx("Odmietnuť")}
                           </button>
                         </div>
                       </div>
@@ -5582,7 +6396,7 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
                 {sentCoopInvites && sentCoopInvites.length > 0 && (
                   <div className="space-y-1.5 pt-2 border-t border-gray-800">
                     <label className="text-[10px] text-gray-400 font-bold uppercase tracking-wide">
-                      Odoslané pozvánky:
+                      {tx("Odoslané pozvánky:")}
                     </label>
                     {sentCoopInvites.map(inv => (
                       <div key={inv.id} className="bg-gray-900/60 p-2 rounded-xl border border-gray-800 flex justify-between items-center">
@@ -5595,7 +6409,7 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
                           onClick={() => handleRemoveOrRejectPartner(inv.id)}
                           className="text-gray-500 hover:text-red-400 text-[10px] font-bold px-2 py-0.5 rounded hover:bg-red-500/10 transition-colors"
                         >
-                          Zrušiť
+                          {tx("Zrušiť")}
                         </button>
                       </div>
                     ))}
@@ -5620,9 +6434,9 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
                           type="button"
                           onClick={() => handleRemoveOrRejectPartner(p.id)}
                           className="text-gray-500 hover:text-red-400 text-[10px] font-bold px-2 py-1 rounded border border-transparent hover:border-red-500/30 hover:bg-red-500/10 transition-all"
-                          title="Ukončiť spoluprácu"
+                          title={tx("Ukončiť spoluprácu")}
                         >
-                          Odpojiť
+                          {tx("Odpojiť")}
                         </button>
                       </div>
                     ))
@@ -5637,15 +6451,14 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
               <div className="w-full max-w-sm bg-gray-950 border border-amber-500/80 rounded-2xl p-4 shadow-2xl space-y-3 text-xs">
                 <div className="font-bold text-amber-400 flex items-center gap-2 text-sm">
                   <i className="fa-solid fa-user"></i>
-                  <span>{needName ? "Doplň svoje meno" : "Zmeniť meno a priezvisko"}</span>
+                  <span>{needName ? "Set User name" : "Change User name"}</span>
                 </div>
-                <div className="text-gray-400">Meno a priezvisko uvidia len ľudia, s ktorými spolupracuješ (CO-OP partneri, manažér, tvoj tím), namiesto e-mailu.</div>
-                <input value={nameFirstIn} onChange={e => setNameFirstIn(e.target.value)} maxLength={40} placeholder="Meno" autoComplete="given-name" className="w-full bg-gray-900 border border-gray-700 rounded-lg p-2 text-white" />
-                <input value={nameLastIn} onChange={e => setNameLastIn(e.target.value)} maxLength={40} placeholder="Priezvisko" autoComplete="family-name" className="w-full bg-gray-900 border border-gray-700 rounded-lg p-2 text-white" />
+                <div className="text-gray-400">{tx("Používateľské meno uvidia len ľudia, s ktorými spolupracuješ (CO-OP partneri, manažér, tvoj tím), namiesto e-mailu. Nepíš sem celé meno, stačí prezývka.")}</div>
+                <input value={nameIn} onChange={e => setNameIn(e.target.value)} maxLength={30} placeholder="User name" autoComplete="nickname" className="w-full bg-gray-900 border border-gray-700 rounded-lg p-2 text-white" />
                 {nameErr && <div className="text-red-400 font-bold">{nameErr}</div>}
                 <div className="flex gap-2">
-                  <button type="button" disabled={nameSaving} onClick={saveName} className="flex-1 py-2 rounded-lg bg-amber-500 text-black font-black disabled:opacity-50">{nameSaving ? "Ukladám..." : "Uložiť"}</button>
-                  {!needName && <button type="button" onClick={() => setShowNameModal(false)} className="px-3 py-2 rounded-lg bg-gray-800 text-gray-300 font-bold">Zrušiť</button>}
+                  <button type="button" disabled={nameSaving} onClick={saveName} className="flex-1 py-2 rounded-lg bg-amber-500 text-black font-black disabled:opacity-50">{nameSaving ? tx("Ukladám...") : tx("Uložiť")}</button>
+                  {!needName && <button type="button" onClick={() => setShowNameModal(false)} className="px-3 py-2 rounded-lg bg-gray-800 text-gray-300 font-bold">{tx("Zrušiť")}</button>}
                 </div>
               </div>
             </div>
@@ -5674,16 +6487,18 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
                 )}
 
                 <div className="space-y-1">
-                  <span className="text-gray-400">Prihlásený email:</span>
+                  <span className="text-gray-400">{tx("Prihlásený email:")}</span>
                   <div className="font-bold text-white font-mono">{currentUser.email}</div>
                 </div>
                 <div className="space-y-1">
-                  <span className="text-gray-400">Meno a priezvisko:</span>
+                  <span className="text-gray-400">{"User name:"}</span>
                   <div className="flex items-center justify-between gap-2">
-                    <div className="font-bold text-white">{myFullName() || "— nezadané —"}</div>
-                    <button type="button" onClick={() => { setShowSettingsModal(false); openNameEdit(); }} className="px-2 py-1 rounded bg-gray-800 hover:bg-gray-700 text-amber-400 font-bold">Zmeniť</button>
+                    <div className="font-bold text-white">{myFullName() || tx("— nezadané —")}</div>
+                    <button type="button" onClick={() => { setShowSettingsModal(false); openNameEdit(); }} className="px-2 py-1 rounded bg-gray-800 hover:bg-gray-700 text-amber-400 font-bold">{tx("Zmeniť")}</button>
                   </div>
                 </div>
+
+                <div className="text-[10px] leading-snug text-gray-500 border-t border-gray-800 pt-2">{tx("Ochrana údajov: do aplikácie ukladáš len svoje pracovné údaje (autá, ceny, fotky). Za nahrané údaje zodpovedáš ty. VIN ani ŠPZ nie sú spojené s menom majiteľa a telefónne čísla zákazníkov neukladáme. Svoje záznamy môžeš kedykoľvek zmazať; zmazanie účtu a všetkých údajov vybavíme na požiadanie.")}</div>
 
                 {/* Voľba meny a jazyka */}
                 <div className="grid grid-cols-2 gap-2 pt-2 border-t border-gray-800">
@@ -5719,7 +6534,7 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
                 </div>
 
                 <form onSubmit={handlePasswordUpdate} className="space-y-2 pt-2 border-t border-gray-800">
-                  <label className="text-[10px] text-gray-400 font-bold uppercase">Nové heslo</label>
+                  <label className="text-[10px] text-gray-400 font-bold uppercase">{tx("Nové heslo")}</label>
                   <input
                     type="password"
                     required
