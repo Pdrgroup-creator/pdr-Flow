@@ -870,6 +870,41 @@ const fileToBase64 = (file) => {
       return best;
     };
 
+    // Kontrastne úprava fotky pre OCR: zelený kanál (tmavočervený text je v ňom tmavý, biele pozadie svetlé) + roztiahnutie kontrastu
+    const enhanceForOcr = (file) => new Promise((resolve) => {
+      try {
+        const url = URL.createObjectURL(file);
+        const img = new Image();
+        img.onload = () => {
+          try {
+            const sc = Math.min(1, 1800 / Math.max(img.width, img.height));
+            const c = document.createElement("canvas");
+            c.width = Math.round(img.width * sc); c.height = Math.round(img.height * sc);
+            const ctx = c.getContext("2d");
+            ctx.drawImage(img, 0, 0, c.width, c.height);
+            const d = ctx.getImageData(0, 0, c.width, c.height);
+            const px = d.data, hist = new Array(256).fill(0);
+            for (let i = 0; i < px.length; i += 4) { hist[px[i + 1]]++; }
+            const total = c.width * c.height;
+            let acc = 0, lo = 0, hi = 255;
+            for (let v = 0; v < 256; v++) { acc += hist[v]; if (acc >= total * 0.02) { lo = v; break; } }
+            acc = 0;
+            for (let v = 255; v >= 0; v--) { acc += hist[v]; if (acc >= total * 0.02) { hi = v; break; } }
+            const span = Math.max(30, hi - lo);
+            for (let i = 0; i < px.length; i += 4) {
+              const v = Math.max(0, Math.min(255, ((px[i + 1] - lo) * 255) / span));
+              px[i] = px[i + 1] = px[i + 2] = v;
+            }
+            ctx.putImageData(d, 0, 0);
+            URL.revokeObjectURL(url);
+            resolve(c.toDataURL("image/jpeg", 0.9).split(",")[1]);
+          } catch (e) { resolve(null); }
+        };
+        img.onerror = () => resolve(null);
+        img.src = url;
+      } catch (e) { resolve(null); }
+    });
+
     const analyzeImageWithGoogleVision = async (file) => {
       const base64Data = await new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -3417,6 +3452,19 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
             let bestPlate = geoPlate ? geoPlate.plate : "";
             let plateBox = geoPlate ? geoPlate.box : null;
 
+            // KROK 0b: druhý pokus s kontrastne upraveným obrazom (tmavočervené / farebné písmo: belgické, holandské taxi, ...)
+            if (!bestPlate) {
+              try {
+                const enhB64 = await enhanceForOcr(file);
+                if (enhB64) {
+                  const enhRes = await callVision(enhB64, ["TEXT_DETECTION"]);
+                  const enhAnns = enhRes?.responses?.[0]?.textAnnotations || [];
+                  const g2 = pickPlateGeo(enhAnns);
+                  if (g2) { bestPlate = g2.plate; plateBox = g2.box; }
+                }
+              } catch (e) { console.warn("enhanced OCR retry failed", e); }
+            }
+
             // KROK A (záloha): Globálna analýza celého textu cez európske regex vzory (spája okres + erb/medzeru + telo)
             const fullTextLines = fullText.split("\n");
             for (const rawLine of (bestPlate ? [] : fullTextLines)) {
@@ -3504,7 +3552,7 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
               setTempOcrHasNoEcv(false);
             } else {
               setTempOcrEcv("");
-              setTempOcrHasNoEcv(true);
+              setTempOcrHasNoEcv(false);
             }
 
             // 2. Analýza farby karosérie výhradne z okolia tabuľky ŠPZ (plech nárazníka/kufra)
@@ -3580,7 +3628,7 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
             setTempOcrColorId(detectedColor);
           } catch (err) {
             console.warn(err);
-            setTempOcrHasNoEcv(true);
+            setTempOcrHasNoEcv(false);
           } finally {
             setIsAnalyzingOcr(false);
           }
@@ -4725,9 +4773,9 @@ const handleRemoveOrRejectPartner = async (partnershipId) => {
                           </div>
                           <input
                             type="text"
-                            disabled={tempOcrHasNoEcv}
                             value={tempOcrHasNoEcv ? "No Plate" : tempOcrEcv}
-                            onChange={e => setTempOcrEcv(e.target.value.toUpperCase())}
+                            onFocus={() => { if (tempOcrHasNoEcv) { setTempOcrHasNoEcv(false); setTempOcrEcv(""); } }}
+                            onChange={e => { setTempOcrHasNoEcv(false); setTempOcrEcv(e.target.value.toUpperCase()); }}
                             className={`w-full border rounded p-2 text-sm font-black tracking-widest text-center ${tempOcrHasNoEcv ? "bg-gray-800 text-gray-500 border-gray-800" : "bg-gray-900 text-white border-amber-500/80"}`}
                           />
                         </div>
